@@ -8365,6 +8365,7 @@ Returns the parsed `js2-var-decl-node' expression node."
     ;; Example:
     ;; var foo = {a: 1, b: 2}, bar = [3, 4];
     ;; var {b: s2, a: s1} = foo, x = 6, y, [s3, s4] = bar;
+    ;; var {a, b} = baz;
     (while continue
       (setq destructuring nil
             name nil
@@ -8374,7 +8375,7 @@ Returns the parsed `js2-var-decl-node' expression node."
             init nil)
       (if (or (= tt js2-LB) (= tt js2-LC))
           ;; Destructuring assignment, e.g., var [a, b] = ...
-          (setq destructuring (js2-parse-primary-expr)
+          (setq destructuring (js2-parse-primary-expr t)
                 end (js2-node-end destructuring))
         ;; Simple variable name
         (when (js2-must-match js2-NAME "msg.bad.var")
@@ -9154,10 +9155,13 @@ For instance, @[expr], @*::[expr], or ns::[expr]."
                                           :rb (js2-relpos rb pos)))
       (js2-node-add-children pn namespace expr))))
 
-(defun js2-parse-primary-expr ()
+(defun js2-parse-primary-expr (&optional lhs)
   "Parses a literal (leaf) expression of some sort.
 Includes complex literals such as functions, object-literals,
-array-literals, array comprehensions and regular expressions."
+array-literals, array comprehensions and regular expressions.
+When `lhs' is t, we assume the given primary expression appeared in the left hand side
+and treat it in the somewhat special way.
+ex) {a, b} is permitted only when the `lhs' is t."
   (let ((tt-flagged (js2-next-flagged-token))
         pn      ; parent node  (usually return value)
         tt
@@ -9172,7 +9176,7 @@ array-literals, array comprehensions and regular expressions."
      ((= tt js2-LB)
       (js2-parse-array-literal))
      ((= tt js2-LC)
-      (js2-parse-object-literal))
+      (js2-parse-object-literal lhs))
      ((= tt js2-LET)
       (js2-parse-let js2-token-beg))
      ((= tt js2-LP)
@@ -9402,7 +9406,7 @@ Last token peeked should be the initial FOR."
       (js2-pop-scope))
     pn))
 
-(defun js2-parse-object-literal ()
+(defun js2-parse-object-literal (&optional lhs)
   (let ((pos js2-token-beg)
         tt
         elems
@@ -9412,11 +9416,11 @@ Last token peeked should be the initial FOR."
     (while continue
       (setq tt (js2-peek-token))
       (cond
-       ;; {foo: ...}, {'foo': ...}, {get foo() {...}}, or {set foo(x) {...}}
+       ;; {foo: ...}, {'foo': ...}, {foo, bar, ...}, {get foo() {...}}, or {set foo(x) {...}}
        ((or (js2-valid-prop-name-token tt)
             (= tt js2-STRING))
         (setq after-comma nil
-              result (js2-parse-named-prop tt))
+              result (js2-parse-named-prop tt lhs))
         (if (and (null result)
                  (not js2-recover-from-parse-errors))
             (setq continue nil)
@@ -9446,8 +9450,9 @@ Last token peeked should be the initial FOR."
     (apply #'js2-node-add-children result (js2-object-node-elems result))
     result))
 
-(defun js2-parse-named-prop (tt)
-  "Parse a name, string, or getter/setter object property."
+(defun js2-parse-named-prop (tt &optional lhs)
+  "Parse a name, string, or getter/setter object property.
+When `lhs' is t, forms like {a, b, c} will be permitted."
   (js2-consume-token)
   (let ((string-prop (and (= tt js2-STRING)
                           (make-js2-string-node)))
@@ -9456,18 +9461,29 @@ Last token peeked should be the initial FOR."
         (pend js2-token-end)
         (name (js2-create-name-node))
         (prop js2-ts-string))
-    (if (and (= tt js2-NAME)
-             (= (js2-peek-token) js2-NAME)
-             (or (string= prop "get")
-                 (string= prop "set")))
-        (progn
-          ;; getter/setter prop
-          (js2-consume-token)
-          (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; get/set
-          (js2-record-face 'font-lock-function-name-face)      ; for peeked name
-          (setq name (js2-create-name-node)) ; discard get/set & use peeked name
-          (js2-parse-getter-setter-prop ppos name (string= prop "get")))
-      ;; regular prop
+    (cond
+     ;; getter/setter prop
+     ((and (= tt js2-NAME)
+           (= (js2-peek-token) js2-NAME)
+           (or (string= prop "get")
+               (string= prop "set")))
+      (progn
+        (js2-consume-token)
+        (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; get/set
+        (js2-record-face 'font-lock-function-name-face)      ; for peeked name
+        (setq name (js2-create-name-node)) ; discard get/set & use peeked name
+        (js2-parse-getter-setter-prop ppos name (string= prop "get"))))
+     ;; abbreviated destructuring bind e.g., {a, b} = c;
+     ((and lhs
+           (= tt js2-NAME)
+           (let ((ctk (js2-peek-token)))
+             (or (= ctk js2-COMMA)
+                 (= ctk js2-RC)
+                 (js2-valid-prop-name-token ctk))))
+      (js2-set-face ppos pend 'font-lock-variable-name-face 'record)
+      name)
+     ;; regular prop
+     (t
       (prog1
           (setq expr (js2-parse-plain-property (or string-prop name)))
         (js2-set-face ppos pend
@@ -9475,7 +9491,7 @@ Last token peeked should be the initial FOR."
                            (js2-object-prop-node-right expr))
                           'font-lock-function-name-face
                         'font-lock-variable-name-face)
-                      'record)))))
+                      'record))))))
 
 (defun js2-parse-plain-property (prop)
   "Parse a non-getter/setter property in an object literal.
