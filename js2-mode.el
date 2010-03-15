@@ -7379,7 +7379,7 @@ Scanner should be initialized."
             (cond
              ;; destructuring param
              ((or (= tt js2-LB) (= tt js2-LC))
-              (push (js2-parse-primary-expr) params))
+              (push (js2-parse-primary-expr t) params))
              ;; simple name
              (t
               (js2-must-match js2-NAME "msg.no.parm")
