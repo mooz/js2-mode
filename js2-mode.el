@@ -7341,7 +7341,7 @@ Scanner should be initialized."
                           (- js2-ts-cursor (js2-node-pos fn-node)))
       (js2-node-add-children fn-node
                              (setf (js2-function-node-body fn-node)
-                                   (js2-parse-expr))))))
+                                   (js2-parse-expr t))))))
 
 (defun js2-parse-function-body (fn-node)
   (js2-must-match js2-LC "msg.no.brace.body"
@@ -8498,13 +8498,14 @@ If NODE is non-nil, it is the AST node associated with the symbol."
       (js2-define-new-symbol decl-type name node))
      (t (js2-code-bug)))))
 
-(defun js2-parse-expr ()
+(defun js2-parse-expr (&optional oneshot)
   (let* ((pn (js2-parse-assign-expr))
          (pos (js2-node-pos pn))
          left
          right
          op-pos)
-    (while (js2-match-token js2-COMMA)
+    (while (and (not oneshot)
+                (js2-match-token js2-COMMA))
       (setq op-pos (- js2-token-beg pos))  ; relative
       (if (= (js2-peek-token) js2-YIELD)
           (js2-report-error "msg.yield.parenthesized"))
@@ -9517,6 +9518,10 @@ PROP is the node representing the property:  a number, name or string."
 JavaScript syntax is:
 
   { get foo() {...}, set foo(x) {...} }
+
+and expression closure style is also supported
+
+  { get foo() x, set foo(x) _x = x }
 
 POS is the start position of the `get' or `set' keyword.
 PROP is the `js2-name-node' representing the property name.
