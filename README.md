@@ -39,6 +39,23 @@ Support for expression closure in property value
         fire: function () _fire()
     };
 
+Fixed the odd indentation of "else if" with no braces
+-----------------------------------------------------
+
+In original js2-mode.el,
+
+    if (foo)
+        return foo;
+    else if (bar)
+    return bar;      // here
+
+In this js2-mode.el,
+
+    if (foo)
+        return foo;
+    else if (bar)
+        return bar;  // fixed
+
 Bugs
 ====
 
