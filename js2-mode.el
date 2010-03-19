@@ -9776,7 +9776,7 @@ returns nil."
                             (skip-chars-backward " \t}" (point-at-bol))
                             (or (bolp)
                                 (and (backward-word 1)
-                                     (or (skip-chars-backward " \t}" (point-at-bol)) t)
+                                     (skip-chars-backward " \t}" (point-at-bol))
                                      (bolp)
                                      (looking-at "[ \t}]*else[ \t]+if"))))
                           (looking-at js-possibly-braceless-keyword-re)
