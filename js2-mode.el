@@ -9774,7 +9774,10 @@ returns nil."
                      (when (looking-at "(") (backward-word 1))
                      (and (save-excursion
                             (skip-chars-backward " \t}" (point-at-bol))
-                            (bolp))
+                            (or (bolp)
+                                (and (backward-word 1)
+                                     (bolp)
+                                     (looking-at "[ \t}]*else[ \t]+if"))))
                           (looking-at js-possibly-braceless-keyword-re)
                           (not (js-end-of-do-while-loop-p))))))
         (save-excursion
