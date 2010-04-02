@@ -5608,7 +5608,7 @@ corresponding number.  Otherwise return -1."
                        (memq result '(js2-LET js2-YIELD)))
                   ;; LET and YIELD are tokens only in 1.7 and later
                   (setq result 'js2-NAME))
-              (if (not (eq result js2-RESERVED))
+              (if (not (eq result 'js2-RESERVED))
                   (throw 'return (js2-token-code result)))
               (js2-report-warning "msg.reserved.keyword" str)))
           ;; If we want to intern these as Rhino does, just use (intern str)
