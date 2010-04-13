@@ -3,6 +3,7 @@
 ;; Copyright (C) 2009  Free Software Foundation, Inc.
 
 ;; Author:  Steve Yegge <steve.yegge@gmail.com>
+;;          mooz        <stillpedant@gmail.com>
 ;; Version:  See `js2-mode-version'
 ;; Keywords:  languages, javascript
 
