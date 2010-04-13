@@ -9597,10 +9597,15 @@ not `js2-NAME', then we use the token info saved in instance vars."
 
 (defconst js-possibly-braceless-keyword-re
   (regexp-opt
-   '("catch" "do" "else" "finally" "for" "if" "try" "while" "with" "let")
+   '("catch" "do" "else" "finally" "for" "if" "each" "try" "while" "with" "let")
    'words)
   "Regular expression matching keywords that are optionally
 followed by an opening brace.")
+
+(defconst js-possibly-braceless-keywords-re
+  "\\([ \t}]*else[ \t]+if\\|[ \t}]*for[ \t]+each\\)"
+  "Regular expression which matches the keywords which are consist of more than 2 words
+like 'if else' and 'for each', and optionally followed by an opening brace.")
 
 (defconst js-indent-operator-re
   (concat "[-+*/%<>=&^|?:.]\\([^-+*/]\\|$\\)\\|"
@@ -9779,7 +9784,7 @@ returns nil."
                                 (and (backward-word 1)
                                      (skip-chars-backward " \t}" (point-at-bol))
                                      (bolp)
-                                     (looking-at "[ \t}]*else[ \t]+if"))))
+                                     (looking-at js-possibly-braceless-keywords-re))))
                           (looking-at js-possibly-braceless-keyword-re)
                           (not (js-end-of-do-while-loop-p))))))
         (save-excursion
