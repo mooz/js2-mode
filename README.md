@@ -39,6 +39,32 @@ Support for expression closure in property value
         fire: function () _fire()
     };
 
+Supported more popular indentation style
+----------------------------------------
+
+When js2-consistent-level-indent-inner-bracket-p is non-nil
+    
+    [foo, bar, baz].forEach(function (v) {
+        if (validate(v))
+            process(v);
+    });
+    
+    [a, b, c].some(function (v) {
+        return validate(v);
+    });
+
+When js2-consistent-level-indent-inner-bracket-p is nil
+(Same as original js2-mode's indentation)
+
+    [foo, bar, baz].forEach(function (v) {
+                                if (validate(v))
+                                    process(v);
+                            });
+    
+    [a, b, c].some(function (v) {
+                       return validate(v);
+                   });
+
 Fixed the odd indentation of "else if" with no braces
 -----------------------------------------------------
 
