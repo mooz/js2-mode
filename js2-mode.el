@@ -226,6 +226,12 @@ See the function `js2-bounce-indent' for details."
   :type 'boolean
   :group 'js2-mode)
 
+(defcustom js2-consistent-level-indent-inner-bracket-p t
+  "Non-nil to make indentation level inner bracket consistent,
+regardless of the beginning bracket position."
+  :group 'js2-mode
+  :type 'boolean)
+
 (defcustom js2-indent-on-enter-key nil
   "Non-nil to have Enter/Return key indent the line.
 This is unusual for Emacs modes but common in IDEs like Eclipse."
@@ -9854,7 +9860,8 @@ In particular, return the buffer position of the first `for' kwd."
             (when (save-excursion (skip-chars-backward " \t)")
                                   (looking-at ")"))
               (backward-list))
-            (if (nth 1 p)
+            (if (and (nth 1 p)
+                     (not js2-consistent-level-indent-inner-bracket-p))
                 (progn (goto-char (1+ (nth 1 p)))
                        (skip-chars-forward " \t"))
               (back-to-indentation))
