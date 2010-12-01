@@ -9386,7 +9386,7 @@ Last token peeked should be the initial FOR."
            ((or (= tt js2-LB)
                 (= tt js2-LC))
             ;; handle destructuring assignment
-            (setq iter (js2-parse-primary-expr)))
+            (setq iter (js2-parse-primary-expr t)))
            ((js2-valid-prop-name-token tt)
             (js2-consume-token)
             (setq iter (js2-create-name-node)))
