@@ -8393,7 +8393,7 @@ Returns the parsed `js2-var-decl-node' expression node."
             init nil)
       (if (or (= tt js2-LB) (= tt js2-LC))
           ;; Destructuring assignment, e.g., var [a, b] = ...
-          (setq destructuring (js2-parse-primary-expr t)
+          (setq destructuring (js2-parse-primary-expr-lhs)
                 end (js2-node-end destructuring))
         ;; Simple variable name
         (when (js2-must-match js2-NAME "msg.bad.var")
