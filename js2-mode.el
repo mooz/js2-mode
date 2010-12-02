@@ -9176,7 +9176,7 @@ For instance, @[expr], @*::[expr], or ns::[expr]."
       (js2-node-add-children pn namespace expr))))
 
 (defsubst js2-parse-primary-expr-lhs ()
-  (let ((js2-in-lhs t))
+  (let ((js2-is-in-lhs t))
     (js2-parse-primary-expr)))
 
 (defun js2-parse-primary-expr ()
