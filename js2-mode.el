@@ -797,6 +797,17 @@ Will only be used when we finish implementing the interpreter.")
 (js2-deflocal js2-recorded-assignments nil
   "Tracks assignments found during parsing.")
 
+(defmacro js2-in-lhs (body)
+  `(let ((js2-is-in-lhs t))
+     ,body))
+
+(defmacro js2-in-rhs (body)
+  `(let ((js2-is-in-lhs nil))
+     ,body))
+
+(js2-deflocal js2-is-in-lhs nil
+  "True while parsing lhs statement")
+
 (defcustom js2-global-externs nil
   "A list of any extern names you'd like to consider always declared.
 This list is global and is used by all js2-mode files.
@@ -7386,7 +7397,7 @@ Scanner should be initialized."
             (cond
              ;; destructuring param
              ((or (= tt js2-LB) (= tt js2-LC))
-              (push (js2-parse-primary-expr t) params))
+              (push (js2-parse-primary-expr-lhs) params))
              ;; simple name
              (t
               (js2-must-match js2-NAME "msg.no.parm")
@@ -8541,6 +8552,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
             tt (js2-peek-token))
       (when (and (<= js2-first-assign tt)
                  (<= tt js2-last-assign))
+        ;; tt express assignment (=, |=, ^=, ..., %=)
         (js2-consume-token)
         (setq op-pos (- js2-token-beg pos)  ; relative
               left pn
@@ -9163,13 +9175,14 @@ For instance, @[expr], @*::[expr], or ns::[expr]."
                                           :rb (js2-relpos rb pos)))
       (js2-node-add-children pn namespace expr))))
 
-(defun js2-parse-primary-expr (&optional lhs)
+(defsubst js2-parse-primary-expr-lhs ()
+  (let ((js2-in-lhs t))
+    (js2-parse-primary-expr)))
+
+(defun js2-parse-primary-expr ()
   "Parses a literal (leaf) expression of some sort.
 Includes complex literals such as functions, object-literals,
-array-literals, array comprehensions and regular expressions.
-When `lhs' is t, we assume the given primary expression appeared in the left hand side
-and treat it in the somewhat special way.
-ex) {a, b} is permitted only when the `lhs' is t."
+array-literals, array comprehensions and regular expressions."
   (let ((tt-flagged (js2-next-flagged-token))
         pn      ; parent node  (usually return value)
         tt
@@ -9184,7 +9197,7 @@ ex) {a, b} is permitted only when the `lhs' is t."
      ((= tt js2-LB)
       (js2-parse-array-literal))
      ((= tt js2-LC)
-      (js2-parse-object-literal lhs))
+      (js2-parse-object-literal))
      ((= tt js2-LET)
       (js2-parse-let js2-token-beg))
      ((= tt js2-LP)
@@ -9310,6 +9323,20 @@ ex) {a, b} is permitted only when the `lhs' is t."
         (when after-comma
           (js2-parse-warn-trailing-comma "msg.array.trailing.comma"
                                          pos elems after-comma)))
+       ;; destructuring binding
+       (js2-is-in-lhs
+        (push (if (or (= tt js2-LC)
+                      (= tt js2-LB)
+                      (= tt js2-NAME))
+                  ;; [a, b, c] | {a, b, c} | {a:x, b:y, c:z} | a
+                  (js2-parse-primary-expr-lhs)
+                ;; invalid pattern
+                (js2-consume-token)
+                (js2-report-error "msg.bad.var")
+                (make-js2-error-node))
+              elems)
+        (setq after-lb-or-comma nil
+              after-comma nil))
        ;; array comp
        ((and (>= js2-language-version 170)
              (= tt js2-FOR)          ; check for array comprehension
@@ -9318,6 +9345,7 @@ ex) {a, b} is permitted only when the `lhs' is t."
              (not (cdr elems)))      ; but no 2nd element
         (setf continue nil
               pn (js2-parse-array-comprehension (car elems) pos)))
+
        ;; another element
        (t
         (unless after-lb-or-comma
@@ -9386,7 +9414,7 @@ Last token peeked should be the initial FOR."
            ((or (= tt js2-LB)
                 (= tt js2-LC))
             ;; handle destructuring assignment
-            (setq iter (js2-parse-primary-expr t)))
+            (setq iter (js2-parse-primary-expr-lhs)))
            ((js2-valid-prop-name-token tt)
             (js2-consume-token)
             (setq iter (js2-create-name-node)))
@@ -9414,7 +9442,7 @@ Last token peeked should be the initial FOR."
       (js2-pop-scope))
     pn))
 
-(defun js2-parse-object-literal (&optional lhs)
+(defun js2-parse-object-literal ()
   (let ((pos js2-token-beg)
         tt
         elems
@@ -9428,7 +9456,7 @@ Last token peeked should be the initial FOR."
        ((or (js2-valid-prop-name-token tt)
             (= tt js2-STRING))
         (setq after-comma nil
-              result (js2-parse-named-prop tt lhs))
+              result (js2-parse-named-prop tt))
         (if (and (null result)
                  (not js2-recover-from-parse-errors))
             (setq continue nil)
@@ -9458,9 +9486,9 @@ Last token peeked should be the initial FOR."
     (apply #'js2-node-add-children result (js2-object-node-elems result))
     result))
 
-(defun js2-parse-named-prop (tt &optional lhs)
+(defun js2-parse-named-prop (tt)
   "Parse a name, string, or getter/setter object property.
-When `lhs' is t, forms like {a, b, c} will be permitted."
+When `js2-is-in-lhs' is t, forms like {a, b, c} will be permitted."
   (js2-consume-token)
   (let ((string-prop (and (= tt js2-STRING)
                           (make-js2-string-node)))
@@ -9482,7 +9510,11 @@ When `lhs' is t, forms like {a, b, c} will be permitted."
         (setq name (js2-create-name-node)) ; discard get/set & use peeked name
         (js2-parse-getter-setter-prop ppos name (string= prop "get"))))
      ;; abbreviated destructuring bind e.g., {a, b} = c;
-     ((and lhs
+     ;; XXX: To be honest, the value of `js2-is-in-lhs' becomes t only when
+     ;; patterns are appeared in variable declaration, function parameters, and catch-clause.
+     ;; We have to set t to `js2-is-in-lhs' when the current expressions are part of any
+     ;; assignment but it's difficult because it requires looking ahead of expression.
+     ((and js2-is-in-lhs
            (= tt js2-NAME)
            (let ((ctk (js2-peek-token)))
              (or (= ctk js2-COMMA)
