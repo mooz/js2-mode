@@ -22,23 +22,6 @@ See <http://code.google.com/p/js2-mode/wiki/InstallationInstructions> for detail
 Differences between original js2-mode.el
 ========================================
 
-Support for abbreviated destructuring assignments
--------------------------------------------------
-
-    let {a, b}       = {a: 10, b: 20}; // Abbreviated   (Not supported in original js2-mode.el)
-    let {a: a, b: b} = {a: 10, b: 20}; // Same as above (Supported in original js2-mode.el)
-
-    (function ({responseText}) { /* */ })(xhr); // As the argument of function
-
-Support for expression closure in property value
-------------------------------------------------
-
-    let worker = {
-        get age() 20,
-        get sex() "male",
-        fire: function () _fire()
-    };
-
 Supported more popular indentation style
 ----------------------------------------
 
@@ -65,7 +48,42 @@ When js2-consistent-level-indent-inner-bracket-p is nil
                        return validate(v);
                    });
 
-Fixed the odd indentation of "else if" with no braces
+Fixed ugly indentation with multi-line variable declaration
+-----------------------------------------------------------
+
+In original js2-mode.el,
+
+    var foo = 10,
+    bar = 20,
+    baz = 30;
+
+In this js2-mode.el,
+
+    var foo = 10,
+        bar = 20,
+        baz = 30;
+
+Support for abbreviated destructuring assignments
+-------------------------------------------------
+
+    let {a, b}       = {a: 10, b: 20}; // Abbreviated   (Not supported in original js2-mode.el)
+    let {a: a, b: b} = {a: 10, b: 20}; // Same as above (Supported in original js2-mode.el)
+
+    (function ({responseText}) { /* */ })(xhr); // As the argument of function
+
+    for (let [k, { name, age }] in Iterator(obj)) // nested
+        print(k, name, age);
+
+Support for expression closure in property value
+------------------------------------------------
+
+    let worker = {
+        get age() 20,
+        get sex() "male",
+        fire: function () _fire()
+    };
+
+Fixed odd indentation of "else if" with no braces
 -----------------------------------------------------
 
 In original js2-mode.el,
