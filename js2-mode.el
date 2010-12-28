@@ -9770,12 +9770,14 @@ a comma)."
         ;; var a = 10,
         ;;     b = 20; <- this
         (let* ((node (js2-node-at-point))
-               (pnode (js2-node-parent node)))
+               (pnode (js2-node-parent node))
+               (pnode-type (js2-node-type pnode)))
           (and node
                (= js2-NAME (js2-node-type node))
                (or
-                (= js2-VAR (js2-node-type pnode))
-                (= js2-LET (js2-node-type pnode)))))
+                (= js2-VAR pnode-type)
+                (= js2-LET pnode-type)
+                (= js2-CONST pnode-type))))
         ;; comment
         (and (js-re-search-backward "\n" nil t)
 	     (progn
