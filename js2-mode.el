@@ -9927,6 +9927,8 @@ In particular, return the buffer position of the first `for' kwd."
                    (current-column))
                   (continued-expr-p
                    (+ (current-column) (* 2 js2-basic-offset)))
+                  ((> multiline-declaration-offset 0)
+                   (+ (current-column) js2-basic-offset multiline-declaration-offset))
                   (t
                    (+ (current-column) js2-basic-offset)))))
          (t
