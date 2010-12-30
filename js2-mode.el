@@ -9811,8 +9811,8 @@ indented to the same column as the current line."
 
 "
   (let* ((node (js2-node-at-point))
-         (pnode (js2-node-parent node))
-         (pnode-type (js2-node-type pnode)))
+         (pnode (and node (js2-node-parent node)))
+         (pnode-type (and pnode (js2-node-type pnode))))
     (if (and node
              (= js2-NAME (js2-node-type node))
              (or
