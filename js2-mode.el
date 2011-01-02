@@ -10214,6 +10214,8 @@ If so, we don't ever want to use bounce-indent."
 (defun js2-indent-line ()
   "Indent the current line as JavaScript source text."
   (interactive)
+  ;; TODO: do not reparse
+  (js2-reparse)
   (let (parse-status
         current-indent
         offset
