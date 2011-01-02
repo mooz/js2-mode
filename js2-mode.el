@@ -232,6 +232,11 @@ regardless of the beginning bracket position."
   :group 'js2-mode
   :type 'boolean)
 
+(defcustom js2-use-ast-for-indentation-p nil
+  "Non-nil to use AST for indentation and make it more robust."
+  :group 'js2-mode
+  :type 'boolean)
+
 (defcustom js2-indent-on-enter-key nil
   "Non-nil to have Enter/Return key indent the line.
 This is unusual for Emacs modes but common in IDEs like Eclipse."
@@ -9895,7 +9900,9 @@ In particular, return the buffer position of the first `for' kwd."
     (let ((ctrl-stmt-indent (js-ctrl-statement-indentation))
           (same-indent-p (looking-at "[]})]\\|\\<case\\>\\|\\<default\\>"))
           (continued-expr-p (js-continued-expression-p))
-          (multiline-declaration-offset (js-get-multiline-declaration-offset))
+          (multiline-declaration-offset (or (and js2-use-ast-for-indentation-p
+                                                 (js-get-multiline-declaration-offset))
+                                            0))
           (bracket (nth 1 parse-status))
           beg)
       (cond
@@ -10214,8 +10221,8 @@ If so, we don't ever want to use bounce-indent."
 (defun js2-indent-line ()
   "Indent the current line as JavaScript source text."
   (interactive)
-  ;; TODO: do not reparse
-  (js2-reparse)
+  (when js2-use-ast-for-indentation-p
+    (js2-reparse))
   (let (parse-status
         current-indent
         offset
