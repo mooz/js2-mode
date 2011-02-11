@@ -6822,12 +6822,16 @@ if the index expression is a name, a string, or a positive integer."
           (js2-this-node-p node))
       (list node))
      ;; foo.bar.baz is parenthesized as (foo.bar).baz => right operand is a leaf
-     ((js2-prop-get-node-p node)  ; includes elem-get nodes
-      (setq left (js2-prop-get-node-left node)
-            right (js2-prop-get-node-right node))
+     ((or (and (js2-prop-get-node-p node)
+               (setq left (js2-prop-get-node-left node)
+                     right (js2-prop-get-node-right node)))
+          (and (js2-elem-get-node-p node)
+               (setq left (js2-elem-get-node-target node)
+                     right (js2-elem-get-node-element node))))
       (if (and (or (js2-prop-get-node-p left)     ; left == foo.bar
-                   (js2-name-node-p left)
-                   (js2-this-node-p left))        ; or left == foo
+                   (js2-elem-get-node-p left)     ; left == foo['bar']
+                   (js2-name-node-p left)         ; left == foo
+                   (js2-this-node-p left))        ; or left == this
                (or (js2-name-node-p right)        ; .bar
                    (js2-string-node-p right)      ; ['bar']
                    (and (js2-number-node-p right) ; [10]
@@ -6835,6 +6839,8 @@ if the index expression is a name, a string, or a positive integer."
                                       (js2-number-node-value right)))))
           (if (setq head (js2-compute-nested-prop-get left))
               (nconc head (list right))))))))
+
+(defun js2-get-node-p )
 
 (defun js2-record-object-literal (node qname)
   "Recursively process an object literal looking for functions.
