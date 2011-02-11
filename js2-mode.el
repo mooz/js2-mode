@@ -6810,7 +6810,10 @@ VAR, if non-nil, is the expression that NODE is being assigned to."
          ;; foo.bar.baz = object-literal
          ;; look for nested functions:  {a: {b: function() {...} }}
          ((js2-object-node-p node)
-          (js2-record-object-literal node qname))))))))
+          ;; Node position here is still absolute, since the parser
+          ;; passes the assignment target and value expressions
+          ;; to us before they are added as children of the assignment node.
+          (js2-record-object-literal node qname (js2-node-pos node)))))))))
 
 (defun js2-compute-nested-prop-get (node)
   "If NODE is of form foo.bar.baz, return component nodes as a list.
@@ -6840,37 +6843,35 @@ if the index expression is a name, a string, or a positive integer."
           (if (setq head (js2-compute-nested-prop-get left))
               (nconc head (list right))))))))
 
-(defun js2-get-node-p )
-
-(defun js2-record-object-literal (node qname)
+(defun js2-record-object-literal (node qname pos)
   "Recursively process an object literal looking for functions.
 NODE is an object literal that is the right-hand child of an assignment
 expression.  QNAME is a list of nodes representing the assignment target,
 e.g. for foo.bar.baz = {...}, QNAME is (foo-node bar-node baz-node).
+POS is the absolute position of the node.
 We do a depth-first traversal of NODE.  Any functions we find are prefixed
 with QNAME plus the property name of the function and appended to the
 variable `js2-imenu-recorder'."
-  ;; Elements are relative to parent position, which is still absolute,
-  ;; since the parser passes the assignment target and value expressions
-  ;; to us before they are added as children of the assignment node.
-  (let ((pos (js2-node-pos node))
-        left right)
+  (let (left right)
     (dolist (e (js2-object-node-elems node))  ; e is a `js2-object-prop-node'
-      (setq left (js2-infix-node-left e))
-      (cond
-       ;; foo: function() {...}
-       ((js2-function-node-p (setq right (js2-infix-node-right e)))
-        (when (js2-prop-node-name left)
-          ;; As a policy decision, we record the position of the property,
-          ;; not the position of the `function' keyword, since the property
-          ;; is effectively the name of the function.
-          (push (append qname (list left) (list (+ pos (js2-node-pos e))))
-                js2-imenu-recorder)
-          (js2-record-function-qname right qname)))
-       ;; foo: {object-literal} -- add foo to qname and recurse
-       ((js2-object-node-p right)
-        (js2-record-object-literal right
-                                   (append qname (list (js2-infix-node-left e)))))))))
+      (let ((left (js2-infix-node-left e))
+            ;; Element positions are relative to the parent position.
+            (pos (+ pos (js2-node-pos e))))
+        (cond
+         ;; foo: function() {...}
+         ((js2-function-node-p (setq right (js2-infix-node-right e)))
+          (when (js2-prop-node-name left)
+            ;; As a policy decision, we record the position of the property,
+            ;; not the position of the `function' keyword, since the property
+            ;; is effectively the name of the function.
+            (push (append qname (list left pos))
+                  js2-imenu-recorder)
+            (js2-record-function-qname right qname)))
+         ;; foo: {object-literal} -- add foo to qname, offset position, and recurse
+         ((js2-object-node-p right)
+          (js2-record-object-literal right
+                                     (append qname (list (js2-infix-node-left e)))
+                                     (+ pos (js2-node-pos right)))))))))
 
 (defsubst js2-node-top-level-decl-p (node)
   "Return t if NODE's name is defined in the top-level scope.
