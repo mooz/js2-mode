@@ -100,6 +100,23 @@ In this js2-mode.el,
     else if (bar)
         return bar;  // fixed
 
+Fixes in Imenu support
+-----------------------
+
+Supports element-get form:
+
+    foo["bar"] = function() {};
+    foo[647] = function() {};
+
+Proper position for functions in nested object literals:
+
+    foo = {
+        bar: function() {}, // ok in original
+        baz: {
+             boop: function() {} // fixed here
+        },
+    }
+
 Bugs
 ====
 
