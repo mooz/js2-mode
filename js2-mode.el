@@ -6816,30 +6816,27 @@ VAR, if non-nil, is the expression that NODE is being assigned to."
           (js2-record-object-literal node qname (js2-node-pos node)))))))))
 
 (defun js2-compute-nested-prop-get (node)
-  "If NODE is of form foo.bar.baz, return component nodes as a list.
-Otherwise returns nil.  Element-gets can be treated as property-gets
-if the index expression is a name, a string, or a positive integer."
+  "If NODE is of form foo.bar, foo['bar'], or any nested combination, return
+component nodes as a list.  Otherwise return nil.  Element-gets are treated
+as property-gets if the index expression is a string, or a positive integer."
   (let (left right head)
     (cond
      ((or (js2-name-node-p node)
           (js2-this-node-p node))
       (list node))
      ;; foo.bar.baz is parenthesized as (foo.bar).baz => right operand is a leaf
-     ((or (and (js2-prop-get-node-p node)
-               (setq left (js2-prop-get-node-left node)
-                     right (js2-prop-get-node-right node)))
-          (and (js2-elem-get-node-p node)
-               (setq left (js2-elem-get-node-target node)
-                     right (js2-elem-get-node-element node))))
-      (if (and (or (js2-prop-get-node-p left)     ; left == foo.bar
-                   (js2-elem-get-node-p left)     ; left == foo['bar']
-                   (js2-name-node-p left)         ; left == foo
-                   (js2-this-node-p left))        ; or left == this
-               (or (js2-name-node-p right)        ; .bar
-                   (js2-string-node-p right)      ; ['bar']
-                   (and (js2-number-node-p right) ; [10]
-                        (string-match "^[0-9]+$"
-                                      (js2-number-node-value right)))))
+     ((js2-prop-get-node-p node)        ; foo.bar
+      (setq left (js2-prop-get-node-left node)
+            right (js2-prop-get-node-right node))
+      (if (setq head (js2-compute-nested-prop-get left))
+          (nconc head (list right))))
+     ((js2-elem-get-node-p node)        ; foo['bar'] or foo[101]
+      (setq left (js2-elem-get-node-target node)
+            right (js2-elem-get-node-element node))
+      (if (or (js2-string-node-p right)      ; ['bar']
+              (and (js2-number-node-p right) ; [10]
+                   (string-match "^[0-9]+$"
+                                 (js2-number-node-value right))))
           (if (setq head (js2-compute-nested-prop-get left))
               (nconc head (list right))))))))
 
