@@ -101,7 +101,7 @@ In this js2-mode.el,
         return bar;  // fixed
 
 Fixes in Imenu support
------------------------
+----------------------
 
 Supports element-get form:
 
@@ -117,8 +117,8 @@ Proper position for functions in nested object literals:
         },
     }
 
-Imenu support for nested named functions
-----------------------------------------
+Imenu support for function nesting
+----------------------------------
 
 Supports one level of nesting:
 
@@ -141,7 +141,7 @@ Examples of output:
 * [Backbone.js](https://github.com/documentcloud/backbone/blob/master/backbone.js)
 -> <https://gist.github.com/824260>
 
-No support for library-specific extension methods, though, like _.extend.
+No support for library-specific extension methods like _.extend.
 
 Bugs
 ====
