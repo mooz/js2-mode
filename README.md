@@ -117,6 +117,32 @@ Proper position for functions in nested object literals:
         },
     }
 
+Imenu support for nested named functions
+----------------------------------------
+
+Supports one level of nesting:
+
+    function foo() {
+        function bar() { // shown as foo.bar
+            function baz() {} // hidden
+        }
+    }
+
+Top-level function can be anonymous wrapper:
+
+    (function() {
+        var foo = function() {}; // shown as foo
+    })();
+
+Examples of output:
+
+* [Underscore.js](https://github.com/documentcloud/underscore/blob/master/underscore.js)
+-> <https://gist.github.com/824262>
+* [Backbone.js](https://github.com/documentcloud/backbone/blob/master/backbone.js)
+-> <https://gist.github.com/824260>
+
+No support for library-specific extension methods, though, like _.extend.
+
 Bugs
 ====
 
