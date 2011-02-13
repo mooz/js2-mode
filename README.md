@@ -114,7 +114,7 @@ Proper position for functions in nested object literals:
         bar: function() {}, // ok in original
         baz: {
              boop: function() {} // fixed here
-        },
+        }
     }
 
 Imenu support for function nesting
