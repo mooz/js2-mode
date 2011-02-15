@@ -1141,7 +1141,7 @@ another file, or you've got a potential bug."
   :group 'js2-mode)
 
 (defcustom js2-highlight-external-variables t
-  "Non-nil to higlight undeclared variable identifiers."
+  "Non-nil to highlight undeclared variable identifiers."
   :type 'boolean
   :group 'js2-mode)
 
