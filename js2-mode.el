@@ -9522,12 +9522,11 @@ When `js2-is-in-lhs' is t, forms like {a, b, c} will be permitted."
            (= (js2-peek-token) js2-NAME)
            (or (string= prop "get")
                (string= prop "set")))
-      (progn
-        (js2-consume-token)
-        (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; get/set
-        (js2-record-face 'font-lock-function-name-face)      ; for peeked name
-        (setq name (js2-create-name-node)) ; discard get/set & use peeked name
-        (js2-parse-getter-setter-prop ppos name (string= prop "get"))))
+      (js2-consume-token)
+      (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; get/set
+      (js2-record-face 'font-lock-function-name-face)      ; for peeked name
+      (setq name (js2-create-name-node)) ; discard get/set & use peeked name
+      (js2-parse-getter-setter-prop ppos name (string= prop "get")))
      ;; abbreviated destructuring bind e.g., {a, b} = c;
      ;; XXX: To be honest, the value of `js2-is-in-lhs' becomes t only when
      ;; patterns are appeared in variable declaration, function parameters, and catch-clause.
