@@ -1135,8 +1135,8 @@ declarations to `js2-recorded-identifiers', which see."
   '((t :foreground "orange"))
   "Face used to highlight undeclared variable identifiers.
 An undeclared variable is any variable not declared with var or let
-in the current scope or any lexically enclosing scope.  If you assign
-to such a variable, then you are either expecting it to originate from
+in the current scope or any lexically enclosing scope.  If you use
+such a variable, then you are either expecting it to originate from
 another file, or you've got a potential bug."
   :group 'js2-mode)
 
