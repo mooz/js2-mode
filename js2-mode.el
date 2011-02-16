@@ -3534,8 +3534,10 @@ You can tell the quote type by looking at the first character."
                                                      (pos js2-ts-cursor)
                                                      len
                                                      elems)))
-  "AST node for an object literal expression."
-  elems)  ; a lisp list of `js2-object-prop-node'
+  "AST node for an object literal expression.
+`elems' is a list of either `js2-object-prop-node' or `js2-name-node',
+the latter represents abbreviation in destructuring expressions."
+  elems)
 
 (put 'cl-struct-js2-object-node 'js2-visitor 'js2-visit-object-node)
 (put 'cl-struct-js2-object-node 'js2-printer 'js2-print-object-node)
@@ -7403,6 +7405,29 @@ Scanner should be initialized."
     (js2-node-add-children fn-node pn)
     pn))
 
+(defun js2-define-destruct-symbols (decl-type face node)
+  "Declare and fontify destructuring parameters inside NODE.
+NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
+  (cond
+   ((js2-name-node-p node)
+    (let (leftpos)
+      (js2-define-symbol decl-type (js2-name-node-name node) node)
+      (js2-set-face (setq leftpos (js2-node-abs-pos node))
+                    (+ leftpos (js2-node-len node))
+                    face 'record)))
+   ((js2-object-node-p node)
+    (dolist (elem (js2-object-node-elems node))
+      (js2-define-destruct-symbols
+       decl-type face
+       (if (js2-object-prop-node-p elem)
+           (js2-object-prop-node-right elem)
+         ;; abbreviated destructuring {a, b}
+         elem))))
+   ((js2-array-node-p node)
+    (dolist (elem (js2-array-node-elems node))
+      (js2-define-destruct-symbols decl-type face elem)))
+   (t (js2-report-error "msg.no.parm"))))
+
 (defun js2-parse-function-params (fn-node pos)
   (if (js2-match-token js2-RP)
       (setf (js2-function-node-rp fn-node) (- js2-token-beg pos))
@@ -7412,7 +7437,11 @@ Scanner should be initialized."
             (cond
              ;; destructuring param
              ((or (= tt js2-LB) (= tt js2-LC))
-              (push (js2-parse-primary-expr-lhs) params))
+              (setq param (js2-parse-primary-expr-lhs))
+              (js2-define-destruct-symbols js2-LP
+                                           'js2-function-param-face
+                                           param)
+              (push param params))
              ;; simple name
              (t
               (js2-must-match js2-NAME "msg.no.parm")
@@ -8436,6 +8465,9 @@ Returns the parsed `js2-var-decl-node' expression node."
           (progn
             (if (and (null init) (not js2-in-for-init))
                 (js2-report-error "msg.destruct.assign.no.init"))
+            (js2-define-destruct-symbols decl-type
+                                         'font-lock-variable-name-face
+                                         destructuring)
             (setf (js2-var-init-node-target vi) destructuring))
         (setf (js2-var-init-node-target vi) name))
       (setf (js2-var-init-node-initializer vi) init)
@@ -9538,7 +9570,6 @@ When `js2-is-in-lhs' is t, forms like {a, b, c} will be permitted."
              (or (= ctk js2-COMMA)
                  (= ctk js2-RC)
                  (js2-valid-prop-name-token ctk))))
-      (js2-set-face ppos pend 'font-lock-variable-name-face 'record)
       name)
      ;; regular prop
      (t
