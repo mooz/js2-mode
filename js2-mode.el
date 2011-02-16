@@ -7405,27 +7405,28 @@ Scanner should be initialized."
     (js2-node-add-children fn-node pn)
     pn))
 
-(defun js2-define-destruct-symbols (decl-type face node)
+(defun js2-define-destruct-symbols (node decl-type face &optional ignore-not-in-block)
   "Declare and fontify destructuring parameters inside NODE.
 NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
   (cond
    ((js2-name-node-p node)
     (let (leftpos)
-      (js2-define-symbol decl-type (js2-name-node-name node) node)
+      (js2-define-symbol decl-type (js2-name-node-name node)
+                         node ignore-not-in-block)
       (js2-set-face (setq leftpos (js2-node-abs-pos node))
                     (+ leftpos (js2-node-len node))
                     face 'record)))
    ((js2-object-node-p node)
     (dolist (elem (js2-object-node-elems node))
       (js2-define-destruct-symbols
-       decl-type face
        (if (js2-object-prop-node-p elem)
            (js2-object-prop-node-right elem)
          ;; abbreviated destructuring {a, b}
-         elem))))
+         elem)
+       decl-type face ignore-not-in-block)))
    ((js2-array-node-p node)
     (dolist (elem (js2-array-node-elems node))
-      (js2-define-destruct-symbols decl-type face elem)))
+      (js2-define-destruct-symbols elem decl-type face ignore-not-in-block)))
    (t (js2-report-error "msg.no.parm"))))
 
 (defun js2-parse-function-params (fn-node pos)
@@ -7438,9 +7439,9 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
              ;; destructuring param
              ((or (= tt js2-LB) (= tt js2-LC))
               (setq param (js2-parse-primary-expr-lhs))
-              (js2-define-destruct-symbols js2-LP
-                                           'js2-function-param-face
-                                           param)
+              (js2-define-destruct-symbols param
+                                           js2-LP
+                                           'js2-function-param-face)
               (push param params))
              ;; simple name
              (t
@@ -8465,9 +8466,9 @@ Returns the parsed `js2-var-decl-node' expression node."
           (progn
             (if (and (null init) (not js2-in-for-init))
                 (js2-report-error "msg.destruct.assign.no.init"))
-            (js2-define-destruct-symbols decl-type
-                                         'font-lock-variable-name-face
-                                         destructuring)
+            (js2-define-destruct-symbols destructuring
+                                         decl-type
+                                         'font-lock-variable-name-face)
             (setf (js2-var-init-node-target vi) destructuring))
         (setf (js2-var-init-node-target vi) name))
       (setf (js2-var-init-node-initializer vi) init)
@@ -9481,7 +9482,9 @@ Last token peeked should be the initial FOR."
            ((or (= tt js2-LB)
                 (= tt js2-LC))
             ;; handle destructuring assignment
-            (setq iter (js2-parse-primary-expr-lhs)))
+            (setq iter (js2-parse-primary-expr-lhs))
+            (js2-define-destruct-symbols iter js2-LET
+                                         'font-lock-variable-name-face t))
            ((js2-valid-prop-name-token tt)
             (js2-consume-token)
             (setq iter (js2-create-name-node)))
