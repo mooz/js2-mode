@@ -9349,6 +9349,8 @@ array-literals, array comprehensions and regular expressions."
         elems
         pn
         (continue t))
+    (unless js2-is-in-lhs
+        (js2-push-scope (make-js2-scope))) ; for array comp
     (while continue
       (setq tt (js2-peek-token))
       (cond
@@ -9404,6 +9406,8 @@ array-literals, array comprehensions and regular expressions."
         (push (js2-parse-assign-expr) elems)
         (setq after-lb-or-comma nil
               after-comma nil))))
+    (unless js2-is-in-lhs
+      (js2-pop-scope))
     pn))
 
 (defun js2-parse-array-comprehension (expr pos)
@@ -9412,11 +9416,22 @@ EXPR is the first expression after the opening left-bracket.
 POS is the beginning of the LB token preceding EXPR.
 We should have just parsed the 'for' keyword before calling this function."
   (let (loops
+        loop
+        first
+        prev
         filter
         if-pos
         result)
     (while (= (js2-peek-token) js2-FOR)
-      (push (js2-parse-array-comp-loop) loops))
+      (let ((prev (car loops))) ; rearrange scope chain
+        (push (setq loop (js2-parse-array-comp-loop)) loops)
+        (if prev ; each loop is parent scope to the next one
+            (setf (js2-scope-parent-scope loop) prev)
+          ; first loop takes expr scope's parent
+          (setf (js2-scope-parent-scope (setq first loop))
+                (js2-scope-parent-scope js2-current-scope)))))
+    ;; set expr scope's parent to the last loop
+    (setf (js2-scope-parent-scope js2-current-scope) (car loops))
     (when (= (js2-peek-token) js2-IF)
       (js2-consume-token)
       (setq if-pos (- js2-token-beg pos)  ; relative
@@ -9432,6 +9447,7 @@ We should have just parsed the 'for' keyword before calling this function."
                                            :if-pos if-pos))
     (apply #'js2-node-add-children result expr (car filter)
            (js2-array-comp-node-loops result))
+    (setq js2-current-scope first) ; pop to the first loop
     result))
 
 (defun js2-parse-array-comp-loop ()
