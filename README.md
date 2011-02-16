@@ -143,6 +143,33 @@ Examples of output:
 
 No support for library-specific extension methods like _.extend.
 
+Highlights undeclared/external variables
+----------------------------------------
+
+Original mode highlights them only on the left side of assignments:
+
+    var house;
+    hose = new House(); // highlights "hose"
+
+Here they are highlighted in all expressions:
+    
+    function feed(fishes, food) {
+        for each (var fish in fshes) { // highlights "fshes"
+            food.feed(fsh); // highlights "fsh"
+        }
+        hood.discard(); // highlights "hood"
+    }
+
+Destructuring assignments and array comprehensions (JS 1.7) are supported:
+
+    let three, [one, two] = [1, 2];
+    thee = one + two; // highlights "thee" 
+
+    function revenue(goods) {
+        // highlights "coast"
+        return [price - coast for each ({price, cost} in goods)].reduce(add);
+    }
+    
 Bugs
 ====
 
