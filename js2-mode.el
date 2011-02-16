@@ -7428,7 +7428,8 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
    ((js2-array-node-p node)
     (dolist (elem (js2-array-node-elems node))
       (js2-define-destruct-symbols elem decl-type face ignore-not-in-block)))
-   (t (js2-report-error "msg.no.parm"))))
+   (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
+                        (js2-node-len node)))))
 
 (defun js2-parse-function-params (fn-node pos)
   (if (js2-match-token js2-RP)
