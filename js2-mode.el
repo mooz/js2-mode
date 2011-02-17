@@ -2149,23 +2149,24 @@ callback is called immediately with a non-nil END-P argument.
 
 The node traversal is approximately lexical-order, although there
 are currently no guarantees around this."
-  (let ((vfunc (get (aref node 0) 'js2-visitor)))
-    ;; visit the node
-    (when  (funcall callback node nil)
-      ;; visit the kids
-      (cond
-       ((eq vfunc 'js2-visit-none)
-        nil)                            ; don't even bother calling it
-       ;; Each AST node type has to define a `js2-visitor' function
-       ;; that takes a node and a callback, and calls `js2-visit-ast'
-       ;; on each child of the node.
-       (vfunc
-        (funcall vfunc node callback))
-       (t
-        (error "%s does not define a visitor-traversal function"
-               (aref node 0)))))
-    ;; call the end-visit
-    (funcall callback node t)))
+  (if node
+    (let ((vfunc (get (aref node 0) 'js2-visitor)))
+      ;; visit the node
+      (when  (funcall callback node nil)
+        ;; visit the kids
+        (cond
+         ((eq vfunc 'js2-visit-none)
+          nil)                            ; don't even bother calling it
+         ;; Each AST node type has to define a `js2-visitor' function
+         ;; that takes a node and a callback, and calls `js2-visit-ast'
+         ;; on each child of the node.
+         (vfunc
+          (funcall vfunc node callback))
+         (t
+          (error "%s does not define a visitor-traversal function"
+                 (aref node 0)))))
+      ;; call the end-visit
+      (funcall callback node t))))
 
 (defstruct (js2-node
             (:constructor nil))  ; abstract
