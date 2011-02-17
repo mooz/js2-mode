@@ -126,7 +126,7 @@
             UserDataHandler
 
             ;; Window
-            alert confirm document java navigator prompt screen
+            window alert confirm document java navigator prompt screen
             self top
 
             ;; W3C CSS
