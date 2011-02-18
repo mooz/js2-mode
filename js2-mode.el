@@ -2005,8 +2005,8 @@ Returns nil if element is not found in the list."
            ,delta)
        ,form
        (/ (truncate (* (- (float-time (current-time))
-                          (float-time ,beg)))
-                    10000)
+                          (float-time ,beg))
+                       10000))
           10000.0))))
 
 (defsubst js2-same-line (pos)
