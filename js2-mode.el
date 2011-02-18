@@ -5992,7 +5992,7 @@ corresponding number.  Otherwise return -1."
             js2-ts-regexp-flags (js2-collect-string flags)
             js2-token-end js2-ts-cursor)
       ;; tell `parse-partial-sexp' to ignore this range of chars
-      (put-text-property js2-token-beg js2-token-end 'syntax-class '(2)))))
+      (js2-record-text-property js2-token-beg js2-token-end 'syntax-class '(2)))))
 
 (defun js2-get-first-xml-token ()
   (setq js2-ts-xml-open-tags-count 0
@@ -7059,7 +7059,7 @@ is only true until the node is added to its parent; i.e., while parsing."
                        'font-lock-comment-face))
     (when (memq js2-ts-comment-type '(html preprocessor))
       ;; Tell cc-engine the bounds of the comment.
-      (put-text-property js2-token-beg (1- js2-token-end) 'c-in-sws t))))
+      (js2-record-text-property js2-token-beg (1- js2-token-end) 'c-in-sws t))))
 
 ;; This function is called depressingly often, so it should be fast.
 ;; Most of the time it's looking at the same token it peeked before.
@@ -9260,7 +9260,7 @@ array-literals, array comprehensions and regular expressions."
                                 :value js2-ts-string
                                 :flags flags)
         (js2-set-face px-pos js2-ts-cursor 'font-lock-string-face 'record)
-        (put-text-property px-pos js2-ts-cursor 'syntax-table '(2))))
+        (js2-record-text-property px-pos js2-ts-cursor 'syntax-table '(2))))
      ((or (= tt js2-NULL)
           (= tt js2-THIS)
           (= tt js2-FALSE)
@@ -10480,7 +10480,6 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
           (when (or js2-mode-buffer-dirty-p force)
             (js2-remove-overlays)
             (js2-with-unmodifying-text-property-changes
-              (remove-text-properties (point-min) (point-max) '(syntax-table))
               (setq js2-mode-buffer-dirty-p nil
                     js2-mode-fontifications nil
                     js2-mode-deferred-properties nil
@@ -10492,8 +10491,11 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
                      (setq interrupted-p
                            (catch 'interrupted
                              (setq js2-mode-ast (js2-parse))
-                             (when (plusp js2-highlight-level)
-                               (js2-mode-fontify-regions))
+                             ;; if parsing is interrupted, comments and regex
+                             ;; literals stay ignored by `parse-partial-sexp'
+                             (remove-text-properties (point-min) (point-max)
+                                                     '(syntax-table))
+                             (js2-mode-apply-deferred-properties)
                              (js2-mode-remove-suppressed-warnings)
                              (js2-mode-show-warnings)
                              (js2-mode-show-errors)
@@ -10589,15 +10591,16 @@ Defaults to point."
         for o in (overlays-at pos)
         thereis (overlay-get o 'js2-error)))
 
-(defun js2-mode-fontify-regions ()
-  "Apply fontifications recorded during parsing."
-  ;; We defer clearing faces as long as possible to eliminate flashing.
-  (js2-clear-face (point-min) (point-max))
-  ;; have to reverse the recorded fontifications so that errors and
-  ;; warnings overwrite the normal fontifications
-  (dolist (f (nreverse js2-mode-fontifications))
-    (put-text-property (first f) (second f) 'face (third f)))
-  (setq js2-mode-fontifications nil)
+(defun js2-mode-apply-deferred-properties ()
+  "Apply fontifications and other text properties recorded during parsing."
+  (when (plusp js2-highlight-level)
+    ;; We defer clearing faces as long as possible to eliminate flashing.
+    (js2-clear-face (point-min) (point-max))
+    ;; Have to reverse the recorded fontifications list so that errors
+    ;; and warnings overwrite the normal fontifications.
+    (dolist (f (nreverse js2-mode-fontifications))
+      (put-text-property (first f) (second f) 'face (third f)))
+    (setq js2-mode-fontifications nil))
   (dolist (p js2-mode-deferred-properties)
     (apply #'put-text-property p))
   (setq js2-mode-deferred-properties nil))
