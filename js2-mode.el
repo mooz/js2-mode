@@ -2585,8 +2585,7 @@ NAME can be a lisp symbol or string.  SYMBOL is a `js2-symbol'."
 (put 'cl-struct-js2-return-node 'js2-printer 'js2-print-return-node)
 
 (defun js2-visit-return-node (n v)
-  (if (js2-return-node-retval n)
-      (js2-visit-ast (js2-return-node-retval n) v)))
+  (js2-visit-ast (js2-return-node-retval n) v))
 
 (defun js2-print-return-node (n i)
   (insert (js2-make-pad i) "return")
@@ -2621,8 +2620,7 @@ NAME can be a lisp symbol or string.  SYMBOL is a `js2-symbol'."
 (defun js2-visit-if-node (n v)
   (js2-visit-ast (js2-if-node-condition n) v)
   (js2-visit-ast (js2-if-node-then-part n) v)
-  (if (js2-if-node-else-part n)
-      (js2-visit-ast (js2-if-node-else-part n) v)))
+  (js2-visit-ast (js2-if-node-else-part n) v))
 
 (defun js2-print-if-node (n i)
   (let ((pad (js2-make-pad i))
@@ -2665,8 +2663,7 @@ NAME can be a lisp symbol or string.  SYMBOL is a `js2-symbol'."
   (js2-visit-ast (js2-try-node-try-block n) v)
   (dolist (clause (js2-try-node-catch-clauses n))
     (js2-visit-ast clause v))
-  (if (js2-try-node-finally-block n)
-      (js2-visit-ast (js2-try-node-finally-block n) v)))
+  (js2-visit-ast (js2-try-node-finally-block n) v))
 
 (defun js2-print-try-node (n i)
   (let ((pad (js2-make-pad i))
@@ -2795,8 +2792,7 @@ NAME can be a lisp symbol or string.  SYMBOL is a `js2-symbol'."
 (put 'cl-struct-js2-case-node 'js2-printer 'js2-print-case-node)
 
 (defun js2-visit-case-node (n v)
-  (if (js2-case-node-expr n)  ; nil for default: case
-      (js2-visit-ast (js2-case-node-expr n) v))
+  (js2-visit-ast (js2-case-node-expr n) v)
   (js2-visit-block n v))
 
 (defun js2-print-case-node (n i)
@@ -2942,9 +2938,7 @@ NODE is a `js2-labels-node'.  LABEL is an identifier."
   target) ; target js2-labels-node or loop/switch statement
 
 (defun js2-visit-jump-node (n v)
-  ;; we don't visit the target, since it's a back-link
-  (if (js2-jump-node-label n)
-      (js2-visit-ast (js2-jump-node-label n) v)))
+  (js2-visit-ast (js2-jump-node-label n) v))
 
 (defstruct (js2-break-node
             (:include js2-jump-node)
@@ -3025,12 +3019,10 @@ The `params' field is a lisp list of nodes.  Each node is either a simple
 (put 'cl-struct-js2-function-node 'js2-printer 'js2-print-function-node)
 
 (defun js2-visit-function-node (n v)
-  (if (js2-function-node-name n)
-      (js2-visit-ast (js2-function-node-name n) v))
+  (js2-visit-ast (js2-function-node-name n) v)
   (dolist (p (js2-function-node-params n))
     (js2-visit-ast p v))
-  (when (js2-function-node-body n)
-    (js2-visit-ast (js2-function-node-body n) v)))
+  (js2-visit-ast (js2-function-node-body n) v))
 
 (defun js2-print-function-node (n i)
   (let ((pad (js2-make-pad i))
@@ -3130,8 +3122,7 @@ The type field will be js2-CONST for a const decl."
 
 (defun js2-visit-var-init-node (n v)
   (js2-visit-ast (js2-var-init-node-target n) v)
-  (if (js2-var-init-node-initializer n)
-      (js2-visit-ast (js2-var-init-node-initializer n) v)))
+  (js2-visit-ast (js2-var-init-node-initializer n) v))
 
 (defun js2-print-var-init-node (n i)
   (let ((pad (js2-make-pad i))
@@ -3198,10 +3189,8 @@ The type field inherited from `js2-node' holds the operator."
 (put 'cl-struct-js2-infix-node 'js2-printer 'js2-print-infix-node)
 
 (defun js2-visit-infix-node (n v)
-  (when (js2-infix-node-left n)
-    (js2-visit-ast (js2-infix-node-left n) v))
-  (when (js2-infix-node-right n)
-    (js2-visit-ast (js2-infix-node-right n) v)))
+  (js2-visit-ast (js2-infix-node-left n) v)
+  (js2-visit-ast (js2-infix-node-right n) v))
 
 (defconst js2-operator-tokens
   (let ((table (make-hash-table :test 'eq))
@@ -3339,10 +3328,8 @@ Note that a let declaration such as let x=6, y=7 is a `js2-var-decl-node'."
 (put 'cl-struct-js2-let-node 'js2-printer 'js2-print-let-node)
 
 (defun js2-visit-let-node (n v)
-  (when (js2-let-node-vars n)
-    (js2-visit-ast (js2-let-node-vars n) v))
-  (when (js2-let-node-body n)
-    (js2-visit-ast (js2-let-node-body n) v)))
+  (js2-visit-ast (js2-let-node-vars n) v)
+  (js2-visit-ast (js2-let-node-body n) v))
 
 (defun js2-print-let-node (n i)
   (insert (js2-make-pad i) "let (")
@@ -3403,8 +3390,7 @@ The node type is set to js2-NULL, js2-THIS, etc.")
   (js2-visit-ast (js2-new-node-target n) v)
   (dolist (arg (js2-new-node-args n))
     (js2-visit-ast arg v))
-  (when (js2-new-node-initializer n)
-    (js2-visit-ast (js2-new-node-initializer n) v)))
+  (js2-visit-ast (js2-new-node-initializer n) v))
 
 (defun js2-print-new-node (n i)
   (insert (js2-make-pad i) "new ")
@@ -3521,8 +3507,7 @@ You can tell the quote type by looking at the first character."
 
 (defun js2-visit-array-node (n v)
   (dolist (e (js2-array-node-elems n))
-    (when e  ; can be nil, e.g. [a, ,b]
-      (js2-visit-ast e v))))
+    (js2-visit-ast e v)))
 
 (defun js2-print-array-node (n i)
   (insert (js2-make-pad i) "[")
@@ -3614,10 +3599,8 @@ property `GETTER_SETTER' set to js2-GET or js2-SET. ")
 (put 'cl-struct-js2-prop-get-node 'js2-printer 'js2-print-prop-get-node)
 
 (defun js2-visit-prop-get-node (n v)
-  (when (js2-prop-get-node-left n)
-    (js2-visit-ast (js2-prop-get-node-left n) v))
-  (when (js2-prop-get-node-right n)
-    (js2-visit-ast (js2-prop-get-node-right n) v)))
+  (js2-visit-ast (js2-prop-get-node-left n) v)
+  (js2-visit-ast (js2-prop-get-node-right n) v))
 
 (defun js2-print-prop-get-node (n i)
   (insert (js2-make-pad i))
@@ -3645,10 +3628,8 @@ property `GETTER_SETTER' set to js2-GET or js2-SET. ")
 (put 'cl-struct-js2-elem-get-node 'js2-printer 'js2-print-elem-get-node)
 
 (defun js2-visit-elem-get-node (n v)
-  (when (js2-elem-get-node-target n)
-    (js2-visit-ast (js2-elem-get-node-target n) v))
-  (when (js2-elem-get-node-element n)
-    (js2-visit-ast (js2-elem-get-node-element n) v)))
+  (js2-visit-ast (js2-elem-get-node-target n) v)
+  (js2-visit-ast (js2-elem-get-node-element n) v))
 
 (defun js2-print-elem-get-node (n i)
   (insert (js2-make-pad i))
@@ -3762,8 +3743,7 @@ as opposed to required parens such as those enclosing an if-conditional."
   (js2-visit-ast (js2-array-comp-node-result n) v)
   (dolist (l (js2-array-comp-node-loops n))
     (js2-visit-ast l v))
-  (if (js2-array-comp-node-filter n)
-      (js2-visit-ast (js2-array-comp-node-filter n) v)))
+  (js2-visit-ast (js2-array-comp-node-filter n) v))
 
 (defun js2-print-array-comp-node (n i)
   (let ((pad (js2-make-pad i))
@@ -3949,10 +3929,8 @@ expression."
 (put 'cl-struct-js2-xml-prop-ref-node 'js2-printer 'js2-print-xml-prop-ref-node)
 
 (defun js2-visit-xml-prop-ref-node (n v)
-  (if (js2-xml-prop-ref-node-namespace n)
-      (js2-visit-ast (js2-xml-prop-ref-node-namespace n) v))
-  (if (js2-xml-prop-ref-node-propname n)
-      (js2-visit-ast (js2-xml-prop-ref-node-propname n) v)))
+  (js2-visit-ast (js2-xml-prop-ref-node-namespace n) v)
+  (js2-visit-ast (js2-xml-prop-ref-node-propname n) v))
 
 (defun js2-print-xml-prop-ref-node (n i)
   (insert (js2-make-pad i))
@@ -4001,10 +3979,8 @@ end of the index expression."
 (put 'cl-struct-js2-xml-elem-ref-node 'js2-printer 'js2-print-xml-elem-ref-node)
 
 (defun js2-visit-xml-elem-ref-node (n v)
-  (if (js2-xml-elem-ref-node-namespace n)
-      (js2-visit-ast (js2-xml-elem-ref-node-namespace n) v))
-  (if (js2-xml-elem-ref-node-expr n)
-      (js2-visit-ast (js2-xml-elem-ref-node-expr n) v)))
+  (js2-visit-ast (js2-xml-elem-ref-node-namespace n) v)
+  (js2-visit-ast (js2-xml-elem-ref-node-expr n) v))
 
 (defun js2-print-xml-elem-ref-node (n i)
   (insert (js2-make-pad i))
