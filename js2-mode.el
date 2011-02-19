@@ -1264,6 +1264,7 @@ First match-group is the leading whitespace.")
 (js2-deflocal js2-mode-deferred-properties nil "Private variable")
 (js2-deflocal js2-imenu-recorder nil "Private variable")
 (js2-deflocal js2-imenu-function-map nil "Private variable")
+(js2-deflocal js2-imenu-fn-type-map nil "Private variable")
 
 (defvar js2-paragraph-start
   "\\(@[a-zA-Z]+\\>\\|$\\)")
@@ -6867,11 +6868,24 @@ that it's an external variable, which must also be in the top-level scope."
       (js2-ast-root-p defining-scope))
      (t t))))
 
+(defsubst js2-anonymous-wrapper-fn-p (node)
+  "Returns t if NODE is an anonymous function that's invoked immediately.
+NODE must be `js2-function-node'."
+  (let ((parent (js2-node-parent node)))
+    (and (js2-paren-node-p parent)
+         ;; (function(){...})();
+         (or (js2-call-node-p (setq parent (js2-node-parent parent)))
+             ;; (function(){...}).call(this);
+             (and (js2-prop-get-node-p parent)
+                  (member (js2-name-node-name (js2-prop-get-node-right parent))
+                          '("call" "apply"))
+                  (js2-call-node-p (js2-node-parent parent)))))))
+
 (defun js2-browse-postprocess-chains (chains)
   "Modify function-declaration name chains after parsing finishes.
 Some of the information is only available after the parse tree is complete.
 For instance, following a 'this' reference requires a parent function node."
-  (let (result head fn parent-chain p elem parent)
+  (let (result head fn fn-type parent-chain p elem parent)
     (dolist (chain chains)
       ;; examine the head of each node to get its defining scope
       (setq head (car chain))
@@ -6888,17 +6902,25 @@ For instance, following a 'this' reference requires a parent function node."
           (setq fn (js2-node-parent-script-or-fn parent)))
          ;; variable assigned a function expression
          (t (setq fn (js2-node-parent-script-or-fn head))))
-        (unless (or (null fn) (js2-nested-function-p fn))
-          ;; if the parent function is found, and it's not nested,
-          ;; look it up in function-map.
-          (if (setq parent-chain (and js2-imenu-function-map
-                                      (gethash fn js2-imenu-function-map)))
-              ;; prefix parent fn qname, which is the
-              ;; parent-chain sans tail, to this chain.
-              (push (append (butlast parent-chain) chain) result)
-            ;; parent function is not nested, and not in function-map
-            ;; => it's anonymous top-level wrapper, discard.
-            (push chain result)))))
+        (when fn
+          (if js2-imenu-fn-type-map
+              (setq fn-type (gethash fn js2-imenu-fn-type-map))
+            (setq js2-imenu-fn-type-map (make-hash-table :test 'eq)))
+          (unless fn-type
+            (setq fn-type
+                  (cond ((js2-nested-function-p fn) 'skip)
+                        ((setq parent-chain
+                               (gethash fn js2-imenu-function-map))
+                         'named)
+                        ((js2-anonymous-wrapper-fn-p fn) 'anon)
+                        (t 'skip)))
+            (puthash fn fn-type js2-imenu-fn-type-map))
+          (case fn-type
+            ('anon (push chain result)) ; anonymous top-level wrapper
+            ('named                     ; top-level named function
+             ;; prefix parent fn qname, which is
+             ;; parent-chain sans last elem, to this chain.
+             (push (append (butlast parent-chain) chain) result))))))
     ;; finally replace each node in each chain with its name.
     (dolist (chain result)
       (setq p chain)
@@ -7286,6 +7308,7 @@ leaving a statement, an expression, or a function definition."
             js2-parsed-warnings nil
             js2-imenu-recorder nil
             js2-imenu-function-map nil
+            js2-imenu-fn-type-map nil
             js2-label-set nil)
       (js2-init-scanner)
       (setq ast (js2-with-unmodifying-text-property-changes
@@ -11405,7 +11428,8 @@ destroying the region selection."
     (prog1
         (js2-build-imenu-index)
       (setq js2-imenu-recorder nil
-            js2-imenu-function-map nil))))
+            js2-imenu-function-map nil
+            js2-imenu-fn-type-map nil))))
 
 (defun js2-mode-find-tag ()
   "Replacement for `find-tag-default'.
