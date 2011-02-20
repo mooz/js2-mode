@@ -4652,10 +4652,11 @@ If NODE is the ast-root, returns nil."
 
 (defsubst js2-nested-function-p (node)
   "Return t if NODE is a nested function, or is inside a nested function."
-  (js2-function-node-p (if (js2-function-node-p node)
-                           (js2-node-parent-script-or-fn node)
-                         (js2-node-parent-script-or-fn
-                          (js2-node-parent-script-or-fn node)))))
+  (unless (js2-ast-root-p node)
+    (js2-function-node-p (if (js2-function-node-p node)
+                             (js2-node-parent-script-or-fn node)
+                           (js2-node-parent-script-or-fn
+                            (js2-node-parent-script-or-fn node))))))
 
 (defsubst js2-function-param-node-p (node)
   "Return non-nil if NODE is a param node of a `js2-function-node'."
