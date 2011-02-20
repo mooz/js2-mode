@@ -2718,7 +2718,7 @@ NAME can be a lisp symbol or string.  SYMBOL is a `js2-symbol'."
         (guard-kwd (js2-catch-node-guard-kwd n))
         (guard-expr (js2-catch-node-guard-expr n)))
     (insert " catch (")
-    (js2-print-ast (js2-catch-node-var-name n) 0)
+    (js2-print-ast (js2-catch-node-param n) 0)
     (when guard-kwd
       (insert " if ")
       (js2-print-ast guard-expr 0))
