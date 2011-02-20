@@ -2690,14 +2690,14 @@ NAME can be a lisp symbol or string.  SYMBOL is a `js2-symbol'."
             (:constructor make-js2-catch-node (&key (type js2-CATCH)
                                                     (pos js2-ts-cursor)
                                                     len
-                                                    var-name
+                                                    param
                                                     guard-kwd
                                                     guard-expr
                                                     block
                                                     lp
                                                     rp)))
   "AST node for a catch clause."
-  var-name    ; a `js2-name-node'
+  param       ; destructuring form or simple name node
   guard-kwd   ; relative buffer position of "if" in "catch (x if ...)"
   guard-expr  ; catch condition, a `js2-node'
   block       ; statements, a `js2-block-node'
@@ -2708,7 +2708,7 @@ NAME can be a lisp symbol or string.  SYMBOL is a `js2-symbol'."
 (put 'cl-struct-js2-catch-node 'js2-printer 'js2-print-catch-node)
 
 (defun js2-visit-catch-node (n v)
-  (js2-visit-ast (js2-catch-node-var-name n) v)
+  (js2-visit-ast (js2-catch-node-param n) v)
   (when (js2-catch-node-guard-kwd n)
     (js2-visit-ast (js2-catch-node-guard-expr n) v))
   (js2-visit-ast (js2-catch-node-block n) v))
@@ -7416,9 +7416,10 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
     (let (leftpos)
       (js2-define-symbol decl-type (js2-name-node-name node)
                          node ignore-not-in-block)
-      (js2-set-face (setq leftpos (js2-node-abs-pos node))
-                    (+ leftpos (js2-node-len node))
-                    face 'record)))
+      (when face
+        (js2-set-face (setq leftpos (js2-node-abs-pos node))
+                      (+ leftpos (js2-node-len node))
+                      face 'record))))
    ((js2-object-node-p node)
     (dolist (elem (js2-object-node-elems node))
       (js2-define-destruct-symbols
@@ -7979,7 +7980,7 @@ Parses for, for-in, and for each-in statements."
         finally-block
         saw-default-catch
         peek
-        var-name
+        param
         catch-cond
         catch-node
         guard-kwd
@@ -8007,10 +8008,21 @@ Parses for, for-in, and for each-in statements."
             (js2-report-error "msg.catch.unreachable"))
         (if (js2-must-match js2-LP "msg.no.paren.catch")
             (setq lp (- js2-token-beg catch-pos)))
-        (js2-must-match js2-NAME "msg.bad.catchcond")
         (js2-push-scope (make-js2-scope))
-        (setq var-name (js2-create-name-node))
-        (js2-define-symbol js2-LET (js2-name-node-name var-name) var-name t)
+        (let ((tt (js2-peek-token)))
+          (cond
+           ;; destructuring pattern
+           ;;     catch ({ message, file }) { ... }
+           ((or (= tt js2-LB) (= tt js2-LC))
+            (setq param
+                  (js2-define-destruct-symbols (js2-parse-primary-expr-lhs)
+                                               js2-LET nil)))
+           ;; simple name
+           (t
+            (js2-must-match js2-NAME "msg.bad.catchcond")
+            (setq param (js2-create-name-node))
+            (js2-define-symbol js2-LET js2-ts-string param))))
+        ;; pattern guard
         (if (js2-match-token js2-IF)
             (setq guard-kwd (- js2-token-beg catch-pos)
                   catch-cond (js2-parse-expr))
@@ -8021,7 +8033,7 @@ Parses for, for-in, and for each-in statements."
         (setq block (js2-parse-statements)
               try-end (js2-node-end block)
               catch-node (make-js2-catch-node :pos catch-pos
-                                              :var-name var-name
+                                              :param param
                                               :guard-expr catch-cond
                                               :guard-kwd guard-kwd
                                               :block block
@@ -8032,7 +8044,7 @@ Parses for, for-in, and for each-in statements."
             (setq try-end js2-token-beg))
         (setf (js2-node-len block) (- try-end (js2-node-pos block))
               (js2-node-len catch-node) (- try-end catch-pos))
-        (js2-node-add-children catch-node var-name catch-cond block)
+        (js2-node-add-children catch-node param catch-cond block)
         (push catch-node catch-blocks)))
      ((/= peek js2-FINALLY)
       (js2-must-match js2-FINALLY "msg.try.no.catchfinally"
