@@ -48,8 +48,8 @@ When js2-consistent-level-indent-inner-bracket-p is nil
                        return validate(v);
                    });
 
-Fixed ugly indentation with multi-line variable declaration
------------------------------------------------------------
+Pretty multi-line variable declaration
+--------------------------------------
 
 In original js2-mode.el,
 
@@ -57,7 +57,7 @@ In original js2-mode.el,
     bar = 20,
     baz = 30;
 
-In this js2-mode.el,
+In this js2-mode.el, when the value `js2-use-ast-for-indentation-p` is non-nil (default nil),
 
     var foo = 10,
         bar = 20,
