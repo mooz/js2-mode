@@ -1264,7 +1264,6 @@ First match-group is the leading whitespace.")
 (js2-deflocal js2-mode-deferred-properties nil "Private variable")
 (js2-deflocal js2-imenu-recorder nil "Private variable")
 (js2-deflocal js2-imenu-function-map nil "Private variable")
-(js2-deflocal js2-imenu-fn-type-map nil "Private variable")
 
 (defvar js2-paragraph-start
   "\\(@[a-zA-Z]+\\>\\|$\\)")
@@ -6886,7 +6885,8 @@ NODE must be `js2-function-node'."
   "Modify function-declaration name chains after parsing finishes.
 Some of the information is only available after the parse tree is complete.
 For instance, following a 'this' reference requires a parent function node."
-  (let (result head fn fn-type parent-chain p elem parent)
+  (let ((js2-imenu-fn-type-map (make-hash-table :test 'eq))
+        result head fn fn-type parent-chain p elem parent)
     (dolist (chain chains)
       ;; examine the head of each node to get its defining scope
       (setq head (car chain))
@@ -6904,9 +6904,7 @@ For instance, following a 'this' reference requires a parent function node."
          ;; variable assigned a function expression
          (t (setq fn (js2-node-parent-script-or-fn head))))
         (when fn
-          (if js2-imenu-fn-type-map
-              (setq fn-type (gethash fn js2-imenu-fn-type-map))
-            (setq js2-imenu-fn-type-map (make-hash-table :test 'eq)))
+          (setq fn-type (gethash fn js2-imenu-fn-type-map))
           (unless fn-type
             (setq fn-type
                   (cond ((js2-nested-function-p fn) 'skip)
@@ -7309,7 +7307,6 @@ leaving a statement, an expression, or a function definition."
             js2-parsed-warnings nil
             js2-imenu-recorder nil
             js2-imenu-function-map nil
-            js2-imenu-fn-type-map nil
             js2-label-set nil)
       (js2-init-scanner)
       (setq ast (js2-with-unmodifying-text-property-changes
@@ -11441,8 +11438,7 @@ destroying the region selection."
     (prog1
         (js2-build-imenu-index)
       (setq js2-imenu-recorder nil
-            js2-imenu-function-map nil
-            js2-imenu-fn-type-map nil))))
+            js2-imenu-function-map nil))))
 
 (defun js2-mode-find-tag ()
   "Replacement for `find-tag-default'.
