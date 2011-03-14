@@ -10439,7 +10439,10 @@ If so, we don't ever want to use bounce-indent."
         js2-mode-buffer-dirty-p t
         js2-mode-parsing nil)
   (js2-reparse)
-  (run-hooks 'js2-mode-hook))
+
+  (if (fboundp 'run-mode-hooks)
+      (run-mode-hooks 'js2-mode-hook)
+    (run-hooks 'js2-mode-hook)))
 
 (defun js2-mode-exit ()
   "Exit `js2-mode' and clean up."
