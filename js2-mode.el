@@ -8531,8 +8531,8 @@ by `js2-parse-variables'."
       (js2-pop-scope))
     pn))
 
-(defsubst js2-define-new-symbol (decl-type name node)
-  (js2-scope-put-symbol js2-current-scope
+(defsubst js2-define-new-symbol (decl-type name node &optional scope)
+  (js2-scope-put-symbol (or scope js2-current-scope)
                         name
                         (make-js2-symbol decl-type name node)))
 
@@ -8572,7 +8572,8 @@ If NODE is non-nil, it is the AST node associated with the symbol."
               (js2-add-strict-warning "msg.var.redecl" name)
             (if (and js2-strict-var-hides-function-arg-warning (= sdt js2-LP))
                 (js2-add-strict-warning "msg.var.hides.arg" name)))
-        (js2-define-new-symbol decl-type name node)))
+        (js2-define-new-symbol decl-type name node
+                               js2-current-script-or-fn)))
      ((= decl-type js2-LP)
       (if symbol
           ;; must be duplicate parameter. Second parameter hides the
