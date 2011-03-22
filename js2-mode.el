@@ -10355,6 +10355,9 @@ If so, we don't ever want to use bounce-indent."
   (kill-all-local-variables)
   (set-syntax-table js2-mode-syntax-table)
   (use-local-map js2-mode-map)
+  (make-local-variable 'comment-start)
+  (make-local-variable 'comment-end)
+  (make-local-variable 'comment-start-skip)
   (setq major-mode 'js2-mode
         mode-name "JavaScript-IDE"
         comment-start "//"  ; used by comment-region; don't change it
