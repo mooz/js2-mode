@@ -1181,6 +1181,8 @@ another file, or you've got a potential bug."
       (mapc (lambda (key)
               (define-key map key #'js2-insert-and-indent))
             js2-electric-keys))
+    (when js2-bounce-indent-p
+      (define-key map (kbd "<backtab>") #'js2-indent-bounce-backwards))
 
     (define-key map [menu-bar javascript]
       (cons "JavaScript" (make-sparse-keymap "JavaScript")))
@@ -10120,12 +10122,13 @@ Returns `point-at-bol' if the line is empty."
     (skip-chars-forward " \t")
     (point)))
 
-(defun js2-bounce-indent (normal-col parse-status)
+(defun js2-bounce-indent (normal-col parse-status backwards)
   "Cycle among alternate computed indentation positions.
 PARSE-STATUS is the result of `parse-partial-sexp' from the beginning
 of the buffer to the current point.  NORMAL-COL is the indentation
 column computed by the heuristic guesser based on current paren,
-bracket, brace and statement nesting."
+bracket, brace and statement nesting.  If BACKWARDS, cycle positions
+in reverse."
   (let ((cur-indent (js2-current-indent))
         (old-buffer-undo-list buffer-undo-list)
         ;; Emacs 21 only has `count-lines', not `line-number-at-pos'
@@ -10243,8 +10246,13 @@ bracket, brace and statement nesting."
                     (cons basic-offset
                           (delete basic-offset positions))))
 
+          ;; if bouncing backwards, reverse positions list
+          (if backwards
+              (setq positions (reverse positions)))
+          
           ;; record whether we're already sitting on one of the alternatives
           (setq pos (member cur-indent positions))
+
           (cond
            ;; case 0:  we're one one of the alternatives and this is the
            ;; first time they've pressed TAB on this line (best-guess).
@@ -10283,6 +10291,12 @@ bracket, brace and statement nesting."
       ;; see commentary for `js2-mode-last-indented-line'
       (setq js2-mode-last-indented-line current-line))))
 
+(defun js2-indent-bounce-backwards ()
+  "Calls `js2-indent-line'.  When `js2-bounce-indent-p',
+cycles between the computed indentation positions in reverse order."
+  (interactive)
+  (js2-indent-line t))
+
 (defsubst js2-1-line-comment-continuation-p ()
   "Return t if we're in a 1-line comment continuation.
 If so, we don't ever want to use bounce-indent."
@@ -10299,7 +10313,7 @@ If so, we don't ever want to use bounce-indent."
                (forward-line 0))
              (looking-at "\\s-*//"))))))
 
-(defun js2-indent-line ()
+(defun js2-indent-line (&optional bounce-backwards)
   "Indent the current line as JavaScript source text."
   (interactive)
   (when js2-use-ast-for-indentation-p
@@ -10331,7 +10345,7 @@ If so, we don't ever want to use bounce-indent."
             ((and js2-bounce-indent-p
                   (not (js2-same-line (point-min)))
                   (not (js2-1-line-comment-continuation-p)))
-             (js2-bounce-indent indent-col parse-status)
+             (js2-bounce-indent indent-col parse-status bounce-backwards)
              (setq moved t))
             ;; just indent to the guesser's likely spot
             ((/= current-indent indent-col)
