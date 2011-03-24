@@ -10216,6 +10216,7 @@ in reverse."
           ;; fourth likely point:  first preceding code with less indentation
           ;; than the immediately preceding code line.
           (setq pos (save-excursion
+                      (back-to-indentation)
                       (js2-backward-sws)
                       (back-to-indentation)
                       (setq anchor (current-column))
@@ -10229,7 +10230,7 @@ in reverse."
 
           ;; nesting-heuristic position, main by default
           (push (setq main-pos normal-col) positions)
-
+          
           ;; delete duplicates and sort positions list
           (setq positions (sort (delete-dups positions) '<))
           
@@ -10248,7 +10249,7 @@ in reverse."
           
           ;; record whether we're already sitting on one of the alternatives
           (setq pos (member cur-indent positions))
-
+          
           (cond
            ;; case 0:  we're one one of the alternatives and this is the
            ;; first time they've pressed TAB on this line (best-guess).
@@ -10280,7 +10281,7 @@ in reverse."
                 finally do
                 (unless (or result (null computed-pos))
                   (indent-line-to (nth computed-pos positions)))))
-
+      
       ;; finally
       (if js2-mode-indent-inhibit-undo
           (setq buffer-undo-list old-buffer-undo-list))
