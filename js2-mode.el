@@ -10137,6 +10137,7 @@ in reverse."
                         (1+ (count-lines (point-min) (point)))))
         positions
         pos
+        main-pos
         anchor
         arglist-cont
         same-indent
@@ -10186,8 +10187,7 @@ in reverse."
                           (current-column)))))
           (when pos
             (incf pos js2-basic-offset)
-            (unless (member pos positions)
-              (push pos positions)))
+            (push pos positions))
 
           ;; third likely point:  same indent as previous line of code.
           ;; Make it the first likely point if we're not on an
@@ -10211,8 +10211,7 @@ in reverse."
                          (js2-indent-in-objlit-p parse-status))
                      (not (js2-arglist-close)))
                 (setq same-indent pos))
-            (unless (member pos positions)
-              (push pos positions)))
+            (push pos positions))
 
           ;; fourth likely point:  first preceding code with less indentation
           ;; than the immediately preceding code line.
@@ -10226,25 +10225,22 @@ in reverse."
                                         (current-column))
                                       anchor)))
                       (setq pos (current-column))))
-          (unless (member pos positions)
-            (push pos positions))
+          (push pos positions)
 
-          ;; put nesting-heuristic position first in list, sort rest
-          (setq positions (nreverse (sort positions '<)))
-          (setq positions (cons normal-col (delete normal-col positions)))
+          ;; nesting-heuristic position, main by default
+          (push (setq main-pos normal-col) positions)
 
+          ;; delete duplicates and sort positions list
+          (setq positions (sort (delete-dups positions) '<))
+          
           ;; comma-list continuation lines:  prev line indent takes precedence
           (if same-indent
-              (setq positions
-                    (cons same-indent
-                          (sort (delete same-indent positions) '<))))
+              (setq main-pos same-indent))
 
           ;; common special cases where we want to indent in from previous line
           (if (or (js2-indent-case-block-p)
                   (js2-indent-objlit-arg-p parse-status))
-              (setq positions
-                    (cons basic-offset
-                          (delete basic-offset positions))))
+              (setq main-pos basic-offset))
 
           ;; if bouncing backwards, reverse positions list
           (if backwards
@@ -10267,14 +10263,14 @@ in reverse."
             (setq computed-pos 0))
            ;; case 2:  not on any of the computed spots => use main spot
            ((not pos)
-            (setq computed-pos 0))
+            (setq computed-pos (js2-position main-pos positions)))
            ;; case 3:  on last position:  cycle to first position
            ((null (cdr pos))
             (setq computed-pos 0))
            ;; case 4:  on intermediate position:  cycle to next position
            (t
             (setq computed-pos (js2-position (second pos) positions))))
-
+          
           ;; see if any hooks want to indent; otherwise we do it
           (loop with result = nil
                 for hook in js2-indent-hook
