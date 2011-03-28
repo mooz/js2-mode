@@ -7924,7 +7924,10 @@ Parses for, for-in, and for each-in statements."
       (if (js2-match-token js2-IN)
           (setq is-for-in t
                 in-pos (- js2-token-beg for-pos)
-                cond (js2-parse-expr))  ; object over which we're iterating
+                ;; scope of iteration target object is not the scope we've created above.
+                ;; stash current scope temporary.
+                cond (let ((js2-current-scope (js2-scope-parent-scope js2-current-scope)))
+                       (js2-parse-expr)))  ; object over which we're iterating
         ;; else ordinary for loop - parse cond and incr
         (js2-must-match js2-SEMI "msg.no.semi.for")
         (setq cond (if (= (js2-peek-token) js2-SEMI)
