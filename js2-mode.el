@@ -7229,10 +7229,10 @@ Returns t on match, nil if no match."
   (unless js2-compiler-xml-available
     (js2-report-error "msg.XML.not.available")))
 
-(defsubst js2-push-scope (scope &optional overwrite-parent)
+(defsubst js2-push-scope (scope)
   "Push SCOPE, a `js2-scope', onto the lexical scope chain."
   (assert (js2-scope-p scope))
-  (or overwrite-parent (assert (null (js2-scope-parent-scope scope))))
+  (assert (null (js2-scope-parent-scope scope)))
   (assert (not (eq js2-current-scope scope)))
   (setf (js2-scope-parent-scope scope) js2-current-scope
         js2-current-scope scope))
@@ -7924,13 +7924,7 @@ Parses for, for-in, and for each-in statements."
       (if (js2-match-token js2-IN)
           (setq is-for-in t
                 in-pos (- js2-token-beg for-pos)
-                cond (let ((for-body-scope js2-current-scope))
-                       ;; scope of iteration target object is not the scope we've created above.
-                       ;; stash current scope temporary.
-                       (js2-pop-scope)
-                       (unwind-protect
-                           (js2-parse-expr) ; object over which we're iterating
-                         (js2-push-scope for-body-scope t))))
+                cond (js2-parse-expr))  ; object over which we're iterating
         ;; else ordinary for loop - parse cond and incr
         (js2-must-match js2-SEMI "msg.no.semi.for")
         (setq cond (if (= (js2-peek-token) js2-SEMI)
