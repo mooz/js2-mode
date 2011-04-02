@@ -6874,14 +6874,17 @@ that it's an external variable, which must also be in the top-level scope."
   "Returns t if NODE is an anonymous function that's invoked immediately.
 NODE must be `js2-function-node'."
   (let ((parent (js2-node-parent node)))
-    (and (js2-paren-node-p parent)
-         ;; (function(){...})();
-         (or (js2-call-node-p (setq parent (js2-node-parent parent)))
-             ;; (function(){...}).call(this);
-             (and (js2-prop-get-node-p parent)
-                  (member (js2-name-node-name (js2-prop-get-node-right parent))
-                          '("call" "apply"))
-                  (js2-call-node-p (js2-node-parent parent)))))))
+    (or
+     ;; function(){...}();
+     (js2-call-node-p parent)
+     (and (js2-paren-node-p parent)
+          ;; (function(){...})();
+          (or (js2-call-node-p (setq parent (js2-node-parent parent)))
+              ;; (function(){...}).call(this);
+              (and (js2-prop-get-node-p parent)
+                   (member (js2-name-node-name (js2-prop-get-node-right parent))
+                           '("call" "apply"))
+                   (js2-call-node-p (js2-node-parent parent))))))))
 
 (defun js2-browse-postprocess-chains (chains)
   "Modify function-declaration name chains after parsing finishes.
