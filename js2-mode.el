@@ -223,7 +223,8 @@ based on heuristic guessing.  If non-nil, then if the current line is
 already indented to that predetermined column, indenting will choose
 another likely column and indent to that spot.  Repeated invocation of
 the indent-line function will cycle among the computed alternatives.
-See the function `js2-bounce-indent' for details."
+See the function `js2-bounce-indent' for details.  When it is non-nil,
+js2-mode also binds `js2-bounce-indent-backwards' to Shift-Tab."
   :type 'boolean
   :group 'js2-mode)
 
@@ -6870,8 +6871,8 @@ that it's an external variable, which must also be in the top-level scope."
       (js2-ast-root-p defining-scope))
      (t t))))
 
-(defsubst js2-anonymous-wrapper-fn-p (node)
-  "Returns t if NODE is an anonymous function that's invoked immediately.
+(defsubst js2-wrapper-function-p (node)
+  "Returns t if NODE is a function expression that's immediately invoked.
 NODE must be `js2-function-node'."
   (let ((parent (js2-node-parent node)))
     (or
@@ -6916,7 +6917,7 @@ For instance, following a 'this' reference requires a parent function node."
                         ((setq parent-chain
                                (gethash fn js2-imenu-function-map))
                          'named)
-                        ((js2-anonymous-wrapper-fn-p fn) 'anon)
+                        ((js2-wrapper-function-p fn) 'anon)
                         (t 'skip)))
             (puthash fn fn-type js2-imenu-fn-type-map))
           (case fn-type
