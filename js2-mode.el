@@ -6103,7 +6103,11 @@ corresponding number.  Otherwise return -1."
                            (throw 'return js2-ERROR)))
                         (t
                          (unless (js2-read-entity)
-                           (throw 'return js2-ERROR)))))
+                           (throw 'return js2-ERROR))))
+                      ;; allow bare CDATA section
+                      ;; ex) let xml = <![CDATA[ foo bar baz ]]>;
+                      (when (zerop js2-ts-xml-open-tags-count)
+                        (throw 'return js2-XMLEND)))
                      (??
                       (setq c (js2-get-char)) ;; skip ?
                       (js2-add-to-string c)
