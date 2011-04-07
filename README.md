@@ -22,10 +22,10 @@ See <http://code.google.com/p/js2-mode/wiki/InstallationInstructions> for detail
 Differences between original js2-mode.el
 ========================================
 
-Supported more popular indentation style
-----------------------------------------
+Popular indentation style
+-------------------------
 
-When js2-consistent-level-indent-inner-bracket-p is non-nil
+When `js2-consistent-level-indent-inner-bracket-p` is non-nil
     
     [foo, bar, baz].forEach(function (v) {
         if (validate(v))
@@ -36,7 +36,7 @@ When js2-consistent-level-indent-inner-bracket-p is non-nil
         return validate(v);
     });
 
-When js2-consistent-level-indent-inner-bracket-p is nil
+When `js2-consistent-level-indent-inner-bracket-p` is nil
 (Same as original js2-mode's indentation)
 
     [foo, bar, baz].forEach(function (v) {
@@ -63,8 +63,8 @@ In this js2-mode.el, when the value `js2-use-ast-for-indentation-p` is non-nil (
         bar = 20,
         baz = 30;
 
-Support for abbreviated destructuring assignments
--------------------------------------------------
+Abbreviated destructuring assignments
+-------------------------------------
 
     let {a, b}       = {a: 10, b: 20}; // Abbreviated   (Not supported in original js2-mode.el)
     let {a: a, b: b} = {a: 10, b: 20}; // Same as above (Supported in original js2-mode.el)
@@ -74,8 +74,8 @@ Support for abbreviated destructuring assignments
     for (let [k, { name, age }] in Iterator(obj)) // nested
         print(k, name, age);
 
-Support for expression closure in property value
-------------------------------------------------
+Expression closure in property value
+------------------------------------
 
     let worker = {
         get age() 20,
@@ -83,8 +83,8 @@ Support for expression closure in property value
         fire: function () _fire()
     };
 
-Fixed odd indentation of "else if" with no braces
------------------------------------------------------
+Fix for odd indentation of "else if" with no braces
+---------------------------------------------------
 
 In original js2-mode.el,
 
