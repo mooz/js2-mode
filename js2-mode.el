@@ -7368,9 +7368,10 @@ Scanner should be initialized."
         (js2-node-add-children root comment)))
     (setf (js2-node-len root) (- end pos))
     ;; Give extensions a chance to muck with things before highlighting starts.
-    (dolist (callback js2-post-parse-callbacks)
-      (funcall callback))
-    (js2-highlight-undeclared-vars)
+    (let ((js2-additional-externs js2-additional-externs))
+      (dolist (callback js2-post-parse-callbacks)
+        (funcall callback))
+      (js2-highlight-undeclared-vars))
     root))
 
 (defun js2-function-parser ()
@@ -10552,8 +10553,7 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
             (js2-with-unmodifying-text-property-changes
               (setq js2-mode-buffer-dirty-p nil
                     js2-mode-fontifications nil
-                    js2-mode-deferred-properties nil
-                    js2-additional-externs nil)
+                    js2-mode-deferred-properties nil)
               (if js2-mode-verbose-parse-p
                   (message "parsing..."))
               (setq time
