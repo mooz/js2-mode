@@ -234,8 +234,9 @@ regardless of the beginning bracket position."
   :group 'js2-mode
   :type 'boolean)
 
-(defcustom js2-use-ast-for-indentation-p nil
-  "Non-nil to use AST for indentation and make it more robust."
+(defcustom js2-pretty-multiline-decl-indentation-p t
+  "Non-nil to line up multiline declarations vertically. See the
+function `js-multiline-decl-indentation' for details."
   :group 'js2-mode
   :type 'boolean)
 
@@ -9750,6 +9751,10 @@ followed by an opening brace.")
   "Regular expression matching operators that affect indentation
 of continued expressions.")
 
+(defconst js-declaration-keyword-re
+  (regexp-opt '("var" "let" "const") 'words)
+  "Regular expression matching variable declaration keywords.")
+
 ;; This function has horrible results if you're typing an array
 ;; such as [[1, 2], [3, 4], [5, 6]].  Bounce indenting -really- sucks
 ;; in conjunction with electric-indent, so just disabling it.
@@ -9899,29 +9904,37 @@ indented to the same column as the current line."
 			   "\\<while\\>" (point-at-eol) t))
 		     (= (current-indentation) saved-indent)))))))))
 
-(defun js-get-multiline-declaration-offset ()
-  "Returns offset (> 0) if the current line is part of
- multi-line variable declaration like below example, and
- returns 0 otherwise.
+(defun js-multiline-decl-indentation ()
+  "Returns the proper indentation of the current line if it belongs
+to a multiline declaration statement.  All assignments are lined up vertically:
 
- var a = 10,
-     b = 20,
-     c = 30;
-
+var a = 10,
+    b = 20,
+    c = 30;
 "
-  (let* ((node (js2-node-at-point))
-         (pnode (and node (js2-node-parent node)))
-         (pnode-type (and pnode (js2-node-type pnode))))
-    (if (and node
-             (= js2-NAME (js2-node-type node))
-             (or
-              (= js2-VAR pnode-type)
-              (= js2-LET pnode-type)
-              (= js2-CONST pnode-type)))
-        (if (= js2-CONST pnode-type)
-            6
-          4)
-      0)))
+  (let (forward-sexp-function ; use lisp version
+        at-opening-bracket)
+    (save-excursion
+      (back-to-indentation)
+      (when (looking-at (concat js2-mode-identifier-re "[ \t]*=[^=]"))
+        (while (not (or at-opening-bracket
+                        ;; explicit semicolon
+                        (save-excursion (skip-chars-backward "-+~! ")
+                                        (js2-backward-sws)
+                                        (looking-back ";"))
+                        ;; implicit semicolon
+                        (save-excursion
+                          (and (progn (skip-chars-backward " \t")
+                                      (bolp))
+                               (progn (js2-backward-sws)
+                                      (not (looking-back ",")))
+                               (progn (skip-chars-backward "[[:punct:]]")
+                                      (not (looking-at js-indent-operator-re)))))))
+          (condition-case err
+              (backward-sexp)
+            (scan-error (setq at-opening-bracket t))))
+        (when (looking-at js-declaration-keyword-re)
+          (- (1+ (match-end 0)) (point-at-bol)))))))
 
 (defun js-ctrl-statement-indentation ()
   "Returns the proper indentation of the current line if it
@@ -9988,9 +10001,8 @@ In particular, return the buffer position of the first `for' kwd."
     (let ((ctrl-stmt-indent (js-ctrl-statement-indentation))
           (same-indent-p (looking-at "[]})]\\|\\<case\\>\\|\\<default\\>"))
           (continued-expr-p (js-continued-expression-p))
-          (multiline-declaration-offset (or (and js2-use-ast-for-indentation-p
-                                                 (js-get-multiline-declaration-offset))
-                                            0))
+          (declaration-indent (and js2-pretty-multiline-decl-indentation-p
+                                   (js-multiline-decl-indentation)))
           (bracket (nth 1 parse-status))
           beg)
       (cond
@@ -10005,6 +10017,8 @@ In particular, return the buffer position of the first `for' kwd."
 
        (ctrl-stmt-indent)
 
+       (declaration-indent)
+       
        (bracket
         (goto-char bracket)
         (cond
@@ -10022,8 +10036,6 @@ In particular, return the buffer position of the first `for' kwd."
                    (current-column))
                   (continued-expr-p
                    (+ (current-column) (* 2 js2-basic-offset)))
-                  ((> multiline-declaration-offset 0)
-                   (+ (current-column) js2-basic-offset multiline-declaration-offset))
                   (t
                    (+ (current-column) js2-basic-offset)))))
          (t
@@ -10033,9 +10045,6 @@ In particular, return the buffer position of the first `for' kwd."
           (current-column))))
 
        (continued-expr-p js2-basic-offset)
-
-       ((> multiline-declaration-offset 0)
-        (+ multiline-declaration-offset))
 
        (t 0)))))
 
@@ -10318,8 +10327,6 @@ If so, we don't ever want to use bounce-indent."
 (defun js2-indent-line (&optional bounce-backwards)
   "Indent the current line as JavaScript source text."
   (interactive)
-  (when js2-use-ast-for-indentation-p
-    (js2-reparse))
   (let (parse-status
         current-indent
         offset
