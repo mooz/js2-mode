@@ -57,7 +57,7 @@ In original js2-mode.el,
     bar = 20,
     baz = 30;
 
-In this js2-mode.el, when the value `js2-use-ast-for-indentation-p` is non-nil (default nil),
+In this js2-mode.el, when the value `js2-pretty-multiline-decl-indentation-p` is non-nil,
 
     var foo = 10,
         bar = 20,
