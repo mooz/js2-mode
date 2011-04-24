@@ -9917,15 +9917,15 @@ var a = 10,
     (save-excursion
       (back-to-indentation)
       (when (looking-at (concat js2-mode-identifier-re "[ \t]*=[^=]"))
-        (while (not (or at-opening-bracket
-                        ;; explicit semicolon
-                        (save-excursion (skip-chars-backward "-+~! ")
-                                        (js2-backward-sws)
-                                        (looking-back ";"))
-                        ;; implicit semicolon
-                        (save-excursion
-                          (and (progn (skip-chars-backward " \t")
-                                      (bolp))
+        (while (not (save-excursion
+                      ;; unary ops
+                      (skip-chars-backward "-+~! \t")
+                      (or at-opening-bracket
+                          ;; explicit semicolon
+                          (save-excursion (js2-backward-sws)
+                                          (looking-back ";"))
+                          ;; implicit semicolon
+                          (and (bolp)
                                (progn (js2-backward-sws)
                                       (not (looking-back ",")))
                                (progn (skip-chars-backward "[[:punct:]]")
