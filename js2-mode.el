@@ -9934,18 +9934,20 @@ var o = {                               var bar = 2,
         at-opening-bracket)
     (save-excursion
       (back-to-indentation)
-      (when (looking-at (concat js2-mode-identifier-re "[ \t]*=[^=]"))
+      (when (and (not (looking-at js-declaration-keyword-re))
+                 (looking-at (concat js2-mode-identifier-re
+                                     "[ \t]*\\(?:=[^=]\\|\\,\\|;\\|$\\)")))
         (while (not (save-excursion
                       ;; unary ops
                       (skip-chars-backward "-+~! \t")
                       (or at-opening-bracket
                           ;; explicit semicolon
                           (save-excursion (js2-backward-sws)
-                                          (= (char-before) ?\;))
+                                          (eq (char-before) ?\;))
                           ;; implicit semicolon
                           (and (bolp)
                                (progn (js2-backward-sws)
-                                      (/= (char-before) ?,))
+                                      (not (eq (char-before) ?,)))
                                (progn (skip-chars-backward "[[:punct:]]")
                                       (not (looking-at js-indent-operator-re)))))))
           (condition-case err
