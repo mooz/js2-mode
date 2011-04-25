@@ -10367,8 +10367,11 @@ If so, we don't ever want to use bounce-indent."
 (defun js2-indent-region (start end)
   "Indent the region, but don't use bounce indenting."
   (let ((js2-bounce-indent-p nil)
-        (indent-region-function nil))
-    (indent-region start end nil)))  ; nil for byte-compiler
+        (indent-region-function nil)
+        (after-change-functions (delq 'js2-mode-edit
+                                      after-change-functions)))
+    (indent-region start end nil) ; nil for byte-compiler
+    (js2-mode-edit start end (- end start))))
 
 ;;;###autoload (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
 
