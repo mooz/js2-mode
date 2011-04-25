@@ -240,6 +240,13 @@ function `js-multiline-decl-indentation' for details."
   :group 'js2-mode
   :type 'boolean)
 
+(defcustom js2-always-indent-assigned-expr-in-decls-p nil
+  "If both `js2-pretty-multiline-decl-indentation-p' and this are non-nil,
+always additionally indents function expression or array/object literal
+assigned in a declaration, even when only one var is declared."
+  :group 'js2-mode
+  :type 'boolean)
+
 (defcustom js2-indent-on-enter-key nil
   "Non-nil to have Enter/Return key indent the line.
 This is unusual for Emacs modes but common in IDEs like Eclipse."
@@ -9908,11 +9915,20 @@ indented to the same column as the current line."
 
 (defun js-multiline-decl-indentation ()
   "Returns the proper indentation of the current line if it belongs
-to a multiline declaration statement.  All assignments are lined up vertically:
+to a multiline declaration statement.  All declarations are lined up vertically:
 
 var a = 10,
     b = 20,
     c = 30;
+
+Note that if `js2-always-indent-assigned-expr-in-decls-p' is nil, and the first
+assigned expression is a function or array/object literal, it will be indented
+differently:
+
+var o = {                               var bar = 2,
+  foo: 3                                    o = {
+},                                            foo: 3
+    bar = 2;                                };
 "
   (let (forward-sexp-function ; use lisp version
         at-opening-bracket)
@@ -10033,7 +10049,11 @@ In particular, return the buffer position of the first `for' kwd."
                      (not js2-consistent-level-indent-inner-bracket-p))
                 (progn (goto-char (1+ (nth 1 p)))
                        (skip-chars-forward " \t"))
-              (back-to-indentation))
+              (back-to-indentation)
+              (when (and js2-pretty-multiline-decl-indentation-p
+                         js2-always-indent-assigned-expr-in-decls-p
+                         (looking-at js-declaration-keyword-re))
+                (goto-char (1+ (match-end 0)))))
             (cond (same-indent-p
                    (current-column))
                   (continued-expr-p
