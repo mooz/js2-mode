@@ -9771,7 +9771,7 @@ bound to KEY in the global keymap and indents the current line."
         (call-interactively cmd)))
   ;; don't do the electric keys inside comments or strings,
   ;; and don't do bounce-indent with them.
-  (let ((parse-state (parse-partial-sexp (point-min) (point)))
+  (let ((parse-state (syntax-ppss (point)))
         (js2-bounce-indent-p (js2-code-at-bol-p)))
     (unless (or (nth 3 parse-state)
                 (nth 4 parse-state))
@@ -9779,11 +9779,12 @@ bound to KEY in the global keymap and indents the current line."
 
 (defun js-re-search-forward-inner (regexp &optional bound count)
   "Auxiliary function for `js-re-search-forward'."
-  (let ((parse)
-        (saved-point (point-min)))
+  (let (parse saved-point)
     (while (> count 0)
       (re-search-forward regexp bound)
-      (setq parse (parse-partial-sexp saved-point (point)))
+      (setq parse (if saved-point
+                      (parse-partial-sexp saved-point (point))
+                    (syntax-ppss (point))))
       (cond ((nth 3 parse)
              (re-search-forward
               (concat "\\([^\\]\\|^\\)" (string (nth 3 parse)))
@@ -9819,11 +9820,12 @@ comments have been removed."
 
 (defun js-re-search-backward-inner (regexp &optional bound count)
   "Auxiliary function for `js-re-search-backward'."
-  (let ((parse)
-        (saved-point (point-min)))
+  (let (parse saved-point)
     (while (> count 0)
       (re-search-backward regexp bound)
-      (setq parse (parse-partial-sexp saved-point (point)))
+      (setq parse (if saved-point
+                      (parse-partial-sexp saved-point (point))
+                    (syntax-ppss (point))))
       (cond ((nth 3 parse)
              (re-search-backward
               (concat "\\([^\\]\\|^\\)" (string (nth 3 parse)))
@@ -10336,8 +10338,7 @@ If so, we don't ever want to use bounce-indent."
         ;; This has to be set before calling parse-partial-sexp below.
         (inhibit-point-motion-hooks t))
     (setq parse-status (save-excursion
-                          (parse-partial-sexp (point-min)
-                                              (point-at-bol)))
+                          (syntax-ppss (point-at-bol)))
           offset (- (point) (save-excursion
                                (back-to-indentation)
                                (setq current-indent (current-column))
@@ -10723,7 +10724,7 @@ This ensures that the counts and `next-error' are correct."
   "Handle user pressing the Enter key."
   (interactive)
   (let ((parse-status (save-excursion
-                        (parse-partial-sexp (point-min) (point)))))
+                        (syntax-ppss (point)))))
     (cond
      ;; check if we're inside a string
      ((nth 3 parse-status)
@@ -10866,7 +10867,7 @@ Also moves past comment delimiters when inside comments."
   "Return non-nil if inside a string.
 Actually returns the quote character that begins the string."
    (let ((parse-state (save-excursion
-                        (parse-partial-sexp (point-min) (point)))))
+                        (syntax-ppss (point)))))
       (nth 3 parse-state)))
 
 (defsubst js2-mode-inside-comment-or-string ()
@@ -10880,7 +10881,7 @@ Actually returns the quote character that begins the string."
      (and comment-start
           (<= comment-start (point))))
    (let ((parse-state (save-excursion
-                        (parse-partial-sexp (point-min) (point)))))
+                        (syntax-ppss (point)))))
      (or (nth 3 parse-state)
          (nth 4 parse-state)))))
 
@@ -11030,7 +11031,7 @@ already have been inserted."
 (defun js2-mode-match-single-quote ()
   "Insert matching single-quote."
   (interactive)
-  (let ((parse-status (parse-partial-sexp (point-min) (point))))
+  (let ((parse-status (syntax-ppss (point))))
     ;; don't match inside comments, since apostrophe is more common
     (if (nth 4 parse-status)
         (insert "'")
@@ -11050,7 +11051,7 @@ already have been inserted."
   "Skip over close-paren rather than inserting, where appropriate."
   (interactive)
   (let* ((here (point))
-         (parse-status (parse-partial-sexp (point-min) here))
+         (parse-status (syntax-ppss here))
          (open-pos (nth 1 parse-status))
          (close last-input-event)
          (open (cond
