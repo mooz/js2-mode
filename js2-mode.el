@@ -242,7 +242,7 @@ function `js-multiline-decl-indentation' for details."
 
 (defcustom js2-always-indent-assigned-expr-in-decls-p nil
   "If both `js2-pretty-multiline-decl-indentation-p' and this are non-nil,
-always additionally indents function expression or array/object literal
+always additionally indent function expression or array/object literal
 assigned in a declaration, even when only one var is declared."
   :group 'js2-mode
   :type 'boolean)
