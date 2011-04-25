@@ -9925,11 +9925,11 @@ var a = 10,
                       (or at-opening-bracket
                           ;; explicit semicolon
                           (save-excursion (js2-backward-sws)
-                                          (looking-back ";"))
+                                          (= (char-before) ?\;))
                           ;; implicit semicolon
                           (and (bolp)
                                (progn (js2-backward-sws)
-                                      (not (looking-back ",")))
+                                      (/= (char-before) ?,))
                                (progn (skip-chars-backward "[[:punct:]]")
                                       (not (looking-at js-indent-operator-re)))))))
           (condition-case err
@@ -9951,7 +9951,7 @@ returns nil."
                  (not (looking-at "[{([]"))
                  (progn
                    (forward-char)
-                   (when (looking-back ")")
+                   (when (= (char-before) ?\))
                      ;; scan-sexps sometimes throws an error
                      (ignore-errors (backward-sexp))
                      (skip-chars-backward " \t" (point-at-bol)))
