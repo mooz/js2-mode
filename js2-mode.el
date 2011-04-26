@@ -9999,7 +9999,8 @@ In particular, return the buffer position of the first `for' kwd."
                     (match-beginning 0)))
             ;; to skip arbitrary expressions we need the parser,
             ;; so we'll just guess at it.
-            (if (re-search-forward "[^,]* \\(for\\) " end t)
+            (if (and (> end (point)) ; not empty literal
+                     (re-search-forward "[^,]]* \\(for\\) " end t))
                 (match-beginning 1))))))))
 
 (defun js2-array-comp-indentation (parse-status for-kwd)
