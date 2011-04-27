@@ -9914,7 +9914,7 @@ indented to the same column as the current line."
 		     (= (current-indentation) saved-indent)))))))))
 
 (defun js-multiline-decl-indentation ()
-  "Returns the proper indentation of the current line if it belongs
+  "Returns the declaration indentation column if the current line belongs
 to a multiline declaration statement.  All declarations are lined up vertically:
 
 var a = 10,
@@ -9934,22 +9934,22 @@ var o = {                               var bar = 2,
         at-opening-bracket)
     (save-excursion
       (back-to-indentation)
-      (when (and (not (looking-at js-declaration-keyword-re))
-                 (looking-at (concat js2-mode-identifier-re
-                                     "[ \t]*\\(?:=[^=]\\|\\,\\|;\\|$\\)")))
-        (while (not (save-excursion
-                      ;; unary ops
-                      (skip-chars-backward "-+~! \t")
-                      (or at-opening-bracket
-                          ;; explicit semicolon
-                          (save-excursion (js2-backward-sws)
-                                          (eq (char-before) ?\;))
-                          ;; implicit semicolon
-                          (and (bolp)
-                               (progn (js2-backward-sws)
-                                      (not (eq (char-before) ?,)))
-                               (progn (skip-chars-backward "[[:punct:]]")
-                                      (not (looking-at js-indent-operator-re)))))))
+      (when (not (looking-at js-declaration-keyword-re))
+        (when (looking-at js-indent-operator-re)
+          (goto-char (match-end 0))) ; continued expressions are ok
+        (while (and (not at-opening-bracket)
+                    (not (= (point) (point-min)))
+                    (let ((pos (point)))
+                      (save-excursion
+                        (js2-backward-sws)
+                        (or (eq (char-before) ?,)
+                            (and (not (eq (char-before) ?\;))
+                                 (and
+                                  (prog2 (skip-chars-backward "[[:punct:]]")
+                                      (looking-at js-indent-operator-re)
+                                    (js2-backward-sws))
+                                  (not (eq (char-before) ?\;))))
+                            (js2-same-line pos)))))
           (condition-case err
               (backward-sexp)
             (scan-error (setq at-opening-bracket t))))
@@ -10038,8 +10038,11 @@ In particular, return the buffer position of the first `for' kwd."
 
        (ctrl-stmt-indent)
 
-       (declaration-indent)
+       ((and declaration-indent continued-expr-p)
+        (+ declaration-indent js2-basic-offset))
        
+       (declaration-indent)
+
        (bracket
         (goto-char bracket)
         (cond
