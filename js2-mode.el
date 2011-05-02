@@ -10522,7 +10522,25 @@ You can disable this by customizing `js2-cleanup-whitespace'."
       (cancel-timer js2-mode-parse-timer))
   (setq js2-mode-parsing nil)
   (setq js2-mode-parse-timer
-        (run-with-idle-timer js2-idle-timer-delay nil #'js2-reparse)))
+        (run-with-idle-timer js2-idle-timer-delay nil
+                             #'js2-mode-idle-reparse (current-buffer))))
+
+(defun js2-mode-idle-reparse (buffer)
+  "Run `js2-reparse' if BUFFER is the current buffer, or schedule
+it to be reparsed when the buffer is selected."
+  (if (eq buffer (current-buffer))
+      (js2-reparse)
+    ;; reparse when the buffer is selected again
+    (with-current-buffer buffer
+      (add-hook 'window-configuration-change-hook
+                #'js2-mode-idle-reparse-inner
+                t))))
+
+(defun js2-mode-idle-reparse-inner ()
+  (remove-hook 'window-configuration-change-hook
+               #'js2-mode-idle-reparse-inner
+               t)
+  (js2-reparse))
 
 (defun js2-mode-edit (beg end len)
   "Schedule a new parse after buffer is edited.
