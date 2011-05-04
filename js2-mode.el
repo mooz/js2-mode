@@ -6846,7 +6846,7 @@ POS is the absolute position of the node.
 We do a depth-first traversal of NODE.  Any functions we find are prefixed
 with QNAME plus the property name of the function and appended to the
 variable `js2-imenu-recorder'."
-  (let (left right)
+  (let (left right prop-qname)
     (dolist (e (js2-object-node-elems node))  ; e is a `js2-object-prop-node'
       (let ((left (js2-infix-node-left e))
             ;; Element positions are relative to the parent position.
@@ -6858,9 +6858,9 @@ variable `js2-imenu-recorder'."
             ;; As a policy decision, we record the position of the property,
             ;; not the position of the `function' keyword, since the property
             ;; is effectively the name of the function.
-            (push (append qname (list left pos))
+            (push (setq prop-qname (append qname (list left pos)))
                   js2-imenu-recorder)
-            (js2-record-function-qname right qname)))
+            (js2-record-function-qname right prop-qname)))
          ;; foo: {object-literal} -- add foo to qname, offset position, and recurse
          ((js2-object-node-p right)
           (js2-record-object-literal right
