@@ -172,6 +172,12 @@ Set `js2-include-gears-externs' to t to include them.")
 
 ;;; Variables
 
+(defun js2-mark-safe-local (name pred)
+  "Make the variable NAME buffer-local and mark it as safe file-local
+variable with predicate PRED."
+  (make-variable-buffer-local name)
+  (put name 'safe-local-variable pred))
+
 (defvar js2-emacs22 (>= emacs-major-version 22))
 
 (defcustom js2-highlight-level 2
@@ -201,7 +207,7 @@ Set `js2-include-gears-externs' to t to include them.")
 Similar to `c-basic-offset'."
   :group 'js2-mode
   :type 'integer)
-(make-variable-buffer-local 'js2-basic-offset)
+(js2-mark-safe-local 'js2-basic-offset 'integerp)
 
 ;; TODO(stevey):  move this code into a separate minor mode.
 (defcustom js2-mirror-mode nil
@@ -233,12 +239,14 @@ js2-mode also binds `js2-bounce-indent-backwards' to Shift-Tab."
 regardless of the beginning bracket position."
   :group 'js2-mode
   :type 'boolean)
+(js2-mark-safe-local 'js2-consistent-level-indent-inner-bracket-p 'booleanp)
 
 (defcustom js2-pretty-multiline-decl-indentation-p t
   "Non-nil to line up multiline declarations vertically. See the
 function `js-multiline-decl-indentation' for details."
   :group 'js2-mode
   :type 'boolean)
+(js2-mark-safe-local 'js2-pretty-multiline-decl-indentation-p 'booleanp)
 
 (defcustom js2-always-indent-assigned-expr-in-decls-p nil
   "If both `js2-pretty-multiline-decl-indentation-p' and this are non-nil,
@@ -246,6 +254,7 @@ always additionally indent function expression or array/object literal
 assigned in a declaration, even when only one var is declared."
   :group 'js2-mode
   :type 'boolean)
+(js2-mark-safe-local 'js2-always-indent-assigned-expr-in-decls-p 'booleanp)
 
 (defcustom js2-indent-on-enter-key nil
   "Non-nil to have Enter/Return key indent the line.
