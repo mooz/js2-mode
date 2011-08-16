@@ -9427,7 +9427,7 @@ array-literals, array comprehensions and regular expressions."
                                       :len (- js2-ts-cursor pos)
                                       :elems (nreverse elems)))
         (apply #'js2-node-add-children pn (js2-array-node-elems pn))
-        (when after-comma
+        (when (and after-comma (not js2-is-in-lhs))
           (js2-parse-warn-trailing-comma "msg.array.trailing.comma"
                                          pos elems after-comma)))
        ;; destructuring binding
