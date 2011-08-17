@@ -10,6 +10,8 @@ Install
     $ cd js2-mode
     $ emacs --batch -f batch-byte-compile js2-mode.el
 
+_NOTE: Emacs may fail to byte compile js2-mode.el in interactive mode (e.g., `M-x byte-compile-file`). Following the above instruction is highly recommended. See https://github.com/mooz/js2-mode/issues/13 for details._
+
 Then, place js2-mode.elc into your site-lisp directory.
 
 In you emacs config:
