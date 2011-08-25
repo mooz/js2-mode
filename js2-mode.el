@@ -10774,7 +10774,8 @@ This ensures that the counts and `next-error' are correct."
   "Handle user pressing the Enter key."
   (interactive)
   (let ((parse-status (save-excursion
-                        (syntax-ppss (point)))))
+                        (syntax-ppss (point))))
+        (js2-bounce-indent-p nil))
     (cond
      ;; check if we're inside a string
      ((nth 3 parse-status)
@@ -10785,12 +10786,10 @@ This ensures that the counts and `next-error' are correct."
      (t
       ;; should probably figure out what the mode-map says we should do
       (if js2-indent-on-enter-key
-          (let ((js2-bounce-indent-p nil))
-            (js2-indent-line)))
+          (js2-indent-line))
       (insert "\n")
       (if js2-enter-indents-newline
-          (let ((js2-bounce-indent-p nil))
-            (js2-indent-line)))))))
+          (js2-indent-line))))))
 
 (defun js2-mode-split-string (parse-status)
   "Turn a newline in mid-string into a string concatenation.
@@ -10818,7 +10817,7 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
       (backward-char 1))))
 
 (defun js2-mode-extend-comment ()
-  "When inside a comment block, add comment prefix."
+  "Indent the line and, when inside a comment block, add comment prefix."
   (let (star single col first-line needs-close)
     (save-excursion
       (back-to-indentation)
@@ -10860,12 +10859,15 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
             (insert "\n")
             (indent-to col)
             (insert "*/"))))
-     (single
-      (when (save-excursion
+     ((and single
+           (save-excursion
               (and (zerop (forward-line 1))
-                   (looking-at "\\s-*//")))
-        (indent-to col)
-        (insert "// "))))))
+                   (looking-at "\\s-*//"))))
+      (indent-to col)
+      (insert "// "))
+     ;; don't need to extend the comment after all
+     (js2-enter-indents-newline
+      (js2-indent-line)))))
 
 (defun js2-beginning-of-line ()
   "Toggles point between bol and first non-whitespace char in line.
