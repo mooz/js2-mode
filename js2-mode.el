@@ -11226,16 +11226,15 @@ Show the hidden text with \\[js2-mode-show-element]."
       (cond
        ((js2-block-comment-p node)
         (js2-mode-hide-comment node))
-       ((or (js2-array-node-p node)
-            (js2-object-node-p node))
-        (let ((beg (1+ (js2-node-abs-pos node)))
-              (end (+ beg (js2-node-len node) -2)))
-          (js2-mode-flag-region beg end 'hide)))
        ((js2-function-node-p node)
-        (let* ((body (js2-function-node-body node))
-               (beg (1+ (js2-node-abs-pos body)))
-               (end (+ beg (js2-node-len body) -2)))
-          (js2-mode-flag-region beg end 'hide))))))))
+        (js2-mode-hide-node (js2-function-node-body node)))
+       (t
+        (js2-mode-hide-node node)))))))
+
+(defun js2-mode-hide-node (node)
+  (let* ((beg (1+ (js2-node-abs-pos node)))
+        (end (+ beg (js2-node-len node) -2)))
+    (js2-mode-flag-region beg end 'hide)))
 
 (defun js2-mode-show-element ()
   "Show the hidden element at current point."
