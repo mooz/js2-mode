@@ -11179,42 +11179,38 @@ Returns nil if not found."
 (defun js2-mode-function-at-point (&optional pos)
   "Return the innermost function node enclosing current point.
 Returns nil if point is not in a function."
+  (js2-mode-find-at-point #'js2-function-node-p))
+
+(defun js2-mode-data-literal-at-point (&optional pos)
+  "Return the innermost array or object literal enclosing current point.
+Returns nil if point is not in an array or object literal"
+  (js2-mode-find-at-point (lambda (node) (or (js2-array-node-p node)
+                                        (js2-object-node-p node)))))
+
+(defun js2-mode-collapsable-at-point (&optional pos)
+  "Return the innermost collapsable node enclosing point, or nil if there isn't one.
+Currently functions, array literals, object literals and block comments are collapsable."
+  (js2-mode-find-at-point (lambda (node) (or (js2-array-node-p node)
+                                        (js2-object-node-p node)
+                                        (js2-function-node-p node)
+                                        (js2-block-comment-p node)))))
+
+(defun js2-mode-find-at-point (func &optional pos)
+  "Return the innermost array or object literal enclosing current point.
+Returns nil if point is not in an array or object literal"
   (let ((node (js2-node-at-point pos)))
-    (while (and node (not (js2-function-node-p node)))
+    (while (and node
+                (not (funcall func node)))
       (setq node (js2-node-parent node)))
-    (if (js2-function-node-p node)
-        node)))
+    node))
 
 (defun js2-mode-toggle-element ()
   "Hide or show the foldable element at the point."
   (interactive)
-  (let (comment fn pos)
-    (save-excursion
-      (save-match-data
-        (cond
-         ;; /* ... */ comment?
-         ((js2-block-comment-p (setq comment (js2-comment-at-point)))
-          (if (js2-mode-invisible-overlay-bounds
-               (setq pos (+ 3 (js2-node-abs-pos comment))))
-              (progn
-                (goto-char pos)
-                (js2-mode-show-element))
-            (js2-mode-hide-element)))
-         ;; //-comment?
-         ((save-excursion
-            (back-to-indentation)
-            (looking-at js2-mode-//-comment-re))
-          (js2-mode-toggle-//-comment))
-         ;; function?
-         ((setq fn (js2-mode-function-at-point))
-          (setq pos (and (js2-function-node-body fn)
-                         (js2-node-abs-pos (js2-function-node-body fn))))
-          (goto-char (1+ pos))
-          (if (js2-mode-invisible-overlay-bounds)
-              (js2-mode-show-element)
-            (js2-mode-hide-element)))
-         (t
-          (message "Nothing at point to hide or show")))))))
+  (if (js2-mode-invisible-overlay-bounds)
+      (js2-mode-show-element)
+    (js2-mode-hide-element)))
+
 
 (defun js2-mode-hide-element ()
   "Fold/hide contents of a block, showing ellipses.
@@ -11222,25 +11218,24 @@ Show the hidden text with \\[js2-mode-show-element]."
   (interactive)
   (if js2-mode-buffer-dirty-p
       (js2-mode-wait-for-parse #'js2-mode-hide-element))
-  (let (node body beg end)
-    (cond
-     ((js2-mode-invisible-overlay-bounds)
-      (message "already hidden"))
-     (t
-      (setq node (js2-node-at-point))
+  (cond
+   ((js2-mode-invisible-overlay-bounds)
+    (message "already hidden"))
+   (t
+    (let ((node (js2-mode-collapsable-at-point)))
       (cond
        ((js2-block-comment-p node)
         (js2-mode-hide-comment node))
-       (t
-        (while (and node (not (js2-function-node-p node)))
-          (setq node (js2-node-parent node)))
-        (if (and node
-                 (setq body (js2-function-node-body node)))
-            (progn
-              (setq beg (js2-node-abs-pos body)
-                    end (+ beg (js2-node-len body)))
-              (js2-mode-flag-region (1+ beg) (1- end) 'hide))
-          (message "No collapsable element found at point"))))))))
+       ((or (js2-array-node-p node)
+            (js2-object-node-p node))
+        (let ((beg (1+ (js2-node-abs-pos node)))
+              (end (+ beg (js2-node-len node) -2)))
+          (js2-mode-flag-region beg end 'hide)))
+       ((js2-function-node-p node)
+        (let* ((body (js2-function-node-body node))
+               (beg (1+ (js2-node-abs-pos body)))
+               (end (+ beg (js2-node-len body) -2)))
+          (js2-mode-flag-region beg end 'hide))))))))
 
 (defun js2-mode-show-element ()
   "Show the hidden element at current point."
