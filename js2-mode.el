@@ -11179,13 +11179,14 @@ Returns nil if not found."
 (defun js2-mode-function-at-point (&optional pos)
   "Return the innermost function node enclosing current point.
 Returns nil if point is not in a function."
-  (js2-mode-find-at-point #'js2-function-node-p))
+  (js2-mode-find-at-point #'js2-function-node-p pos))
 
 (defun js2-mode-data-literal-at-point (&optional pos)
   "Return the innermost array or object literal enclosing current point.
 Returns nil if point is not in an array or object literal"
   (js2-mode-find-at-point (lambda (node) (or (js2-array-node-p node)
-                                        (js2-object-node-p node)))))
+                                        (js2-object-node-p node)))
+                          pos))
 
 (defun js2-mode-collapsable-at-point (&optional pos)
   "Return the innermost collapsable node enclosing point, or nil if there isn't one.
@@ -11193,7 +11194,8 @@ Currently functions, array literals, object literals and block comments are coll
   (js2-mode-find-at-point (lambda (node) (or (js2-array-node-p node)
                                         (js2-object-node-p node)
                                         (js2-function-node-p node)
-                                        (js2-block-comment-p node)))))
+                                        (js2-block-comment-p node)))
+                          pos))
 
 (defun js2-mode-find-at-point (func &optional pos)
   "Return the innermost array or object literal enclosing current point.
@@ -11209,8 +11211,13 @@ Returns nil if point is not in an array or object literal"
   (interactive)
   (if (js2-mode-invisible-overlay-bounds)
       (js2-mode-show-element)
-    (js2-mode-hide-element)))
-
+    (let ((node (js2-mode-function-at-point)))
+      (if node
+          (let ((bounds (js2-mode-invisible-overlay-bounds (1+ (js2-node-abs-pos (js2-function-node-body node))))))
+            (if bounds
+                (js2-mode-show-element (car bounds))
+              (js2-mode-hide-element)))
+        (js2-mode-hide-element)))))
 
 (defun js2-mode-hide-element ()
   "Fold/hide contents of a block, showing ellipses.
@@ -11236,10 +11243,10 @@ Show the hidden text with \\[js2-mode-show-element]."
         (end (+ beg (js2-node-len node) -2)))
     (js2-mode-flag-region beg end 'hide)))
 
-(defun js2-mode-show-element ()
+(defun js2-mode-show-element (&optional pos)
   "Show the hidden element at current point."
   (interactive)
-  (let ((bounds (js2-mode-invisible-overlay-bounds)))
+  (let ((bounds (js2-mode-invisible-overlay-bounds pos)))
     (if bounds
         (js2-mode-flag-region (car bounds) (cdr bounds) nil)
       (message "Nothing to un-hide"))))
