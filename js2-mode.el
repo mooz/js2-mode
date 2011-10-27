@@ -10049,7 +10049,7 @@ In particular, return the buffer position of the first `for' kwd."
 
        ((and declaration-indent continued-expr-p)
         (+ declaration-indent js2-basic-offset))
-       
+
        (declaration-indent)
 
        (bracket
@@ -10281,10 +10281,10 @@ in reverse."
 
           ;; nesting-heuristic position, main by default
           (push (setq main-pos normal-col) positions)
-          
+
           ;; delete duplicates and sort positions list
           (setq positions (sort (delete-dups positions) '<))
-          
+
           ;; comma-list continuation lines:  prev line indent takes precedence
           (if same-indent
               (setq main-pos same-indent))
@@ -10297,10 +10297,10 @@ in reverse."
           ;; if bouncing backwards, reverse positions list
           (if backwards
               (setq positions (reverse positions)))
-          
+
           ;; record whether we're already sitting on one of the alternatives
           (setq pos (member cur-indent positions))
-          
+
           (cond
            ;; case 0:  we're one one of the alternatives and this is the
            ;; first time they've pressed TAB on this line (best-guess).
@@ -10322,7 +10322,7 @@ in reverse."
            ;; case 4:  on intermediate position:  cycle to next position
            (t
             (setq computed-pos (js2-position (second pos) positions))))
-          
+
           ;; see if any hooks want to indent; otherwise we do it
           (loop with result = nil
                 for hook in js2-indent-hook
@@ -10332,7 +10332,7 @@ in reverse."
                 finally do
                 (unless (or result (null computed-pos))
                   (indent-line-to (nth computed-pos positions)))))
-      
+
       ;; finally
       (if js2-mode-indent-inhibit-undo
           (setq buffer-undo-list old-buffer-undo-list))
