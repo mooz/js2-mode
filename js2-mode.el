@@ -10491,15 +10491,16 @@ If so, we don't ever want to use bounce-indent."
   (add-to-invisibility-spec '(js2-outline . t))
   (set (make-local-variable 'line-move-ignore-invisible) t)
   (set (make-local-variable 'forward-sexp-function) #'js2-mode-forward-sexp)
+
+  (if (fboundp 'run-mode-hooks)
+      (run-mode-hooks 'js2-mode-hook)
+    (run-hooks 'js2-mode-hook))
+
   (setq js2-mode-functions-hidden nil
         js2-mode-comments-hidden nil
         js2-mode-buffer-dirty-p t
         js2-mode-parsing nil)
-  (js2-reparse)
-
-  (if (fboundp 'run-mode-hooks)
-      (run-mode-hooks 'js2-mode-hook)
-    (run-hooks 'js2-mode-hook)))
+  (js2-reparse))
 
 (defun js2-mode-exit ()
   "Exit `js2-mode' and clean up."
