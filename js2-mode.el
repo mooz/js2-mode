@@ -4829,7 +4829,10 @@ You should use `js2-print-tree' instead of this function."
        ;; I'll wait for people to notice incorrect warnings.
        ((and (= tt js2-EXPR_VOID)
              (js2-expr-stmt-node-p node)) ; but not if EXPR_RESULT
-        (js2-node-has-side-effects (js2-expr-stmt-node-expr node)))
+        (let ((expr (js2-expr-stmt-node-expr node)))
+          (or (js2-node-has-side-effects expr)
+              (when (js2-string-node-p expr)
+                (string= "use strict" (js2-string-node-value expr))))))
        ((= tt js2-COMMA)
         (js2-node-has-side-effects (js2-infix-node-right node)))
        ((or (= tt js2-AND)
