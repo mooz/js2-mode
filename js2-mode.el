@@ -9896,10 +9896,12 @@ a comma)."
         (and (js-re-search-backward "\n" nil t)
 	     (progn
 	       (skip-chars-backward " \t")
-	       (backward-char)
-	       (and (js-looking-at-operator-p)
-		    (and (progn (backward-char)
-				(not (looking-at "\\*\\|++\\|--\\|/[/*]"))))))))))
+               (unless (bolp)
+                 (backward-char)
+                 (and (js-looking-at-operator-p)
+                      (and (progn
+                             (backward-char)
+                             (not (looking-at "\\*\\|++\\|--\\|/[/*]")))))))))))
 
 (defun js-end-of-do-while-loop-p ()
   "Returns non-nil if word after point is `while' of a do-while
