@@ -9896,10 +9896,12 @@ a comma)."
         (and (js-re-search-backward "\n" nil t)
 	     (progn
 	       (skip-chars-backward " \t")
-	       (backward-char)
-	       (and (js-looking-at-operator-p)
-		    (and (progn (backward-char)
-				(not (looking-at "\\*\\|++\\|--\\|/[/*]"))))))))))
+               (unless (bolp)
+                 (backward-char)
+                 (and (js-looking-at-operator-p)
+                      (and (progn
+                             (backward-char)
+                             (not (looking-at "\\*\\|++\\|--\\|/[/*]")))))))))))
 
 (defun js-end-of-do-while-loop-p ()
   "Returns non-nil if word after point is `while' of a do-while
@@ -10769,7 +10771,8 @@ This ensures that the counts and `next-error' are correct."
 (defun js2-echo-error (old-point new-point)
   "Called by point-motion hooks."
   (let ((msg (get-text-property new-point 'help-echo)))
-    (if msg
+    (if (and msg (or (not (current-message))
+                     (string= (current-message) "Quit")))
         (message msg))))
 
 (defalias #'js2-echo-help #'js2-echo-error)
