@@ -6987,9 +6987,18 @@ For instance, following a 'this' reference requires a parent function node."
 
 (defsubst js2-treeify (lst)
   "Convert (a b c d) to (a ((b ((c d)))))"
-  (if (null (cddr lst))  ; list length <= 2
-      lst
-    (list (car lst) (list (js2-treeify (cdr lst))))))
+  (if (null (cddr lst))
+             lst
+             (loop
+               with lst = (reverse lst)
+               with ret = (list (second lst)
+                                (first lst))
+               with lst = (cddr lst)
+               until (null lst)
+               do (setf ret (list (car lst)
+                                  (list ret))
+                        lst (cdr lst))
+               finally (return ret))))
 
 (defun js2-build-alist-trie (chains trie)
   "Merge declaration name chains into a trie-like alist structure for imenu.
