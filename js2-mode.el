@@ -11425,7 +11425,7 @@ Some users don't like having warnings/errors reported while they type."
   (interactive)
   (setq js2-mode-show-parse-errors (not js2-mode-show-parse-errors)
         js2-mode-show-strict-warnings (not js2-mode-show-strict-warnings))
-  (if (interactive-p)
+  (if (call-interactively 'interactive)
       (message "warnings and errors %s"
                (if js2-mode-show-parse-errors
                    "enabled"
