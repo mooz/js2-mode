@@ -6690,7 +6690,7 @@ it is considered declared."
 ;; possibly other browsing mechanisms.
 
 ;; The basic strategy is to identify function assignment targets of the form
-;; `foo.bar.baz', convert them to (list foo bar baz <position>), and push the
+;; `foo.bar.baz', convert them to (list fn foo bar baz <position>), and push the
 ;; list into `js2-imenu-recorder'.  The lists are merged into a trie-like tree
 ;; for imenu after parsing is finished.
 
@@ -6739,13 +6739,14 @@ it is considered declared."
 ;; During parsing we accumulate an entry for each definition in
 ;; the variable `js2-imenu-recorder', like so:
 
-;; '((a 5)
-;;   (b 25)
-;;   (foo 100)
-;;   (foo bar 200)
-;;   (foo bar baz 300)
-;;   (foo bar zab 400))
+;; '((fn a 5)
+;;   (fn b 25)
+;;   (fn foo 100)
+;;   (fn foo bar 200)
+;;   (fn foo bar baz 300)
+;;   (fn foo bar zab 400))
 
+;; Where 'fn' is the respective function node.
 ;; After parsing these entries are merged into this alist-trie:
 
 ;; '((a . 1)
@@ -6775,7 +6776,7 @@ returns nil.  Otherwise returns the string name/value of the node."
     "this")))
 
 (defsubst js2-node-qname-component (node)
-  "Test function:  return the name of this node, if it contributes to a qname.
+  "Return the name of this node, if it contributes to a qname.
 Returns nil if the node doesn't contribute."
   (copy-sequence
    (or (js2-prop-node-name node)
@@ -6783,12 +6784,14 @@ Returns nil if the node doesn't contribute."
                 (js2-function-node-name node))
            (js2-name-node-name (js2-function-node-name node))))))
 
-(defsubst js2-record-function-qname (fn-node qname)
-  "Associate FN-NODE with its QNAME for later lookup.
-This is used in postprocessing the chain list.  When we find a chain
-whose first element is a js2-THIS keyword node, we look up the parent
-function and see (using this map) whether it is the tail of a chain.
-If so, we replace the this-node with a copy of the parent's qname."
+(defsubst js2-record-imenu-entry (fn-node qname pos)
+  "Add an entry to `js2-imenu-recorder'.
+FN-NODE should be the current item's function node.
+
+Associate FN-NODE with its QNAME for later lookup.
+This is used in postprocessing the chain list.  For each chain, we find
+the parent function, look up its qname, then prepend a copy of it to the chain."
+  (push (cons fn-node (append qname (list pos))) js2-imenu-recorder)
   (unless js2-imenu-function-map
     (setq js2-imenu-function-map (make-hash-table :test 'eq)))
   (puthash fn-node qname js2-imenu-function-map))
@@ -6805,17 +6808,13 @@ VAR, if non-nil, is the expression that NODE is being assigned to."
        ((and fun-p
              (not var)
              (setq fname-node (js2-function-node-name node)))
-        (push (setq qname (list fname-node (js2-node-pos node)))
-              js2-imenu-recorder)
-        (js2-record-function-qname node qname))
+        (js2-record-imenu-entry node (list fname-node) (js2-node-pos node)))
        ;; for remaining forms, compute left-side tree branch first
        ((and var (setq qname (js2-compute-nested-prop-get var)))
         (cond
          ;; foo.bar.baz = function
          (fun-p
-          (push (nconc qname (list (js2-node-pos node)))
-                js2-imenu-recorder)
-          (js2-record-function-qname node qname))
+          (js2-record-imenu-entry node qname (js2-node-pos node)))
          ;; foo.bar.baz = object-literal
          ;; look for nested functions:  {a: {b: function() {...} }}
          ((js2-object-node-p node)
@@ -6855,9 +6854,8 @@ NODE is an object literal that is the right-hand child of an assignment
 expression.  QNAME is a list of nodes representing the assignment target,
 e.g. for foo.bar.baz = {...}, QNAME is (foo-node bar-node baz-node).
 POS is the absolute position of the node.
-We do a depth-first traversal of NODE.  Any functions we find are prefixed
-with QNAME plus the property name of the function and appended to the
-variable `js2-imenu-recorder'."
+We do a depth-first traversal of NODE.  For any functions we find,
+we append the property name to QNAME, then call `js2-record-imenu-entry'."
   (let (left right prop-qname)
     (dolist (e (js2-object-node-elems node))  ; e is a `js2-object-prop-node'
       (let ((left (js2-infix-node-left e))
@@ -6870,9 +6868,7 @@ variable `js2-imenu-recorder'."
             ;; As a policy decision, we record the position of the property,
             ;; not the position of the `function' keyword, since the property
             ;; is effectively the name of the function.
-            (push (setq prop-qname (append qname (list left pos)))
-                  js2-imenu-recorder)
-            (js2-record-function-qname right prop-qname)))
+            (js2-record-imenu-entry right (append qname (list left)) pos)))
          ;; foo: {object-literal} -- add foo to qname, offset position, and recurse
          ((js2-object-node-p right)
           (js2-record-object-literal right
@@ -6911,45 +6907,36 @@ NODE must be `js2-function-node'."
                            '("call" "apply"))
                    (js2-call-node-p (js2-node-parent parent))))))))
 
-(defun js2-browse-postprocess-chains (chains)
+(defun js2-browse-postprocess-chains (entries)
   "Modify function-declaration name chains after parsing finishes.
 Some of the information is only available after the parse tree is complete.
-For instance, following a 'this' reference requires a parent function node."
-  (let ((js2-imenu-fn-type-map (make-hash-table :test 'eq))
-        result head fn fn-type parent-chain p elem parent)
-    (dolist (chain chains)
-      ;; examine the head of each node to get its defining scope
-      (setq head (car chain))
-      ;; if top-level/external, keep as-is
-      (if (js2-node-top-level-decl-p head)
-          (push chain result)
-        (cond
-         ;; starts with this-reference
-         ((js2-this-node-p head)
-          (setq fn (js2-node-parent-script-or-fn head)
-                chain (cdr chain))) ; discard this-node
-         ;; nested named function
-         ((js2-function-node-p (setq parent (js2-node-parent head)))
-          (setq fn (js2-node-parent-script-or-fn parent)))
-         ;; variable assigned a function expression
-         (t (setq fn (js2-node-parent-script-or-fn head))))
-        (when fn
-          (setq fn-type (gethash fn js2-imenu-fn-type-map))
-          (unless fn-type
-            (setq fn-type
-                  (cond ((js2-nested-function-p fn) 'skip)
-                        ((setq parent-chain
-                               (gethash fn js2-imenu-function-map))
-                         'named)
-                        ((js2-wrapper-function-p fn) 'anon)
-                        (t 'skip)))
-            (puthash fn fn-type js2-imenu-fn-type-map))
-          (case fn-type
-            ('anon (push chain result)) ; anonymous top-level wrapper
-            ('named                     ; top-level named function
-             ;; prefix parent fn qname, which is
-             ;; parent-chain sans last elem, to this chain.
-             (push (append (butlast parent-chain) chain) result))))))
+For instance, processing a nested scope requires a parent function node."
+  (let (result head fn current-fn parent-qname qname p elem)
+    (dolist (entry entries)
+      ;; function node goes first
+      (destructuring-bind (current-fn &rest chain) entry
+        ;; examine its defining scope;
+        ;; if top-level/external, keep as-is
+        (if (js2-node-top-level-decl-p (car chain))
+            (push chain result)
+          (when (setq fn (js2-node-parent-script-or-fn current-fn))
+            (setq parent-qname (gethash fn js2-imenu-function-map 'not-found))
+            (when (eq parent-qname 'not-found)
+              ;; anonymous function expressions are not recorded
+              ;; during the parse, so we need to handle this case here
+              (setq parent-qname
+                    (if (js2-wrapper-function-p fn)
+                        (let ((grandparent (js2-node-parent-script-or-fn fn)))
+                          (if (js2-ast-root-p grandparent)
+                              nil
+                            (gethash grandparent js2-imenu-function-map 'skip)))
+                      'skip))
+              (puthash fn parent-qname js2-imenu-function-map))
+            (unless (eq parent-qname 'skip)
+              ;; prefix parent fn qname to this chain.
+              (let ((qname (append parent-qname chain)))
+                (puthash current-fn (butlast qname) js2-imenu-function-map)
+                (push qname result)))))))
     ;; finally replace each node in each chain with its name.
     (dolist (chain result)
       (setq p chain)

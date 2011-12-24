@@ -122,28 +122,24 @@ Proper position for functions in nested object literals:
 Imenu support for function nesting
 ----------------------------------
 
-Supports one level of nesting:
-
-    function foo() {
-        function bar() { // shown as foo.bar
-            function baz() {} // hidden
-        }
-    }
-
-Top-level function can be anonymous wrapper:
+Supports function nesting and anonymous wrappers:
 
     (function() {
-        var foo = function() {}; // shown as foo
-    })();
+      var foo = function() {
+        function bar() { // shown as foo.bar.<definition-1>
+          function baz() {} // foo.bar.baz
+          var qux = function() {}; // foo.bar.quux
+        }
+      };
+    });
 
 Examples of output:
 
-* [Underscore.js](https://github.com/documentcloud/underscore/blob/master/underscore.js)
--> <https://gist.github.com/824262>
-* [Backbone.js](https://github.com/documentcloud/backbone/blob/master/backbone.js)
--> <https://gist.github.com/824260>
+* [jQuery 1.5](https://gist.github.com/845449)
+* [Underscore.js](https://gist.github.com/824262)
+* [Backbone.js](https://gist.github.com/824260)
 
-No support for library-specific extension methods like _.extend.
+No support for library-specific extension methods like $.extend.
 
 Highlights undeclared/external variables
 ----------------------------------------
