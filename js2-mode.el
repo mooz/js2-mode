@@ -6913,11 +6913,13 @@ For instance, processing a nested scope requires a parent function node."
   (let (result head fn current-fn parent-qname qname p elem)
     (dolist (entry entries)
       ;; function node goes first
-      (destructuring-bind (current-fn &rest chain) entry
+      (destructuring-bind (current-fn &rest (&whole chain head &rest)) entry
         ;; examine its defining scope;
         ;; if top-level/external, keep as-is
-        (if (js2-node-top-level-decl-p (car chain))
+        (if (js2-node-top-level-decl-p head)
             (push chain result)
+          (when (js2-this-node-p head)
+            (setq chain (cdr chain))) ; discard this-node
           (when (setq fn (js2-node-parent-script-or-fn current-fn))
             (setq parent-qname (gethash fn js2-imenu-function-map 'not-found))
             (when (eq parent-qname 'not-found)
