@@ -10417,9 +10417,8 @@ If so, we don't ever want to use bounce-indent."
   (set (make-local-variable 'indent-region-function) #'js2-indent-region)
 
   ;; I tried an "improvement" to `c-fill-paragraph' that worked out badly
-  ;; on most platforms other than the one I originally wrote it on.  So it's
-  ;; back to `c-fill-paragraph'.  Still not perfect, though -- something to do
-  ;; with our binding of the RET key inside comments:  short lines stay short.
+  ;; on most platforms other than the one I originally wrote it on.
+  ;; So it's back to `c-fill-paragraph'.
   (set (make-local-variable 'fill-paragraph-function) #'c-fill-paragraph)
 
   (set (make-local-variable 'before-save-hook) #'js2-before-save)
@@ -10435,15 +10434,24 @@ If so, we don't ever want to use bounce-indent."
   (put 'js2-mode 'find-tag-default-function #'js2-mode-find-tag)
 
   ;; some variables needed by cc-engine for paragraph-fill, etc.
-  (setq c-buffer-is-cc-mode t
-        c-comment-prefix-regexp js2-comment-prefix-regexp
+  (setq c-comment-prefix-regexp js2-comment-prefix-regexp
         c-comment-start-regexp "/[*/]\\|\\s|"
+        c-line-comment-starter "//"
         c-paragraph-start js2-paragraph-start
         c-paragraph-separate "$"
         comment-start-skip js2-comment-start-skip
         c-syntactic-ws-start js2-syntactic-ws-start
         c-syntactic-ws-end js2-syntactic-ws-end
         c-syntactic-eol js2-syntactic-eol)
+
+  (let ((c-buffer-is-cc-mode t))
+    ;; Copied from `js-mode'.  Also see Bug#6071.
+    (make-local-variable 'paragraph-start)
+    (make-local-variable 'paragraph-separate)
+    (make-local-variable 'paragraph-ignore-fill-prefix)
+    (make-local-variable 'adaptive-fill-mode)
+    (make-local-variable 'adaptive-fill-regexp)
+    (c-setup-paragraph-variables))
 
   (setq js2-default-externs
         (append js2-ecma-262-externs
