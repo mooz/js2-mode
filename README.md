@@ -34,4 +34,4 @@ See Also
 Some third-party modes that use the generated syntax tree:
 
 * [js2-highlight-vars-mode](http://mihai.bazon.net/projects/editing-javascript-with-emacs-js2-mode/js2-highlight-vars-mode)
-* [js2-rename-var](https://github.com/magnars/mark-multiple.el/blob/master/js2-rename-var.el)
+* [js2-refactor](https://github.com/magnars/js2-refactor.el)
