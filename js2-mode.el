@@ -10421,7 +10421,7 @@ If so, we don't ever want to use bounce-indent."
   ;; So it's back to `c-fill-paragraph'.
   (set (make-local-variable 'fill-paragraph-function) #'c-fill-paragraph)
 
-  (set (make-local-variable 'before-save-hook) #'js2-before-save)
+  (add-hook 'before-save-hook #'js2-before-save nil t)
   (set (make-local-variable 'next-error-function) #'js2-next-error)
   (set (make-local-variable 'beginning-of-defun-function) #'js2-beginning-of-defun)
   (set (make-local-variable 'end-of-defun-function) #'js2-end-of-defun)
