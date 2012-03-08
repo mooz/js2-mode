@@ -6479,7 +6479,7 @@ of a simple name.  Called before EXPR has a parent node."
           "\\(?:param\\|argument\\)"
           "\\)"
           "\\s-*\\({[^}]+}\\)?"         ; optional type
-          "\\s-*\\[?\\([a-zA-Z0-9_$]+\\)?\\]?"  ; name
+          "\\s-*\\[?\\([a-zA-Z0-9_$\.]+\\)?\\]?"  ; name
           "\\>")
   "Matches jsdoc tags with optional type and optional param name.")
 
