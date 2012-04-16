@@ -9984,10 +9984,11 @@ returns nil."
 (defun js2-indent-in-array-comp (parse-status)
   "Return non-nil if we think we're in an array comprehension.
 In particular, return the buffer position of the first `for' kwd."
-  (let ((end (point)))
-    (when (nth 1 parse-status)
+  (let ((bracket (nth 1 parse-status))
+        (end (point)))
+    (when bracket
       (save-excursion
-        (goto-char (nth 1 parse-status))
+        (goto-char bracket)
         (when (looking-at "\\[")
           (forward-char 1)
           (js2-forward-sws)
@@ -10001,7 +10002,9 @@ In particular, return the buffer position of the first `for' kwd."
             ;; to skip arbitrary expressions we need the parser,
             ;; so we'll just guess at it.
             (if (and (> end (point)) ; not empty literal
-                     (re-search-forward "[^,]]* \\(for\\) " end t))
+                     (re-search-forward "[^,]]* \\(for\\) " end t)
+                     ;; not inside a string literal
+                     (not (nth 3 (parse-partial-sexp bracket (point)))))
                 (match-beginning 1))))))))
 
 (defun js2-array-comp-indentation (parse-status for-kwd)
