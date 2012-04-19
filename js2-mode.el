@@ -10539,7 +10539,7 @@ it to be reparsed when the buffer is selected."
     (with-current-buffer buffer
       (add-hook 'window-configuration-change-hook
                 #'js2-mode-idle-reparse-inner
-                t))))
+                nil t))))
 
 (defun js2-mode-idle-reparse-inner ()
   (remove-hook 'window-configuration-change-hook
