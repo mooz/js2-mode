@@ -4460,7 +4460,7 @@ Returns nil if no applicable child is found."
         result
         fn
         (continue t))
-    (setq fn (if after '> '<))
+    (setq fn (if after '>= '<))
     (while (and kids continue)
       (setq kid (car kids))
       (if (funcall fn (+ beg (js2-node-pos kid)) pos)
@@ -11536,29 +11536,45 @@ Parent is defined as the enclosing script or function."
     (when (setq sib (js2-node-find-child-before (point) parent))
       (goto-char (js2-node-abs-pos sib)))))
 
-(defun js2-beginning-of-defun ()
-  "Go to line on which current function starts, and return non-nil.
-If we're not in a function, go to beginning of previous script-level element."
-  (interactive)
-  (let ((parent (js2-node-parent-script-or-fn (js2-node-at-point)))
-        pos sib)
-    (cond
-     ((and (js2-function-node-p parent)
-           (not (eq (point) (setq pos (js2-node-abs-pos parent)))))
-      (goto-char pos))
-     (t
-      (js2-mode-backward-sibling)))))
+(defun js2-beginning-of-defun (&optional arg)
+  "Go to line on which current function starts, and return t on success.
+If we're not in a function or already at the beginning of one, go
+to beginning of previous script-level element.
+With ARG N, do that N times. If N is negative, move forward."
+  (setq arg (or arg 1))
+  (if (plusp arg)
+      (let ((parent (js2-node-parent-script-or-fn (js2-node-at-point))))
+        (when (cond
+               ((js2-function-node-p parent)
+                (goto-char (js2-node-abs-pos parent)))
+               (t
+                (js2-mode-backward-sibling)))
+          (if (> arg 1)
+              (js2-beginning-of-defun (1- arg))
+            t)))
+    (when (js2-end-of-defun)
+      (if (>= arg -1)
+          (js2-beginning-of-defun 1)
+        (js2-beginning-of-defun (1+ arg))))))
 
 (defun js2-end-of-defun ()
-  "Go to the char after the last position of the current function.
-If we're not in a function, skips over the next script-level element."
-  (interactive)
-  (let ((parent (js2-node-parent-script-or-fn (js2-node-at-point))))
-    (if (not (js2-function-node-p parent))
-        ;; punt:  skip over next script-level element beyond point
-        (js2-mode-forward-sibling)
-      (goto-char (+ 1 (+ (js2-node-abs-pos parent)
-                         (js2-node-len parent)))))))
+  "Go to the char after the last position of the current function
+or script-level element."
+  (let* ((node (js2-node-at-point))
+         (parent (or (and (js2-function-node-p node) node)
+                     (js2-node-parent-script-or-fn node)))
+         script)
+    (unless (js2-function-node-p parent)
+      ;; use current script-level node, or, if none, the next one
+      (setq script (or parent node))
+      (setq parent (js2-node-find-child-before (point) script))
+      (when (or (null parent)
+                (>= (point) (+ (js2-node-abs-pos parent)
+                               (js2-node-len parent))))
+        (setq parent (js2-node-find-child-after (point) script))))
+    (when parent
+      (goto-char (+ (js2-node-abs-pos parent)
+                    (js2-node-len parent))))))
 
 (defun js2-mark-defun (&optional allow-extend)
   "Put mark at end of this function, point at beginning.
