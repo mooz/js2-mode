@@ -3648,8 +3648,9 @@ as opposed to required parens such as those enclosing an if-conditional."
       (js2-print-ast l 0))
     (when filter
       (insert " if (")
-      (js2-print-ast filter 0))
-    (insert ")]")))
+      (js2-print-ast filter 0)
+      (insert ")"))
+    (insert "]")))
 
 (defstruct (js2-array-comp-loop-node
             (:include js2-for-in-node)
@@ -3671,7 +3672,9 @@ as opposed to required parens such as those enclosing an if-conditional."
   (js2-visit-ast (js2-array-comp-loop-node-object n) v))
 
 (defun js2-print-array-comp-loop (n i)
-  (insert "for (")
+  (insert "for ")
+  (when (js2-array-comp-loop-node-foreach-p n) (insert "each "))
+  (insert "(")
   (js2-print-ast (js2-array-comp-loop-node-iterator n) 0)
   (insert " in ")
   (js2-print-ast (js2-array-comp-loop-node-object n) 0)
