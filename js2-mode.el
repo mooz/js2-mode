@@ -3015,7 +3015,7 @@ declarations, the node begins at the position of the first child."
     (insert pad)
     (insert (cond
              ((= tt js2-VAR) "var ")
-             ((= tt js2-LET) "")  ; handled by parent let-{expr/stmt}
+             ((= tt js2-LET) "let ")
              ((= tt js2-CONST) "const ")
              (t
               (error "malformed var-decl node"))))
