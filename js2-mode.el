@@ -4549,7 +4549,7 @@ If NODE is the ast-root, returns nil."
         for arg in args
         for count from 1
         do
-        (js2-print-ast arg 0)
+        (when arg (js2-print-ast arg 0))
         (if (< count len)
             (insert (or delimiter ", ")))))
 
