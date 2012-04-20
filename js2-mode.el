@@ -1,4 +1,4 @@
-;;; js2-mode.el --- an improved JavaScript editing mode
+;;; js2-mode.el --- Improved JavaScript editing mode
 
 ;; Copyright (C) 2009, 2012  Free Software Foundation, Inc.
 
@@ -193,7 +193,7 @@ variable with predicate PRED."
 
 (defcustom js2-highlight-level 2
   "Amount of syntax highlighting to perform.
-0 or a negative value means do no highlighting.
+0 or a negative value means none.
 1 adds basic syntax highlighting.
 2 adds highlighting of some Ecma built-in properties.
 3 adds highlighting of many Ecma built-in functions."
@@ -1032,7 +1032,7 @@ callback to `js2-mode-wait-for-parse', and your callback will be
 called after the new parse tree is built.  This can take some time
 in large files.")
 
-(defface js2-warning-face
+(defface js2-warning
   `((((class color) (background light))
      (:underline  "orange"))
     (((class color) (background dark))
@@ -1041,7 +1041,7 @@ in large files.")
   "Face for JavaScript warnings."
   :group 'js2-mode)
 
-(defface js2-error-face
+(defface js2-error
   `((((class color) (background light))
      (:foreground "red"))
     (((class color) (background dark))
@@ -1050,45 +1050,45 @@ in large files.")
   "Face for JavaScript errors."
   :group 'js2-mode)
 
-(defface js2-jsdoc-tag-face
+(defface js2-jsdoc-tag
   '((t :foreground "SlateGray"))
   "Face used to highlight @whatever tags in jsdoc comments."
   :group 'js2-mode)
 
-(defface js2-jsdoc-type-face
+(defface js2-jsdoc-type
   '((t :foreground "SteelBlue"))
   "Face used to highlight {FooBar} types in jsdoc comments."
   :group 'js2-mode)
 
-(defface js2-jsdoc-value-face
+(defface js2-jsdoc-value
   '((t :foreground "PeachPuff3"))
   "Face used to highlight tag values in jsdoc comments."
   :group 'js2-mode)
 
-(defface js2-function-param-face
+(defface js2-function-param
   '((t :foreground "SeaGreen"))
   "Face used to highlight function parameters in javascript."
   :group 'js2-mode)
 
-(defface js2-instance-member-face
+(defface js2-instance-member
   '((t :foreground "DarkOrchid"))
   "Face used to highlight instance variables in javascript.
 Not currently used."
   :group 'js2-mode)
 
-(defface js2-private-member-face
+(defface js2-private-member
   '((t :foreground "PeachPuff3"))
   "Face used to highlight calls to private methods in javascript.
 Not currently used."
   :group 'js2-mode)
 
-(defface js2-private-function-call-face
+(defface js2-private-function-call
   '((t :foreground "goldenrod"))
   "Face used to highlight calls to private functions in javascript.
 Not currently used."
   :group 'js2-mode)
 
-(defface js2-jsdoc-html-tag-name-face
+(defface js2-jsdoc-html-tag-name
   '((((class color) (min-colors 88) (background light))
      (:foreground "rosybrown"))
     (((class color) (min-colors 8) (background dark))
@@ -1098,7 +1098,7 @@ Not currently used."
     "Face used to highlight jsdoc html tag names"
   :group 'js2-mode)
 
-(defface js2-jsdoc-html-tag-delimiter-face
+(defface js2-jsdoc-html-tag-delimiter
   '((((class color) (min-colors 88) (background light))
      (:foreground "dark khaki"))
     (((class color) (min-colors 8) (background dark))
@@ -1116,7 +1116,7 @@ declarations to `js2-recorded-identifiers', which see."
   :type 'list
   :group 'js2-mode)
 
-(defface js2-external-variable-face
+(defface js2-external-variable
   '((t :foreground "orange"))
   "Face used to highlight undeclared variable identifiers.
 An undeclared variable is any variable not declared with var or let
@@ -4510,13 +4510,6 @@ If NODE is the ast-root, returns nil."
                            (js2-node-parent-script-or-fn
                             (js2-node-parent-script-or-fn node))))))
 
-(defun js2-function-param-node-p (node)
-  "Return non-nil if NODE is a param node of a `js2-function-node'."
-  (let ((parent (js2-node-parent node)))
-    (and parent
-         (js2-function-node-p parent)
-         (memq node (js2-function-node-params parent)))))
-
 (defun js2-mode-shift-kids (kids start offset)
   (dolist (kid kids)
     (if (> (js2-node-pos kid) start)
@@ -6404,21 +6397,21 @@ of a simple name.  Called before EXPR has a parent node."
 (defun js2-jsdoc-highlight-helper ()
   (js2-set-face (match-beginning 1)
                 (match-end 1)
-                'js2-jsdoc-tag-face)
+                'js2-jsdoc-tag)
   (if (match-beginning 2)
       (if (save-excursion
             (goto-char (match-beginning 2))
             (= (char-after) ?{))
           (js2-set-face (1+ (match-beginning 2))
                         (1- (match-end 2))
-                        'js2-jsdoc-type-face)
+                        'js2-jsdoc-type)
         (js2-set-face (match-beginning 2)
                       (match-end 2)
-                      'js2-jsdoc-value-face)))
+                      'js2-jsdoc-value)))
   (if (match-beginning 3)
       (js2-set-face (match-beginning 3)
                     (match-end 3)
-                    'js2-jsdoc-value-face)))
+                    'js2-jsdoc-value)))
 
 (defun js2-highlight-jsdoc (ast)
   "Highlight doc comment tags."
@@ -6445,13 +6438,13 @@ of a simple name.  Called before EXPR has a parent node."
             (while (re-search-forward js2-jsdoc-html-tag-regexp nil t)
               (js2-set-face (match-beginning 1)
                             (match-end 1)
-                            'js2-jsdoc-html-tag-delimiter-face)
+                            'js2-jsdoc-html-tag-delimiter)
               (js2-set-face (match-beginning 2)
                             (match-end 2)
-                            'js2-jsdoc-html-tag-name-face)
+                            'js2-jsdoc-html-tag-name)
               (js2-set-face (match-beginning 3)
                             (match-end 3)
-                            'js2-jsdoc-html-tag-delimiter-face))))))))
+                            'js2-jsdoc-html-tag-delimiter))))))))
 
 (defun js2-highlight-assign-targets (node left right)
   "Highlight function properties and external variables."
@@ -6496,7 +6489,7 @@ it is considered declared."
                     (member name js2-default-externs)
                     (member name js2-additional-externs)
                     (js2-get-defining-scope scope name))
-          (js2-set-face pos end 'js2-external-variable-face 'record)
+          (js2-set-face pos end 'js2-external-variable 'record)
           (js2-record-text-property pos end 'help-echo "Undeclared variable")
           (js2-record-text-property pos end 'point-entered #'js2-echo-help))))
     (setq js2-recorded-identifiers nil)))
@@ -6959,7 +6952,7 @@ The flags, if any, are saved in `js2-current-flagged-token'."
       (when js2-parse-ide-mode
         (cond
          ((minusp tt)
-          (js2-record-face 'js2-error-face))
+          (js2-record-face 'js2-error))
          ((setq face (aref js2-kwd-tokens tt))
           (js2-record-face face))
          ((and (= tt js2-NAME)
@@ -7279,12 +7272,12 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
               (setq param (js2-parse-primary-expr-lhs))
               (js2-define-destruct-symbols param
                                            js2-LP
-                                           'js2-function-param-face)
+                                           'js2-function-param)
               (push param params))
              ;; simple name
              (t
               (js2-must-match js2-NAME "msg.no.parm")
-              (js2-record-face 'js2-function-param-face)
+              (js2-record-face 'js2-function-param)
               (setq param (js2-create-name-node))
               (js2-define-symbol js2-LP js2-ts-string param)
               (push param params)))
@@ -10449,7 +10442,7 @@ Defaults to point."
   "Highlight syntax errors."
   (when js2-mode-show-parse-errors
     (dolist (e (js2-ast-root-errors js2-mode-ast))
-      (js2-mode-show-warn-or-err e 'js2-error-face))))
+      (js2-mode-show-warn-or-err e 'js2-error))))
 
 (defun js2-mode-remove-suppressed-warnings ()
   "Take suppressed warnings out of the AST warnings list.
@@ -10483,7 +10476,7 @@ This ensures that the counts and `next-error' are correct."
   "Highlight strict-mode warnings."
   (when js2-mode-show-strict-warnings
     (dolist (e (js2-ast-root-warnings js2-mode-ast))
-      (js2-mode-show-warn-or-err e 'js2-warning-face))))
+      (js2-mode-show-warn-or-err e 'js2-warning))))
 
 (defun js2-echo-error (old-point new-point)
   "Called by point-motion hooks."
