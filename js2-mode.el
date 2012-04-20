@@ -9610,12 +9610,13 @@ and comments have been removed."
   (save-excursion
     (back-to-indentation)
     (or (js2-looking-at-operator-p)
-        (when (js2-re-search-backward "\n" nil t)  ;; comment
+        (when (js2-re-search-backward "\n" nil t)  ;; skip comments
           (skip-chars-backward " \t")
-          (backward-char)
-          (when (js2-looking-at-operator-p)
+          (unless (bolp) ;; previous line is empty
             (backward-char)
-            (not (looking-at "\\*\\|++\\|--\\|/[/*]")))))))
+            (when (js2-looking-at-operator-p)
+              (backward-char)
+              (not (looking-at "\\*\\|++\\|--\\|/[/*]"))))))))
 
 (defun js2-end-of-do-while-loop-p ()
   "Return non-nil if word after point is `while' of a do-while
