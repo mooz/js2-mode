@@ -10110,6 +10110,7 @@ If so, we don't ever want to use bounce-indent."
     map)
   "Keymap used when `js2-minor-mode' is active.")
 
+;;;###autoload
 (define-minor-mode js2-minor-mode
   "Minor mode for running js2 as a background linter.
 This allows you to use a different major mode for JavaScript editing,
