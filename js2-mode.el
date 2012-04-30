@@ -1116,17 +1116,12 @@ declarations to `js2-recorded-identifiers', which see."
   :type 'list
   :group 'js2-mode)
 
-(defface js2-external-variable
-  '((t :foreground "orange"))
-  "Face used to highlight undeclared variable identifiers.
+(defcustom js2-highlight-external-variables t
+  "Non-nil to highlight undeclared variable identifiers.
 An undeclared variable is any variable not declared with var or let
 in the current scope or any lexically enclosing scope.  If you use
 such a variable, then you are either expecting it to originate from
 another file, or you've got a potential bug."
-  :group 'js2-mode)
-
-(defcustom js2-highlight-external-variables t
-  "Non-nil to highlight undeclared variable identifiers."
   :type 'boolean
   :group 'js2-mode)
 
@@ -6492,9 +6487,7 @@ it is considered declared."
                     (member name js2-default-externs)
                     (member name js2-additional-externs)
                     (js2-get-defining-scope scope name))
-          (js2-set-face pos end 'js2-external-variable 'record)
-          (js2-record-text-property pos end 'help-echo "Undeclared variable")
-          (js2-record-text-property pos end 'point-entered #'js2-echo-help))))
+          (js2-report-warning "Undeclared variable" nil pos (- end pos)))))
     (setq js2-recorded-identifiers nil)))
 
 ;;; IMenu support
