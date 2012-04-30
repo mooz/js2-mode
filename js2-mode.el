@@ -10131,8 +10131,8 @@ highlighting features of `js2-mode'."
             (* js2-idle-timer-delay
                (/ (point-max) js2-dynamic-idle-timer-adjust))))
   (setq js2-mode-buffer-dirty-p t
-        js2-mode-parsing nil
-        js2-highlight-level 0)  ; no syntax highlighting
+        js2-mode-parsing nil)
+  (set (make-local-variable 'js2-highlight-level) 0) ; no syntax highlighting
   (add-hook 'after-change-functions #'js2-minor-mode-edit nil t)
   (add-hook 'change-major-mode-hook #'js2-minor-mode-exit nil t)
   (js2-reparse))
