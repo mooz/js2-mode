@@ -234,27 +234,24 @@ js2-mode also binds `js2-bounce-indent-backwards' to Shift-Tab."
   :type 'boolean
   :group 'js2-mode)
 
-(defcustom js2-consistent-level-indent-inner-bracket-p t
-  "Non-nil to make indentation level inner bracket consistent,
-regardless of the beginning bracket position."
-  :group 'js2-mode
-  :type 'boolean)
-(js2-mark-safe-local 'js2-consistent-level-indent-inner-bracket-p 'booleanp)
+(defcustom js2-pretty-multiline-declarations t
+  "Non-nil to line up multiline declarations vertically:
 
-(defcustom js2-pretty-multiline-decl-indentation-p t
-  "Non-nil to line up multiline declarations vertically. See the
-function `js2-multiline-decl-indentation' for details."
-  :group 'js2-mode
-  :type 'boolean)
-(js2-mark-safe-local 'js2-pretty-multiline-decl-indentation-p 'booleanp)
+  var a = 10,
+      b = 20,
+      c = 30;
 
-(defcustom js2-always-indent-assigned-expr-in-decls-p nil
-  "If both `js2-pretty-multiline-decl-indentation-p' and this are non-nil,
-always additionally indent function expression or array/object literal
-assigned in a declaration, even when only one var is declared."
+If the value is not `all', and the first assigned value in
+declaration is a function/array/object literal spanning several
+lines, it won't be indented additionally:
+
+  var o = {                   var bar = 2,
+    foo: 3          vs.           o = {
+  },                                foo: 3
+      bar = 2;                    };"
   :group 'js2-mode
-  :type 'boolean)
-(js2-mark-safe-local 'js2-always-indent-assigned-expr-in-decls-p 'booleanp)
+  :type 'symbol)
+(js2-mark-safe-local 'js2-pretty-multiline-declarations 'symbolp)
 
 (defcustom js2-indent-on-enter-key nil
   "Non-nil to have Enter/Return key indent the line.
@@ -9911,22 +9908,8 @@ indented to the same column as the current line."
 
 (defun js2-multiline-decl-indentation ()
   "Returns the declaration indentation column if the current line belongs
-to a multiline declaration statement.  All declarations are lined up vertically:
-
-var a = 10,
-    b = 20,
-    c = 30;
-
-Note that if `js2-always-indent-assigned-expr-in-decls-p' is nil, and the first
-assigned expression is a function or array/object literal, it will be indented
-differently:
-
-var o = {                               var bar = 2,
-  foo: 3                                    o = {
-},                                            foo: 3
-    bar = 2;                                };
-"
-  (let (forward-sexp-function ; use lisp version
+to a multiline declaration statement.  See `js2-pretty-multiline-declarations'."
+  (let (forward-sexp-function ; use Lisp version
         at-opening-bracket)
     (save-excursion
       (back-to-indentation)
@@ -10022,7 +10005,7 @@ In particular, return the buffer position of the first `for' kwd."
     (let ((ctrl-stmt-indent (js2-ctrl-statement-indentation))
           (same-indent-p (looking-at "[]})]\\|\\<case\\>\\|\\<default\\>"))
           (continued-expr-p (js2-continued-expression-p))
-          (declaration-indent (and js2-pretty-multiline-decl-indentation-p
+          (declaration-indent (and js2-pretty-multiline-declarations
                                    (js2-multiline-decl-indentation)))
           (bracket (nth 1 parse-status))
           beg)
@@ -10048,25 +10031,19 @@ In particular, return the buffer position of the first `for' kwd."
         (goto-char bracket)
         (cond
          ((looking-at "[({[][ \t]*\\(/[/*]\\|$\\)")
-          (let ((p (parse-partial-sexp (point-at-bol) (point))))
-            (when (save-excursion (skip-chars-backward " \t)")
-                                  (looking-at ")"))
-              (backward-list))
-            (if (and (nth 1 p)
-                     (not js2-consistent-level-indent-inner-bracket-p))
-                (progn (goto-char (1+ (nth 1 p)))
-                       (skip-chars-forward " \t"))
-              (back-to-indentation)
-              (when (and js2-pretty-multiline-decl-indentation-p
-                         js2-always-indent-assigned-expr-in-decls-p
-                         (looking-at js2-declaration-keyword-re))
-                (goto-char (1+ (match-end 0)))))
-            (cond (same-indent-p
-                   (current-column))
-                  (continued-expr-p
-                   (+ (current-column) (* 2 js2-basic-offset)))
-                  (t
-                   (+ (current-column) js2-basic-offset)))))
+          (when (save-excursion (skip-chars-backward " \t)")
+                                (looking-at ")"))
+            (backward-list))
+          (back-to-indentation)
+          (and (eq js2-pretty-multiline-declarations 'all)
+               (looking-at js2-declaration-keyword-re)
+               (goto-char (1+ (match-end 0))))
+          (cond (same-indent-p
+                 (current-column))
+                (continued-expr-p
+                 (+ (current-column) (* 2 js2-basic-offset)))
+                (t
+                 (+ (current-column) js2-basic-offset))))
          (t
           (unless same-indent-p
             (forward-char)
