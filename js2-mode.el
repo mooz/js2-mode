@@ -1720,6 +1720,9 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.assn.create.strict"
          "Assignment to undeclared variable %s")
 
+(js2-msg "msg.undeclared.variable"  ; added by js2-mode
+         "Undeclared variable or function '%s'")
+
 (js2-msg "msg.ref.undefined.prop"
          "Reference to undefined property '%s'")
 
@@ -6487,7 +6490,7 @@ it is considered declared."
                     (member name js2-default-externs)
                     (member name js2-additional-externs)
                     (js2-get-defining-scope scope name))
-          (js2-report-warning "Undeclared variable" nil pos (- end pos)))))
+          (js2-report-warning "msg.undeclared.variable" name pos (- end pos)))))
     (setq js2-recorded-identifiers nil)))
 
 ;;; IMenu support
