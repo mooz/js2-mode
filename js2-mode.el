@@ -10482,9 +10482,9 @@ This ensures that the counts and `next-error' are correct."
 (defun js2-echo-error (old-point new-point)
   "Called by point-motion hooks."
   (let ((msg (get-text-property new-point 'help-echo)))
-    (if (and msg (or (not (current-message))
-                     (string= (current-message) "Quit")))
-        (message msg))))
+    (when (and (stringp msg) (or (not (current-message))
+                                 (string= (current-message) "Quit")))
+      (message msg))))
 
 (defalias #'js2-echo-help #'js2-echo-error)
 
