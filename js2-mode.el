@@ -10151,22 +10151,116 @@ highlighting features of `js2-mode'."
   (js2-remove-overlays)
   (setq js2-mode-ast nil))
 
-(defun js2-display-error-list ()
+(defvar js2-source-buffer nil "Linked source buffer for diagnostics view")
+(make-variable-buffer-local 'js2-source-buffer)
+
+(defun* js2-display-error-list ()
   "Display a navigable buffer listing parse errors/warnings."
   (interactive)
-  (if (not (js2-have-errors-p))
-      (message "No errors")
-    (let ((srcbuf (current-buffer))
-          (errbuf (get-buffer-create "*js-lint*"))
-          (errs (js2-errors-and-warnings)))
-      (setq errs (sort errs (lambda (e1 e2)
-                              (funcall '< (second e1) (second e2)))))
+  (unless (js2-have-errors-p)
+    (message "No errors")
+    (return-from js2-display-error-list))
+  (labels ((annotate-list
+            (lst type)
+            "Add diagnostic TYPE and line number to errs list"
+            (mapcar (lambda (err)
+                      (append err (list type
+                                        (line-number-at-pos (nth 1 err)))))
+                    lst)))
+    (let* ((srcbuf (current-buffer))
+           (errbuf (get-buffer-create "*js-lint*"))
+           (errors (annotate-list
+                    (when js2-mode-ast (js2-ast-root-errors js2-mode-ast))
+                    'js2-error))  ; must be a valid face name
+           (warnings (annotate-list
+                      (when js2-mode-ast (js2-ast-root-warnings js2-mode-ast))
+                      'js2-warning))  ; must be a valid face name
+           (all-errs (sort (append errors warnings)
+                           (lambda (e1 e2)
+                             (funcall '< (nth 1 e1) (nth 1 e2))))))
       (with-current-buffer errbuf
         (let ((inhibit-read-only t))
           (erase-buffer)
-          (dolist (err errs)
-            (insert (format "%s\n" err)))
-          (pop-to-buffer errbuf))))))
+          (dolist (err all-errs)
+            (destructuring-bind (msg-key beg end type line) err
+              (insert-text-button
+               (format "line %d: %s" line (js2-get-msg msg-key))
+               'face type
+               'follow-link "\C-m"
+               'action 'js2-error-buffer-jump
+               'js2-msg (js2-get-msg msg-key)
+               'js2-pos beg)
+              (insert "\n"))))
+        (js2-error-buffer-mode)
+        (setq js2-source-buffer srcbuf)
+        (pop-to-buffer errbuf)
+        (goto-char (point-min))
+        (unless (eobp)
+          (js2-error-buffer-view))))))
+
+(defvar js2-error-buffer-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "n" #'js2-error-buffer-next)
+    (define-key map "p" #'js2-error-buffer-prev)
+    (define-key map (kbd "RET") #'js2-error-buffer-jump)
+    (define-key map "o" #'js2-error-buffer-view)
+    (define-key map "q" #'js2-error-buffer-quit)
+    map)
+  "Keymap used for js2 diagnostics buffers.")
+
+(defun js2-error-buffer-mode ()
+  "Major mode for js2 diagnostics buffers.
+Selecting an error will jump it to the corresponding source-buffer error.
+\\{js2-error-buffer-mode-map}"
+  (interactive)
+  (setq major-mode 'js2-error-buffer-mode
+        mode-name "JS Lint Diagnostics")
+  (use-local-map js2-error-buffer-mode-map)
+  (setq truncate-lines t)
+  (set-buffer-modified-p nil)
+  (setq buffer-read-only t)
+  (run-hooks 'js2-error-buffer-mode-hook))
+
+(defun js2-error-buffer-next ()
+  "Move to next error and view it."
+  (interactive)
+  (when (zerop (forward-line 1))
+    (js2-error-buffer-view)))
+
+(defun js2-error-buffer-prev ()
+  "Move to previous error and view it."
+  (interactive)
+  (when (zerop (forward-line -1))
+    (js2-error-buffer-view)))
+
+(defun js2-error-buffer-quit ()
+  "Kill the current buffer."
+  (interactive)
+  (kill-buffer))
+
+(defun js2-error-buffer-jump (&rest ignored)
+  "Jump cursor to current error in source buffer."
+  (interactive)
+  (when (js2-error-buffer-view)
+    (pop-to-buffer js2-source-buffer)))
+
+(defun js2-error-buffer-view ()
+  "Scroll source buffer to show error at current line."
+  (interactive)
+  (cond
+   ((not (eq major-mode 'js2-error-buffer-mode))
+    (message "Not in a js2 errors buffer"))
+   ((not (buffer-live-p js2-source-buffer))
+    (message "Source buffer has been killed"))
+   ((not (wholenump (get-text-property (point) 'js2-pos)))
+    (message "There does not seem to be an error here"))
+   (t
+    (let ((pos (get-text-property (point) 'js2-pos))
+          (msg (get-text-property (point) 'js2-msg)))
+      (save-selected-window
+        (pop-to-buffer js2-source-buffer)
+        (goto-char pos)
+        (message msg))))))
 
 ;;;###autoload
 (define-derived-mode js2-mode prog-mode "Javascript-IDE"
@@ -10988,10 +11082,12 @@ move backward across N balanced expressions."
   (or (js2-errors) (js2-warnings)))
 
 (defun js2-errors-and-warnings ()
-  "Return a copy of the concatenated errors and warnings lists."
-  (and js2-mode-ast
-       (append (js2-ast-root-errors js2-mode-ast)
-               (copy-sequence (js2-ast-root-warnings js2-mode-ast)))))
+  "Return a copy of the concatenated errors and warnings lists.
+They are appended:  first the errors, then the warnings.
+Entries are of the form (MSG BEG END)."
+  (when js2-mode-ast
+    (append (js2-ast-root-errors js2-mode-ast)
+            (copy-sequence (js2-ast-root-warnings js2-mode-ast)))))
 
 (defun js2-next-error (&optional arg reset)
   "Move to next parse error.
