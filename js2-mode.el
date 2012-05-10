@@ -10003,8 +10003,9 @@ In particular, return the buffer position of the first `for' kwd."
             ;; so we'll just guess at it.
             (if (and (> end (point)) ; not empty literal
                      (re-search-forward "[^,]]* \\(for\\) " end t)
-                     ;; not inside a string literal
-                     (not (nth 3 (parse-partial-sexp bracket (point)))))
+                     ;; not inside comment or string literal
+                     (let ((state (parse-partial-sexp bracket (point))))
+                       (not (or (nth 3 state) (nth 4 state)))))
                 (match-beginning 1))))))))
 
 (defun js2-array-comp-indentation (parse-status for-kwd)
@@ -10033,6 +10034,7 @@ In particular, return the buffer position of the first `for' kwd."
       (cond
        ;; indent array comprehension continuation lines specially
        ((and bracket
+             (>= js2-language-version 170)
              (not (js2-same-line bracket))
              (setq beg (js2-indent-in-array-comp parse-status))
              (>= (point) (save-excursion
