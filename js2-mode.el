@@ -6875,7 +6875,7 @@ we append the property name to QNAME, then call `js2-record-imenu-entry'."
                                      (+ pos (js2-node-pos right)))))))))
 
 (defun js2-record-assign-functions (init target)
-  "Record the functions involved in the assigment for imenu.
+  "Record the functions involved in the assignment for imenu.
 TARGET is the target node, INIT is the value node."
   (cond
    ((or (js2-object-node-p init)
