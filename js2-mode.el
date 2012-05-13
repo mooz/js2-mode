@@ -305,6 +305,12 @@ If `js2-dynamic-idle-timer-adjust' is 0 or negative,
   :type 'boolean
   :group 'js2-mode)
 
+(defcustom js2-concat-multiline-strings t
+  "Non-nil to automatically turn a newline in mid-string
+into a string concatenation."
+  :type 'boolean
+  :group 'js2-mode)
+
 (defcustom js2-mode-squeeze-spaces t
   "Non-nil to normalize whitespace when filling in comments.
 Multiple runs of spaces are converted to a single space."
@@ -10760,7 +10766,9 @@ This ensures that the counts and `next-error' are correct."
     (cond
      ;; check if we're inside a string
      ((nth 3 parse-status)
-      (js2-mode-split-string parse-status))
+      (if js2-concat-multiline-strings
+          (js2-mode-split-string parse-status)
+        (insert "\n")))
      ;; check if inside a block comment
      ((nth 4 parse-status)
       (js2-mode-extend-comment))
