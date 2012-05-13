@@ -6874,6 +6874,34 @@ we append the property name to QNAME, then call `js2-record-imenu-entry'."
                                      (append qname (list (js2-infix-node-left e)))
                                      (+ pos (js2-node-pos right)))))))))
 
+(defun js2-record-assign-functions (init target)
+  "Record the functions involved in the assigment for imenu.
+TARGET is the target node, INIT is the value node."
+  (cond
+   ((or (js2-object-node-p init)
+        (js2-function-node-p init))
+    (js2-record-imenu-functions init target))
+   ((js2-call-node-p init)
+    ;; Module pattern: var foobs = (function(a) {return {fib: fun...}})(b);
+    ;; We record the returned hash as belonging to the named module, and prefix
+    ;; any functions defined inside IIFE with the module name.
+    (let ((callt (js2-call-node-target init)))
+      ;; Just basic call form: (function() {...})();
+      ;; TODO: Handle variations without duplicating `js2-wrapper-function-p'?
+      (when (and (js2-paren-node-p callt)
+                 (js2-function-node-p (js2-paren-node-expr callt)))
+        (let* ((fn (js2-paren-node-expr callt))
+               (blk (js2-function-node-body fn))
+               (ret (car (last (js2-block-node-kids blk)))))
+          (when (and (js2-return-node-p ret)
+                     (js2-object-node-p (js2-return-node-retval ret)))
+            ;; TODO: Map function names when revealing module pattern is used.
+            (let ((retval (js2-return-node-retval ret)))
+              (js2-record-object-literal retval
+                                         (js2-compute-nested-prop-get target)
+                                         (js2-node-abs-pos retval)))
+            (js2-record-imenu-functions fn target))))))))
+
 (defsubst js2-node-top-level-decl-p (node)
   "Return t if NODE's name is defined in the top-level scope.
 Also returns t if NODE's name is not defined in any scope, since it implies
@@ -8492,10 +8520,8 @@ Returns the parsed `js2-var-decl-node' expression node."
       (when (js2-match-token js2-ASSIGN)
         (setq init (js2-parse-assign-expr)
               end (js2-node-end init))
-        (if (and js2-parse-ide-mode
-                 (or (js2-object-node-p init)
-                     (js2-function-node-p init)))
-            (js2-record-imenu-functions init name)))
+        (when js2-parse-ide-mode
+          (js2-record-assign-functions init name)))
       (when name
         (js2-set-face nbeg nend (if (js2-function-node-p init)
                                     'font-lock-function-name-face
@@ -8656,9 +8682,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
                                        :right right))
         (when js2-parse-ide-mode
           (js2-highlight-assign-targets pn left right)
-          (if (or (js2-function-node-p right)
-                  (js2-object-node-p right))
-              (js2-record-imenu-functions right left)))
+          (js2-record-assign-functions right left))
         ;; do this last so ide checks above can use absolute positions
         (js2-node-add-children pn left right))
       pn)))
