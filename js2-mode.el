@@ -306,9 +306,10 @@ If `js2-dynamic-idle-timer-adjust' is 0 or negative,
   :group 'js2-mode)
 
 (defcustom js2-concat-multiline-strings t
-  "Non-nil to automatically turn a newline in mid-string
-into a string concatenation."
-  :type 'boolean
+  "Non-nil to automatically turn a newline in mid-string into a
+string concatenation.  When `eol', the '+' will be inserted at the
+end of the line, otherwise, at the beginning of the next line."
+  :type '(choice (const t) (const eol) (const nil))
   :group 'js2-mode)
 
 (defcustom js2-mode-squeeze-spaces t
@@ -10787,6 +10788,7 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
          (quote-char (nth 3 parse-status))
          (quote-string (string quote-char))
          (string-beg (nth 8 parse-status))
+         (at-eol (eq js2-concat-multiline-strings 'eol))
          (indent (save-match-data
                    (or
                     (save-excursion
@@ -10798,9 +10800,15 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
                       (if (looking-back "\\+\\s-+")
                           (goto-char (match-beginning 0)))
                       (current-column))))))
-    (insert quote-char "\n")
+    (insert quote-char)
+    (if at-eol
+        (insert " +\n")
+      (insert "\n"))
+    ;; FIXME: This does not match the behavior of `js2-indent-line'.
     (indent-to indent)
-    (insert "+ " quote-string)
+    (unless at-eol
+      (insert "+ "))
+    (insert quote-string)
     (when (eolp)
       (insert quote-string)
       (backward-char 1))))
