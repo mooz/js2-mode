@@ -6942,9 +6942,9 @@ For instance, processing a nested scope requires a parent function node."
     (dolist (entry entries)
       ;; function node goes first
       (destructuring-bind (current-fn &rest (&whole chain head &rest)) entry
-        ;; examine its defining scope;
-        ;; if top-level/external, keep as-is
-        (if (js2-node-top-level-decl-p head)
+        ;; Examine head's defining scope:
+        ;; Pre-processed chain, or top-level/external, keep as-is.
+        (if (or (stringp head) (js2-node-top-level-decl-p head))
             (push chain result)
           (when (js2-this-node-p head)
             (setq chain (cdr chain))) ; discard this-node
