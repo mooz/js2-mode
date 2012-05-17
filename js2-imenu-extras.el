@@ -109,17 +109,18 @@ in a shared namespace."
   (js2-visit-ast
    root
    (lambda (node end-p)
-     (if (and (js2-object-prop-node-p node)
-              (js2-function-node-p (js2-object-prop-node-right node)))
-         (let ((fn-node (js2-object-prop-node-right node)))
-           (unless (and js2-imenu-function-map
-                        (gethash fn-node js2-imenu-function-map))
-             (let ((key-node (js2-object-prop-node-left node)))
-               (js2-record-imenu-entry fn-node
-                                       (list js2-imenu-other-functions-ns
-                                             (js2-prop-node-name key-node))
-                                       (js2-node-abs-pos key-node))))
-           nil)
-       t))))
+     (unless end-p
+       (if (and (js2-object-prop-node-p node)
+                (js2-function-node-p (js2-object-prop-node-right node)))
+           (let ((fn-node (js2-object-prop-node-right node)))
+             (unless (and js2-imenu-function-map
+                          (gethash fn-node js2-imenu-function-map))
+               (let ((key-node (js2-object-prop-node-left node)))
+                 (js2-record-imenu-entry fn-node
+                                         (list js2-imenu-other-functions-ns
+                                               (js2-prop-node-name key-node))
+                                         (js2-node-abs-pos key-node))))
+             nil)
+         t)))))
 
 (provide 'js2-imenu-extras)
