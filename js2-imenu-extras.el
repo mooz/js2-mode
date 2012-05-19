@@ -1,6 +1,8 @@
 (eval-when-compile
   (require 'cl))
 
+(require 'js2-mode)
+
 (defconst js2-imenu-extension-styles
   `((:framework jquery
      :call-re   "\\_<\\(?:jQuery\\|\\$\\|_\\)\\.extend\\s-*("
@@ -56,15 +58,12 @@ in a shared namespace."
                           (concat "\\(" (plist-get style :call-re) "\\)"))
                         styles "\\|"))
          ;; Dynamic scoping. Ew.
-         (js2-mode-ast root)
-         chains)
+         (js2-mode-ast root))
     (goto-char (point-min))
     (while (js-re-search-forward re nil t)
-      (push (loop for i from 0 to (1- (length styles))
-                  when (match-beginning (1+ i))
-                  return (funcall (plist-get (nth i styles) :recorder)))
-            chains))
-    chains))
+      (loop for i from 0 to (1- (length styles))
+            when (match-beginning (1+ i))
+            return (funcall (plist-get (nth i styles) :recorder))))))
 
 (defun js2-imenu-record-jquery-extend ()
   (let ((pred (lambda (subject)
