@@ -369,14 +369,6 @@ parenthesizing the expression, e.g. if ((a = b)) ..."
   :type 'boolean
   :group 'js2-mode)
 
-(defcustom js2-strict-cond-assign-warning t
-  "Non-nil to warn about expressions like if (a = b).
-This often should have been '==' instead of '='.  If the warning
-is enabled, you can suppress it on a per-expression basis by
-parenthesizing the expression, e.g. if ((a = b)) ..."
-  :type 'boolean
-  :group 'js2-mode)
-
 (defcustom js2-strict-var-redeclaration-warning t
   "Non-nil to warn about redeclaring variables in a script or function."
   :type 'boolean
@@ -10479,7 +10471,7 @@ If so, we don't ever want to use bounce-indent."
   ;; (examples:  doxymacs, column-marker).
   ;; To customize highlighted keywords, use `font-lock-add-keywords'.
   (setq font-lock-defaults '(nil t))
-  
+
   ;; Experiment:  make reparse-delay longer for longer files.
   (if (plusp js2-dynamic-idle-timer-adjust)
       (setq js2-idle-timer-delay
