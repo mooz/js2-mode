@@ -1104,6 +1104,9 @@ Not currently used."
   "Face used to highlight brackets in jsdoc html tags."
   :group 'js2-mode)
 
+(defface js2-external-variable
+  '((t :foreground "orange"))
+  "Face used to highlight undeclared variable identifiers.")
 
 (defcustom js2-post-parse-callbacks nil
   "A list of callback functions invoked after parsing finishes.
@@ -2010,12 +2013,13 @@ Returns nil if element is not found in the list."
                   (current-column))
                 js2-ts-hit-eof))))
 
-(defun js2-report-warning (msg &optional msg-arg pos len)
+(defun js2-report-warning (msg &optional msg-arg pos len face)
   (if js2-compiler-report-warning-as-error
       (js2-report-error msg msg-arg pos len)
     (push (list (list msg msg-arg)
                 (or pos js2-token-beg)
-                (or len (- js2-token-end js2-token-beg)))
+                (or len (- js2-token-end js2-token-beg))
+                face)
           js2-parsed-warnings)))
 
 (defun js2-add-strict-warning (msg-id &optional msg-arg beg end)
@@ -6486,7 +6490,8 @@ it is considered declared."
                     (member name js2-default-externs)
                     (member name js2-additional-externs)
                     (js2-get-defining-scope scope name))
-          (js2-report-warning "msg.undeclared.variable" name pos (- end pos)))))
+          (js2-report-warning "msg.undeclared.variable" name pos (- end pos)
+                              'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
 
 ;;; IMenu support
@@ -10464,7 +10469,8 @@ P1 and P2 are the old and new values of point, respectively."
 
 (defun js2-mode-show-warn-or-err (e face)
   "Highlight a warning or error E with FACE.
-E is a list of ((MSG-KEY MSG-ARG) BEG END)."
+E is a list of ((MSG-KEY MSG-ARG) BEG LEN OVERRIDE-FACE).
+The last element is optional.  When present, use instead of FACE."
   (let* ((key (first e))
          (beg (second e))
          (end (+ beg (third e)))
@@ -10473,7 +10479,7 @@ E is a list of ((MSG-KEY MSG-ARG) BEG END)."
          (end (max (point-min) (min end (point-max))))
          (js2-highlight-level 3)    ; so js2-set-face is sure to fire
          (ovl (make-overlay beg end)))
-    (overlay-put ovl 'font-lock-face face)
+    (overlay-put ovl 'font-lock-face (or (fourth e) face))
     (overlay-put ovl 'js2-error t)
     (put-text-property beg end 'help-echo (js2-get-msg key))
     (put-text-property beg end 'point-entered #'js2-echo-error)))
