@@ -7182,8 +7182,9 @@ Scanner should be initialized."
     (setf (js2-node-len root) (- end pos))
     ;; Give extensions a chance to muck with things before highlighting starts.
     (let ((js2-additional-externs js2-additional-externs))
-      (dolist (callback js2-post-parse-callbacks)
-        (funcall callback))
+      (save-excursion
+        (dolist (callback js2-post-parse-callbacks)
+          (funcall callback)))
       (js2-highlight-undeclared-vars))
     root))
 
