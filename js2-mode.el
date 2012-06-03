@@ -289,6 +289,13 @@ If `js2-dynamic-idle-timer-adjust' is 0 or negative,
   :type 'boolean
   :group 'js2-mode)
 
+(defcustom js2-concat-multiline-strings t
+  "Non-nil to automatically turn a newline in mid-string into a
+string concatenation.  When `eol', the '+' will be inserted at the
+end of the line, otherwise, at the beginning of the next line."
+  :type '(choice (const t) (const eol) (const nil))
+  :group 'js2-mode)
+
 (defcustom js2-mode-squeeze-spaces t
   "Non-nil to normalize whitespace when filling in comments.
 Multiple runs of spaces are converted to a single space."
@@ -335,14 +342,6 @@ by setting this variable to t."
 It's perfectly legal to have a `return' and a `return foo' in the
 same function, but it's often an indicator of a bug, and it also
 interferes with type inference (in systems that support it.)"
-  :type 'boolean
-  :group 'js2-mode)
-
-(defcustom js2-strict-cond-assign-warning t
-  "Non-nil to warn about expressions like if (a = b).
-This often should have been '==' instead of '='.  If the warning
-is enabled, you can suppress it on a per-expression basis by
-parenthesizing the expression, e.g. if ((a = b)) ..."
   :type 'boolean
   :group 'js2-mode)
 
@@ -6605,7 +6604,8 @@ the parent function, look up its qname, then prepend a copy of it to the chain."
 (defun js2-record-imenu-functions (node &optional var)
   "Record function definitions for imenu.
 NODE is a function node or an object literal.
-VAR, if non-nil, is the expression that NODE is being assigned to."
+VAR, if non-nil, is the expression that NODE is being assigned to.
+When passed arguments of wrong type, does nothing."
   (when js2-parse-ide-mode
     (let ((fun-p (js2-function-node-p node))
           qname left fname-node pos)
@@ -6721,9 +6721,9 @@ For instance, processing a nested scope requires a parent function node."
     (dolist (entry entries)
       ;; function node goes first
       (destructuring-bind (current-fn &rest (&whole chain head &rest)) entry
-        ;; examine its defining scope;
-        ;; if top-level/external, keep as-is
-        (if (js2-node-top-level-decl-p head)
+        ;; Examine head's defining scope:
+        ;; Pre-processed chain, or top-level/external, keep as-is.
+        (if (or (stringp head) (js2-node-top-level-decl-p head))
             (push chain result)
           (when (js2-this-node-p head)
             (setq chain (cdr chain))) ; discard this-node
@@ -8254,10 +8254,7 @@ Returns the parsed `js2-var-decl-node' expression node."
       (when (js2-match-token js2-ASSIGN)
         (setq init (js2-parse-assign-expr)
               end (js2-node-end init))
-        (if (and js2-parse-ide-mode
-                 (or (js2-object-node-p init)
-                     (js2-function-node-p init)))
-            (js2-record-imenu-functions init name)))
+        (js2-record-imenu-functions init name))
       (when name
         (js2-set-face nbeg nend (if (js2-function-node-p init)
                                     'font-lock-function-name-face
@@ -8415,9 +8412,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
                                        :right right))
         (when js2-parse-ide-mode
           (js2-highlight-assign-targets pn left right)
-          (if (or (js2-function-node-p right)
-                  (js2-object-node-p right))
-              (js2-record-imenu-functions right left)))
+          (js2-record-imenu-functions right left))
         ;; do this last so ide checks above can use absolute positions
         (js2-node-add-children pn left right))
       pn)))
@@ -9705,8 +9700,9 @@ In particular, return the buffer position of the first `for' kwd."
             ;; so we'll just guess at it.
             (if (and (> end (point)) ; not empty literal
                      (re-search-forward "[^,]]* \\(for\\) " end t)
-                     ;; not inside a string literal
-                     (not (nth 3 (parse-partial-sexp bracket (point)))))
+                     ;; not inside comment or string literal
+                     (let ((state (parse-partial-sexp bracket (point))))
+                       (not (or (nth 3 state) (nth 4 state)))))
                 (match-beginning 1))))))))
 
 (defun js2-array-comp-indentation (parse-status for-kwd)
@@ -9735,6 +9731,7 @@ In particular, return the buffer position of the first `for' kwd."
       (cond
        ;; indent array comprehension continuation lines specially
        ((and bracket
+             (>= js2-language-version 170)
              (not (js2-same-line bracket))
              (setq beg (js2-indent-in-array-comp parse-status))
              (>= (point) (save-excursion
@@ -10565,7 +10562,9 @@ This ensures that the counts and `next-error' are correct."
     (cond
      ;; Check if we're inside a string.
      ((nth 3 parse-status)
-      (js2-mode-split-string parse-status))
+      (if js2-concat-multiline-strings
+          (js2-mode-split-string parse-status)
+        (insert "\n")))
      ;; Check if inside a block comment.
      ((nth 4 parse-status)
       (js2-mode-extend-comment))
@@ -10579,6 +10578,7 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
          (quote-char (nth 3 parse-status))
          (quote-string (string quote-char))
          (string-beg (nth 8 parse-status))
+         (at-eol (eq js2-concat-multiline-strings 'eol))
          (indent (or
                   (save-excursion
                     (back-to-indentation)
@@ -10589,9 +10589,15 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
                     (if (looking-back "\\+\\s-+")
                         (goto-char (match-beginning 0)))
                     (current-column)))))
-    (insert quote-char "\n")
+    (insert quote-char)
+    (if at-eol
+        (insert " +\n")
+      (insert "\n"))
+    ;; FIXME: This does not match the behavior of `js2-indent-line'.
     (indent-to indent)
-    (insert "+ " quote-string)
+    (unless at-eol
+      (insert "+ "))
+    (insert quote-string)
     (when (eolp)
       (insert quote-string)
       (backward-char 1))))
