@@ -41,11 +41,23 @@ in a shared namespace."
   :type 'string
   :group 'js2-mode)
 
+(defcustom js2-imenu-show-module-pattern t
+  "Non-nil to recognize the module pattern:
+
+var foobs = (function(a) {
+  return {fib: function() {}, fub: function() {}};
+})(b);
+
+We record the returned hash as belonging to the named module, and
+prefix any functions defined inside the IIFE with the module name."
+  :type 'boolean
+  :group 'js2-mode)
+
 (defun js2-imenu-extras-setup ()
   (when js2-imenu-enabled-frameworks
     (add-to-list 'js2-post-parse-callbacks 'js2-imenu-record-declarations t))
-  (when js2-imenu-show-other-functions
-    (add-to-list 'js2-post-parse-callbacks 'js2-imenu-record-hashes t)))
+  (when (or js2-imenu-show-other-functions js2-imenu-show-module-pattern)
+    (add-to-list 'js2-post-parse-callbacks 'js2-imenu-walk-ast t)))
 
 (declare (special root))
 
@@ -104,22 +116,54 @@ in a shared namespace."
                                      (js2-compute-nested-prop-get subject)
                                      (js2-node-abs-pos methods)))))))
 
-(defun js2-imenu-record-hashes ()
+(defun js2-imenu-walk-ast ()
   (js2-visit-ast
    root
    (lambda (node end-p)
      (unless end-p
-       (if (and (js2-object-prop-node-p node)
-                (js2-function-node-p (js2-object-prop-node-right node)))
-           (let ((fn-node (js2-object-prop-node-right node)))
-             (unless (and js2-imenu-function-map
-                          (gethash fn-node js2-imenu-function-map))
-               (let ((key-node (js2-object-prop-node-left node)))
-                 (js2-record-imenu-entry fn-node
-                                         (list js2-imenu-other-functions-ns
-                                               (js2-prop-node-name key-node))
-                                         (js2-node-abs-pos key-node))))
-             nil)
-         t)))))
+       (cond
+        ((and js2-imenu-show-other-functions
+              (js2-object-prop-node-p node))
+         (js2-imenu-record-orphan-function node))
+        ((and js2-imenu-show-module-pattern
+              (js2-assign-node-p node))
+         (js2-imenu-record-module-pattern node)))
+       t))))
+
+(defun js2-imenu-record-orphan-function (node)
+  "Record orphan function when it's the value of NODE.
+NODE must be `js2-object-prop-node'."
+  (when (js2-function-node-p (js2-object-prop-node-right node))
+    (let ((fn-node (js2-object-prop-node-right node)))
+      (unless (and js2-imenu-function-map
+                   (gethash fn-node js2-imenu-function-map))
+        (let ((key-node (js2-object-prop-node-left node)))
+          (js2-record-imenu-entry fn-node
+                                  (list js2-imenu-other-functions-ns
+                                        (js2-prop-node-name key-node))
+                                  (js2-node-abs-pos key-node)))))))
+
+(defun js2-imenu-record-module-pattern (node)
+  "Recognize and record module pattern use instance.
+NODE must be `js2-assign-node'."
+  (let ((init (js2-assign-node-right node)))
+    (when (js2-call-node-p init)
+      (let ((target (js2-assign-node-left node))
+            (callt (js2-call-node-target init)))
+        ;; Just basic call form: (function() {...})();
+        ;; TODO: Handle variations without duplicating `js2-wrapper-function-p'?
+        (when (and (js2-paren-node-p callt)
+                   (js2-function-node-p (js2-paren-node-expr callt)))
+          (let* ((fn (js2-paren-node-expr callt))
+                 (blk (js2-function-node-body fn))
+                 (ret (car (last (js2-block-node-kids blk)))))
+            (when (and (js2-return-node-p ret)
+                       (js2-object-node-p (js2-return-node-retval ret)))
+              ;; TODO: Map function names when revealing module pattern is used.
+              (let ((retval (js2-return-node-retval ret)))
+                (js2-record-object-literal retval
+                                           (js2-compute-nested-prop-get target)
+                                           (js2-node-abs-pos retval)))
+              (js2-record-imenu-functions fn target))))))))
 
 (provide 'js2-imenu-extras)
