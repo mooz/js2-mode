@@ -56,7 +56,7 @@
      :recorder  js2-imenu-record-backbone-extend))
   "List of JavaScript class definition or extension styles.
 
-:framework is a valid value in `js2-imenu-enabled-frameworks.
+:framework is a valid value in `js2-imenu-enabled-frameworks'.
 
 :call-re is a regular expression that has no capturing groups.
 
