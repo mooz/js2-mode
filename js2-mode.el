@@ -6797,7 +6797,8 @@ the parent function, look up its qname, then prepend a copy of it to the chain."
 (defun js2-record-imenu-functions (node &optional var)
   "Record function definitions for imenu.
 NODE is a function node or an object literal.
-VAR, if non-nil, is the expression that NODE is being assigned to."
+VAR, if non-nil, is the expression that NODE is being assigned to.
+When passed arguments of wrong type, does nothing."
   (when js2-parse-ide-mode
     (let ((fun-p (js2-function-node-p node))
           qname left fname-node pos)
@@ -6913,9 +6914,9 @@ For instance, processing a nested scope requires a parent function node."
     (dolist (entry entries)
       ;; function node goes first
       (destructuring-bind (current-fn &rest (&whole chain head &rest)) entry
-        ;; examine its defining scope;
-        ;; if top-level/external, keep as-is
-        (if (js2-node-top-level-decl-p head)
+        ;; Examine head's defining scope:
+        ;; Pre-processed chain, or top-level/external, keep as-is.
+        (if (or (stringp head) (js2-node-top-level-decl-p head))
             (push chain result)
           (when (js2-this-node-p head)
             (setq chain (cdr chain))) ; discard this-node
@@ -8491,10 +8492,7 @@ Returns the parsed `js2-var-decl-node' expression node."
       (when (js2-match-token js2-ASSIGN)
         (setq init (js2-parse-assign-expr)
               end (js2-node-end init))
-        (if (and js2-parse-ide-mode
-                 (or (js2-object-node-p init)
-                     (js2-function-node-p init)))
-            (js2-record-imenu-functions init name)))
+        (js2-record-imenu-functions init name))
       (when name
         (js2-set-face nbeg nend (if (js2-function-node-p init)
                                     'font-lock-function-name-face
@@ -8655,9 +8653,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
                                        :right right))
         (when js2-parse-ide-mode
           (js2-highlight-assign-targets pn left right)
-          (if (or (js2-function-node-p right)
-                  (js2-object-node-p right))
-              (js2-record-imenu-functions right left)))
+          (js2-record-imenu-functions right left))
         ;; do this last so ide checks above can use absolute positions
         (js2-node-add-children pn left right))
       pn)))
