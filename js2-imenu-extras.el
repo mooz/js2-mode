@@ -1,3 +1,37 @@
+;;; js2-imenu-extras.el --- Imenu support for additional constructs
+
+;; Author:    Dmitry Gutov <dgutov@yandex.ru>
+;; Keywords:  languages, javascript, imenu
+
+;; This file is part of GNU Emacs.
+
+;; GNU Emacs is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; GNU Emacs is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; This package adds Imenu support for additional framework constructs and
+;; general patterns to `js2-mode'.
+
+;; Usage:
+
+;; (eval-after-load 'js2-mode
+;;   (require 'js2-imenu-extras)
+;;   (js2-imenu-extras-setup))
+
+;; To customize how it works:
+;;   M-x customize-group RET js2-imenu RET
+
 (eval-when-compile
   (require 'cl))
 
@@ -18,7 +52,16 @@
 
     (:framework backbone
      :call-re   ,(concat "\\_<" js2-mode-identifier-re "\\.extend\\s-*(")
-     :recorder  js2-imenu-record-backbone-extend)))
+     :recorder  js2-imenu-record-backbone-extend))
+  "List of JavaScript class definition or extension styles.
+
+:framework is a valid value in `js2-imenu-enabled-frameworks.
+
+:call-re is a regular expression that has no capturing groups.
+
+:recorder is a function name that will be called when the regular
+expression matches some text in the buffer.  When it's called, point will be
+at the end of the match.  The function must keep the point position.")
 
 (defconst js2-imenu-available-frameworks
   (mapcar (lambda (style) (plist-get style :framework)) js2-imenu-extension-styles)
@@ -28,18 +71,18 @@
   "Frameworks to be recognized by `js2-mode'."
   :type (cons 'set (mapcar (lambda (x) (list 'const x))
                            js2-imenu-available-frameworks))
-  :group 'js2-mode)
+  :group 'js2-imenu)
 
 (defcustom js2-imenu-show-other-functions t
   "Non-nil to show functions not recognized by other mechanisms,
 in a shared namespace."
   :type 'boolean
-  :group 'js2-mode)
+  :group 'js2-imenu)
 
 (defcustom js2-imenu-other-functions-ns "?"
   "Namespace name to use for other functions."
   :type 'string
-  :group 'js2-mode)
+  :group 'js2-imenu)
 
 (defcustom js2-imenu-show-module-pattern t
   "Non-nil to recognize the module pattern:
@@ -51,8 +94,9 @@ var foobs = (function(a) {
 We record the returned hash as belonging to the named module, and
 prefix any functions defined inside the IIFE with the module name."
   :type 'boolean
-  :group 'js2-mode)
+  :group 'js2-imenu)
 
+;;;###autoload
 (defun js2-imenu-extras-setup ()
   (when js2-imenu-enabled-frameworks
     (add-to-list 'js2-post-parse-callbacks 'js2-imenu-record-declarations t))
