@@ -204,10 +204,11 @@ NODE must be `js2-assign-node'."
             (when (and (js2-return-node-p ret)
                        (js2-object-node-p (js2-return-node-retval ret)))
               ;; TODO: Map function names when revealing module pattern is used.
-              (let ((retval (js2-return-node-retval ret)))
-                (js2-record-object-literal retval
-                                           (js2-compute-nested-prop-get target)
-                                           (js2-node-abs-pos retval)))
-              (js2-record-imenu-functions fn target))))))))
+              (let ((retval (js2-return-node-retval ret))
+                    (target-qname (js2-compute-nested-prop-get target)))
+                (js2-record-object-literal retval target-qname
+                                           (js2-node-abs-pos retval))
+                (js2-record-imenu-entry fn target-qname
+                                        (js2-node-abs-pos target))))))))))
 
 (provide 'js2-imenu-extras)
