@@ -26,8 +26,9 @@
 ;; Usage:
 
 ;; (eval-after-load 'js2-mode
-;;   (require 'js2-imenu-extras)
-;;   (js2-imenu-extras-setup))
+;;   '(progn
+;;      (require 'js2-imenu-extras)
+;;      (js2-imenu-extras-setup)))
 
 ;; To customize how it works:
 ;;   M-x customize-group RET js2-imenu RET
