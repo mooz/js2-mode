@@ -117,7 +117,7 @@ prefix any functions defined inside the IIFE with the module name."
          ;; Dynamic scoping. Ew.
          (js2-mode-ast root))
     (goto-char (point-min))
-    (while (js-re-search-forward re nil t)
+    (while (js2-re-search-forward re nil t)
       (loop for i from 0 to (1- (length styles))
             when (match-beginning (1+ i))
             return (funcall (plist-get (nth i styles) :recorder))))))

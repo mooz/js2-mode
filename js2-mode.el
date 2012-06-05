@@ -243,7 +243,7 @@ regardless of the beginning bracket position."
 
 (defcustom js2-pretty-multiline-decl-indentation-p t
   "Non-nil to line up multiline declarations vertically. See the
-function `js-multiline-decl-indentation' for details."
+function `js2-multiline-decl-indentation' for details."
   :group 'js2-mode
   :type 'boolean)
 (js2-mark-safe-local 'js2-pretty-multiline-decl-indentation-p 'booleanp)
@@ -8339,7 +8339,7 @@ Last token matched must be js2-LC."
 ;; for js2-ERROR too, to have a node for error recovery to work on
 (defun js2-parse-semi ()
   "Parse a statement or handle an error.
-Last matched token is js-SEMI or js-ERROR."
+Last matched token is js2-SEMI or js2-ERROR."
   (let ((tt (js2-peek-token)) pos len)
     (js2-consume-token)
     (if (eq tt js2-SEMI)
@@ -9739,20 +9739,20 @@ not `js2-NAME', then we use the token info saved in instance vars."
 ;; Karl for coming up with the initial approach, which packs a lot of
 ;; punch for so little code.
 
-(defconst js-possibly-braceless-keywords-re
+(defconst js2-possibly-braceless-keywords-re
   (concat "else[ \t]+if\\|for[ \t]+each\\|"
           (regexp-opt '("catch" "do" "else" "finally" "for" "if"
                         "try" "while" "with" "let")))
   "Regular expression matching keywords that are optionally
 followed by an opening brace.")
 
-(defconst js-indent-operator-re
+(defconst js2-indent-operator-re
   (concat "[-+*/%<>=&^|?:.]\\([^-+*/]\\|$\\)\\|"
           (regexp-opt '("in" "instanceof") 'words))
   "Regular expression matching operators that affect indentation
 of continued expressions.")
 
-(defconst js-declaration-keyword-re
+(defconst js2-declaration-keyword-re
   (regexp-opt '("var" "let" "const") 'words)
   "Regular expression matching variable declaration keywords.")
 
@@ -9778,8 +9778,8 @@ bound to KEY in the global keymap and indents the current line."
                 (nth 4 parse-state))
       (indent-according-to-mode))))
 
-(defun js-re-search-forward-inner (regexp &optional bound count)
-  "Auxiliary function for `js-re-search-forward'."
+(defun js2-re-search-forward-inner (regexp &optional bound count)
+  "Auxiliary function for `js2-re-search-forward'."
   (let (parse saved-point)
     (while (> count 0)
       (re-search-forward regexp bound)
@@ -9800,18 +9800,18 @@ bound to KEY in the global keymap and indents the current line."
       (setq saved-point (point))))
   (point))
 
-(defun js-re-search-forward (regexp &optional bound noerror count)
+(defun js2-re-search-forward (regexp &optional bound noerror count)
   "Search forward but ignore strings and comments. Invokes
 `re-search-forward' but treats the buffer as if strings and
 comments have been removed."
   (let ((saved-point (point))
         (search-expr
          (cond ((null count)
-                '(js-re-search-forward-inner regexp bound 1))
+                '(js2-re-search-forward-inner regexp bound 1))
                ((< count 0)
-                '(js-re-search-backward-inner regexp bound (- count)))
+                '(js2-re-search-backward-inner regexp bound (- count)))
                ((> count 0)
-                '(js-re-search-forward-inner regexp bound count)))))
+                '(js2-re-search-forward-inner regexp bound count)))))
     (condition-case err
         (eval search-expr)
       (search-failed
@@ -9819,8 +9819,8 @@ comments have been removed."
        (unless noerror
          (error (error-message-string err)))))))
 
-(defun js-re-search-backward-inner (regexp &optional bound count)
-  "Auxiliary function for `js-re-search-backward'."
+(defun js2-re-search-backward-inner (regexp &optional bound count)
+  "Auxiliary function for `js2-re-search-backward'."
   (let (parse saved-point)
     (while (> count 0)
       (re-search-backward regexp bound)
@@ -9840,18 +9840,18 @@ comments have been removed."
              (setq count (1- count))))))
   (point))
 
-(defun js-re-search-backward (regexp &optional bound noerror count)
+(defun js2-re-search-backward (regexp &optional bound noerror count)
   "Search backward but ignore strings and comments. Invokes
 `re-search-backward' but treats the buffer as if strings and
 comments have been removed."
   (let ((saved-point (point))
         (search-expr
          (cond ((null count)
-                '(js-re-search-backward-inner regexp bound 1))
+                '(js2-re-search-backward-inner regexp bound 1))
                ((< count 0)
-                '(js-re-search-forward-inner regexp bound (- count)))
+                '(js2-re-search-forward-inner regexp bound (- count)))
                ((> count 0)
-                '(js-re-search-backward-inner regexp bound count)))))
+                '(js2-re-search-backward-inner regexp bound count)))))
     (condition-case err
         (eval search-expr)
       (search-failed
@@ -9859,33 +9859,33 @@ comments have been removed."
        (unless noerror
          (error (error-message-string err)))))))
 
-(defun js-looking-at-operator-p ()
+(defun js2-looking-at-operator-p ()
   "Return non-nil if text after point is an operator (that is not
 a comma)."
   (save-match-data
-    (and (looking-at js-indent-operator-re)
+    (and (looking-at js2-indent-operator-re)
          (or (not (looking-at ":"))
              (save-excursion
-               (and (js-re-search-backward "[?:{]\\|\\<case\\>" nil t)
+               (and (js2-re-search-backward "[?:{]\\|\\<case\\>" nil t)
                     (looking-at "?")))))))
 
-(defun js-continued-expression-p ()
+(defun js2-continued-expression-p ()
   "Returns non-nil if the current line continues an expression."
   (save-excursion
     (back-to-indentation)
-    (or (js-looking-at-operator-p)
+    (or (js2-looking-at-operator-p)
         ;; comment
-        (and (js-re-search-backward "\n" nil t)
+        (and (js2-re-search-backward "\n" nil t)
 	     (progn
 	       (skip-chars-backward " \t")
                (unless (bolp)
                  (backward-char)
-                 (and (js-looking-at-operator-p)
+                 (and (js2-looking-at-operator-p)
                       (and (progn
                              (backward-char)
                              (not (looking-at "\\*\\|++\\|--\\|/[/*]")))))))))))
 
-(defun js-end-of-do-while-loop-p ()
+(defun js2-end-of-do-while-loop-p ()
   "Returns non-nil if word after point is `while' of a do-while
 statement, else returns nil. A braceless do-while statement
 spanning several lines requires that the start of the loop is
@@ -9899,17 +9899,17 @@ indented to the same column as the current line."
 	      (looking-at "[ \t\n]*}"))
 	    (save-excursion
 	      (backward-list) (backward-word 1) (looking-at "\\<do\\>"))
-	  (js-re-search-backward "\\<do\\>" (point-at-bol) t)
+	  (js2-re-search-backward "\\<do\\>" (point-at-bol) t)
 	  (or (looking-at "\\<do\\>")
 	      (let ((saved-indent (current-indentation)))
-		(while (and (js-re-search-backward "^[ \t]*\\<" nil t)
+		(while (and (js2-re-search-backward "^[ \t]*\\<" nil t)
 			    (/= (current-indentation) saved-indent)))
 		(and (looking-at "[ \t]*\\<do\\>")
-		     (not (js-re-search-forward
+		     (not (js2-re-search-forward
 			   "\\<while\\>" (point-at-eol) t))
 		     (= (current-indentation) saved-indent)))))))))
 
-(defun js-multiline-decl-indentation ()
+(defun js2-multiline-decl-indentation ()
   "Returns the declaration indentation column if the current line belongs
 to a multiline declaration statement.  All declarations are lined up vertically:
 
@@ -9930,8 +9930,8 @@ var o = {                               var bar = 2,
         at-opening-bracket)
     (save-excursion
       (back-to-indentation)
-      (when (not (looking-at js-declaration-keyword-re))
-        (when (looking-at js-indent-operator-re)
+      (when (not (looking-at js2-declaration-keyword-re))
+        (when (looking-at js2-indent-operator-re)
           (goto-char (match-end 0))) ; continued expressions are ok
         (while (and (not at-opening-bracket)
                     (not (bobp))
@@ -9942,17 +9942,17 @@ var o = {                               var bar = 2,
                             (and (not (eq (char-before) ?\;))
                                  (and
                                   (prog2 (skip-chars-backward "[[:punct:]]")
-                                      (looking-at js-indent-operator-re)
+                                      (looking-at js2-indent-operator-re)
                                     (js2-backward-sws))
                                   (not (eq (char-before) ?\;))))
                             (js2-same-line pos)))))
           (condition-case err
               (backward-sexp)
             (scan-error (setq at-opening-bracket t))))
-        (when (looking-at js-declaration-keyword-re)
+        (when (looking-at js2-declaration-keyword-re)
           (- (1+ (match-end 0)) (point-at-bol)))))))
 
-(defun js-ctrl-statement-indentation ()
+(defun js2-ctrl-statement-indentation ()
   "Returns the proper indentation of the current line if it
 starts the body of a control statement without braces, else
 returns nil."
@@ -9961,7 +9961,7 @@ returns nil."
       (back-to-indentation)
       (when (and (not (js2-same-line (point-min)))
                  (not (looking-at "{"))
-                 (js-re-search-backward "[[:graph:]]" nil t)
+                 (js2-re-search-backward "[[:graph:]]" nil t)
                  (not (looking-at "[{([]"))
                  (progn
                    (forward-char)
@@ -9971,9 +9971,9 @@ returns nil."
                      (skip-chars-backward " \t" (point-at-bol)))
                    (let ((pt (point)))
                      (back-to-indentation)
-                     (and (looking-at js-possibly-braceless-keywords-re)
+                     (and (looking-at js2-possibly-braceless-keywords-re)
                           (= (match-end 0) pt)
-                          (not (js-end-of-do-while-loop-p))))))
+                          (not (js2-end-of-do-while-loop-p))))))
         (+ (current-indentation) js2-basic-offset)))))
 
 (defun js2-indent-in-array-comp (parse-status)
@@ -10015,15 +10015,15 @@ In particular, return the buffer position of the first `for' kwd."
       (goto-char for-kwd)
       (current-column))))
 
-(defun js-proper-indentation (parse-status)
+(defun js2-proper-indentation (parse-status)
   "Return the proper indentation for the current line."
   (save-excursion
     (back-to-indentation)
-    (let ((ctrl-stmt-indent (js-ctrl-statement-indentation))
+    (let ((ctrl-stmt-indent (js2-ctrl-statement-indentation))
           (same-indent-p (looking-at "[]})]\\|\\<case\\>\\|\\<default\\>"))
-          (continued-expr-p (js-continued-expression-p))
+          (continued-expr-p (js2-continued-expression-p))
           (declaration-indent (and js2-pretty-multiline-decl-indentation-p
-                                   (js-multiline-decl-indentation)))
+                                   (js2-multiline-decl-indentation)))
           (bracket (nth 1 parse-status))
           beg)
       (cond
@@ -10059,7 +10059,7 @@ In particular, return the buffer position of the first `for' kwd."
               (back-to-indentation)
               (when (and js2-pretty-multiline-decl-indentation-p
                          js2-always-indent-assigned-expr-in-decls-p
-                         (looking-at js-declaration-keyword-re))
+                         (looking-at js2-declaration-keyword-re))
                 (goto-char (1+ (match-end 0)))))
             (cond (same-indent-p
                    (current-column))
@@ -10371,7 +10371,7 @@ If so, we don't ever want to use bounce-indent."
     (js2-with-underscore-as-word-syntax
      (if (nth 4 parse-status)
          (js2-lineup-comment parse-status)
-       (setq indent-col (js-proper-indentation parse-status))
+       (setq indent-col (js2-proper-indentation parse-status))
        ;; see comments below about js2-mode-last-indented-line
        (cond
         ;; bounce-indenting is disabled during electric-key indent.
