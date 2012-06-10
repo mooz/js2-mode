@@ -79,7 +79,7 @@
 
 (defvar js2-ecma-262-externs
   (mapcar 'symbol-name
-          '(Array Boolean Date Error EvalError Function Infinity
+          '(Array Boolean Date Error EvalError Function Infinity JSON
           Math NaN Number Object RangeError ReferenceError RegExp
           String SyntaxError TypeError URIError arguments
           decodeURI decodeURIComponent encodeURI
@@ -6353,6 +6353,8 @@ Shown at or above `js2-highlight-level' 2.")
       "toTimeString" "toUTCString"
       ;; properties of the RegExp prototype object
       "exec" "test"
+      ;; properties of the JSON prototype object
+      "parse" "stringify"
       ;; SpiderMonkey/Rhino extensions, versions 1.5+
       "toSource" "__defineGetter__" "__defineSetter__"
       "__lookupGetter__" "__lookupSetter__" "__noSuchMethod__"
