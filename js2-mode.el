@@ -92,7 +92,7 @@
 
 (defvar js2-ecma-262-externs
   (mapcar 'symbol-name
-          '(Array Boolean Date Error EvalError Function Infinity
+          '(Array Boolean Date Error EvalError Function Infinity JSON
           Math NaN Number Object RangeError ReferenceError RegExp
           String SyntaxError TypeError URIError arguments
           decodeURI decodeURIComponent encodeURI
@@ -6170,6 +6170,8 @@ Shown at or above `js2-highlight-level' 2.")
       "toTimeString" "toUTCString"
       ;; properties of the RegExp prototype object
       "exec" "test"
+      ;; properties of the JSON prototype object
+      "parse" "stringify"
       ;; SpiderMonkey/Rhino extensions, versions 1.5+
       "toSource" "__defineGetter__" "__defineSetter__"
       "__lookupGetter__" "__lookupSetter__" "__noSuchMethod__"
@@ -6222,7 +6224,7 @@ Shown at or above `js2-highlight-level' 3.")
         (js2-set-face (setq pos (+ (js2-node-pos parent) ; absolute
                                    (js2-node-pos prop))) ; relative
                       (+ pos (js2-node-len prop))
-                      face)))))
+                      face 'record)))))
 
 (defun js2-parse-highlight-member-expr-node (node)
   "Perform syntax highlighting of EcmaScript built-in properties.
@@ -6241,7 +6243,7 @@ The variable `js2-highlight-level' governs this highighting."
         (when face
           (setq pos (js2-node-pos node)
                 end (+ pos (js2-node-len node)))
-          (js2-set-face pos end face))))
+          (js2-set-face pos end face 'record))))
      ;; case 2:  property access or function call
      ((or (js2-prop-get-node-p node)
           ;; highlight function call if expr is a prop-get node
