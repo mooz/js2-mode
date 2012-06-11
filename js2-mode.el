@@ -6408,7 +6408,7 @@ Shown at or above `js2-highlight-level' 3.")
         (js2-set-face (setq pos (+ (js2-node-pos parent) ; absolute
                                    (js2-node-pos prop))) ; relative
                       (+ pos (js2-node-len prop))
-                      face)))))
+                      face 'record)))))
 
 (defun js2-parse-highlight-member-expr-node (node)
   "Perform syntax highlighting of EcmaScript built-in properties.
@@ -6427,7 +6427,7 @@ The variable `js2-highlight-level' governs this highighting."
         (when face
           (setq pos (js2-node-pos node)
                 end (+ pos (js2-node-len node)))
-          (js2-set-face pos end face))))
+          (js2-set-face pos end face 'record))))
      ;; case 2:  property access or function call
      ((or (js2-prop-get-node-p node)
           ;; highlight function call if expr is a prop-get node
