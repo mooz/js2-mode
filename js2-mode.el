@@ -6387,11 +6387,11 @@ Shown at or above `js2-highlight-level' 3.")
     (when level2
       (if call-p
           (cond
-           ((and target prop)
+           ((and target prop-name)
             (cond
              ((and level3 (string-match js2-ecma-function-props prop-name))
               (setq face 'font-lock-builtin-face))
-             ((and target-name prop)
+             ((and target-name prop-name)
               (cond
                ((string= target-name "Date")
                 (if (string-match js2-ecma-date-props prop-name)
@@ -6399,11 +6399,11 @@ Shown at or above `js2-highlight-level' 3.")
                ((string= target-name "Math")
                 (if (string-match js2-ecma-math-funcs prop-name)
                     (setq face 'font-lock-builtin-face)))))))
-           (prop
+           (prop-name
             (if (string-match js2-ecma-global-funcs prop-name)
                 (setq face 'font-lock-builtin-face))))
         (cond
-         ((and target prop)
+         ((and target prop-name)
           (cond
            ((string= target-name "Number")
             (if (string-match js2-ecma-number-props prop-name)
@@ -6411,7 +6411,7 @@ Shown at or above `js2-highlight-level' 3.")
            ((string= target-name "Math")
             (if (string-match js2-ecma-math-props prop-name)
                 (setq face 'font-lock-constant-face)))))
-         (prop
+         (prop-name
           (if (string-match js2-ecma-object-props prop-name)
               (setq face 'font-lock-constant-face)))))
       (when face
