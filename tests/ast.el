@@ -50,7 +50,21 @@ When BINDINGS are specified, apply them around the test."
   "a = {in:1};"
   ((js2-allow-keywords-as-property-names t)))
 
-;;; Other tests.
+;;; Misc.
 
 (js2-deftest-ast parse-array-comp-loop
   "[a for (a in [])];")
+
+;;; 'of' contextual keyword.
+
+(js2-deftest-ast parse-array-comp-loop-with-of
+  "[a for (a of [])];")
+
+(js2-deftest-ast parse-for-of
+  "for (var a of []) {\n}")
+
+(js2-deftest-ast of-can-be-var-name
+  "var of = 3;")
+
+(js2-deftest-ast of-can-be-function-name
+  "function of() {\n}")

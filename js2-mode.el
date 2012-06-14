@@ -675,9 +675,8 @@ which doesn't seem particularly useful, but Rhino permits it."
 
 (defvar js2-COMMENT 160)
 (defvar js2-ENUM 161)  ; for "enum" reserved word
-(defvar js2-OF 162)    ; for "for of" iterators
 
-(defconst js2-num-tokens (1+ js2-OF))
+(defconst js2-num-tokens (1+ js2-ENUM))
 
 (defconst js2-debug-print-trees nil)
 
@@ -5412,7 +5411,7 @@ into temp buffers."
     debugger default delete do
     else enum
     false finally for function
-    if in of instanceof import
+    if in instanceof import
     let
     new null
     return
@@ -5432,7 +5431,7 @@ into temp buffers."
                js2-DEBUGGER js2-DEFAULT js2-DELPROP js2-DO
                js2-ELSE
                js2-FALSE js2-FINALLY js2-FOR js2-FUNCTION
-               js2-IF js2-IN js2-OF js2-INSTANCEOF js2-IMPORT
+               js2-IF js2-IN js2-INSTANCEOF js2-IMPORT
                js2-LET
                js2-NEW js2-NULL
                js2-RETURN
@@ -7185,6 +7184,16 @@ Returns nil and consumes nothing if MATCH is not the next token."
     (js2-consume-token)
     t))
 
+(defun js2-match-contextual-kwd (name)
+  "Consume and return t if next token is `js2-NAME', and its
+string is NAME.  Returns nil and does nothing otherwise."
+  (if (or (/= (js2-peek-token) js2-NAME)
+          (not (string= js2-ts-string name)))
+      nil
+    (js2-consume-token)
+    (js2-record-face 'font-lock-keyword-face)
+    t))
+
 (defsubst js2-valid-prop-name-token (tt)
   (or (= tt js2-NAME)
       (when (and js2-allow-keywords-as-property-names
@@ -7952,7 +7961,7 @@ Parses for, for-in, and for each-in statements."
             (setq init (js2-parse-expr)))))
       (if (or (js2-match-token js2-IN)
               (and (>= js2-language-version 200)
-                   (js2-match-token js2-OF)
+                   (js2-match-contextual-kwd "of")
                    (setq is-for-of t)))
           (setq is-for-in-or-of t
                 in-pos (- js2-token-beg for-pos)
@@ -9551,7 +9560,7 @@ Last token peeked should be the initial FOR."
               (js2-define-symbol js2-LET (js2-name-node-name iter) pn t))
           (if (or (js2-match-token js2-IN)
               (and (>= js2-language-version 200)
-                   (js2-match-token js2-OF)
+                   (js2-match-contextual-kwd "of")
                    (setq forof-p t)))
               (setq in-pos (- js2-token-beg pos))
             (js2-report-error "msg.in.after.for.name"))
