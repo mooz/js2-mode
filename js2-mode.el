@@ -5204,8 +5204,9 @@ nor always false."
           do
           (unless (or (memq sym '(js2-EOF_CHAR js2-ERROR))
                       (not (boundp sym)))
-            (aset names (symbol-value sym)         ; code, e.g. 152
-                  (substring (symbol-name sym) 4)) ; name, e.g. "LET"
+            (aset names (symbol-value sym)           ; code, e.g. 152
+                  (downcase
+                   (substring (symbol-name sym) 4))) ; name, e.g. "let"
             (push sym js2-tokens)))
     names)
   "Vector mapping int values to token string names, sans `js2-' prefix.")
@@ -5231,7 +5232,7 @@ Signals an error if it's not a recognized token."
 (defconst js2-token-codes
   (let ((table (make-hash-table :test 'eq :size 256)))
     (loop for name across js2-token-names
-          for sym = (intern (concat "js2-" name))
+          for sym = (intern (concat "js2-" (upcase name)))
           do
           (puthash sym (symbol-value sym) table))
     ;; clean up a few that are "wrong" in Rhino's token codes
@@ -7186,9 +7187,11 @@ Returns nil and consumes nothing if MATCH is not the next token."
 
 (defsubst js2-valid-prop-name-token (tt)
   (or (= tt js2-NAME)
-      (and js2-allow-keywords-as-property-names
-           (plusp tt)
-           (aref js2-kwd-tokens tt))))
+      (when (and js2-allow-keywords-as-property-names
+                 (plusp tt)
+                 (aref js2-kwd-tokens tt))
+        (js2-save-name-token-data js2-token-beg (js2-token-name tt))
+        t)))
 
 (defsubst js2-match-prop-name ()
   "Consume token and return t if next token is a valid property name.
@@ -9538,8 +9541,7 @@ Last token peeked should be the initial FOR."
             (setq iter (js2-parse-primary-expr-lhs))
             (js2-define-destruct-symbols iter js2-LET
                                          'font-lock-variable-name-face t))
-           ((js2-valid-prop-name-token tt)
-            (js2-consume-token)
+           ((js2-match-token js2-NAME)
             (setq iter (js2-create-name-node)))
            (t
             (js2-report-error "msg.bad.var")))
