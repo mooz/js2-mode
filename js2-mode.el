@@ -3032,7 +3032,7 @@ The `params' field is a lisp list of nodes.  Each node is either a simple
   form             ; FUNCTION_{STATEMENT|EXPRESSION|EXPRESSION_STATEMENT}
   name             ; function name (a `js2-name-node', or nil if anonymous)
   params           ; a lisp list of destructuring forms or simple name nodes
-  rest-p           ; if t, the last
+  rest-p           ; if t, the last parameter is rest parameter
   body             ; a `js2-block-node' or expression node (1.8 only)
   lp               ; position of arg-list open-paren, or nil if omitted
   rp               ; position of arg-list close-paren, or nil if omitted
