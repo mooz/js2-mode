@@ -44,10 +44,10 @@ When BINDINGS are specified, apply them around the test."
    (js2-compiler-xml-available nil)))
 
 (js2-deftest-ast parse-array-literal-when-not-keyword
-  "a = {b:1};")
+  "a = {b: 1};")
 
 (js2-deftest-ast parse-array-literal-when-keyword
-  "a = {in:1};"
+  "a = {in: 1};"
   ((js2-allow-keywords-as-property-names t)))
 
 ;;; 'of' contextual keyword.
@@ -67,10 +67,10 @@ When BINDINGS are specified, apply them around the test."
 ;;; Destructuring binding.
 
 (js2-deftest-ast destruct-in-declaration
-  "var {a, b} = {a:1, b:2};")
+  "var {a, b} = {a: 1, b: 2};")
 
 (js2-deftest-ast destruct-in-arguments
-  "function f({a:aa, b:bb}) {\n}")
+  "function f({a: aa, b: bb}) {\n}")
 
 (js2-deftest-ast destruct-in-array-comp-loop
   "[a + b for ([a, b] in [[0, 1], [1, 2]])];")

@@ -3574,7 +3574,7 @@ The `right' field is a `js2-node' representing the initializer value.")
 (defun js2-print-object-prop-node (n i)
   (insert (js2-make-pad i))
   (js2-print-ast (js2-object-prop-node-left n) 0)
-  (insert ":")
+  (insert ": ")
   (js2-print-ast (js2-object-prop-node-right n) 0))
 
 (defstruct (js2-getter-setter-node
