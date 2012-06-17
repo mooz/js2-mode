@@ -4,20 +4,18 @@
 
 (defun js2-test-string-to-ast (s)
   (ert-with-test-buffer (:name 'origin)
-      (insert s)
-      (js2-mode)
-      (should (null js2-mode-buffer-dirty-p))
-      js2-mode-ast))
+    (insert s)
+    (js2-mode)
+    (should (null js2-mode-buffer-dirty-p))
+    js2-mode-ast))
 
 (defun js2-test-ast-string (code-string)
   (let ((ast (js2-test-string-to-ast code-string)))
     (ert-with-test-buffer (:name 'copy)
       (js2-print-tree ast)
       (skip-chars-backward " \t\n")
-      (delete-region (point) (point-max))
-      (should (string= code-string
-                       (buffer-substring-no-properties
-                        (point-min) (point-max)))))))
+      (should (string= code-string (buffer-substring-no-properties
+                                    (point-min) (point)))))))
 
 (defmacro js2-deftest-ast (name code-string &optional bindings)
   "Parse CODE-STRING, print it out with `js2-print-tree', and
