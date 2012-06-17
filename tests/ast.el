@@ -24,7 +24,7 @@
 assert the result to be equal to the original string.
 When BINDINGS are specified, apply them around the test."
   `(ert-deftest ,name ()
-     (let ,bindings
+     (let ,(append bindings '((js2-basic-offset 2)))
        (js2-test-ast-string ,code-string))))
 
 (put 'js2-deftest-ast 'lisp-indent-function 'defun)
