@@ -2558,10 +2558,8 @@ NAME can be a lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                      object
                                                      in-pos
                                                      each-pos
-                                                     foreach-p
-                                                     forof-p
-                                                     lp
-                                                     rp)))
+                                                     foreach-p forof-p
+                                                     lp rp)))
   "AST node for a for..in loop."
   iterator  ; [var] foo in ...
   object    ; object over which we're iterating
@@ -3019,11 +3017,9 @@ a `js2-label-node' or the innermost enclosing loop.")
                                                        (ftype 'FUNCTION)
                                                        (form 'FUNCTION_STATEMENT)
                                                        (name "")
-                                                       params
-                                                       rest-p
+                                                       params rest-p
                                                        body
-                                                       lp
-                                                       rp)))
+                                                       lp rp)))
   "AST node for a function declaration.
 The `params' field is a lisp list of nodes.  Each node is either a simple
 `js2-name-node', or if it's a destructuring-assignment parameter, a
@@ -3802,8 +3798,7 @@ as opposed to required parens such as those enclosing an if-conditional."
                                                               foreach-p
                                                               each-pos
                                                               forof-p
-                                                              lp
-                                                              rp)))
+                                                              lp rp)))
   "AST subtree for each 'for (foo in bar)' loop in an array comprehension.")
 
 (put 'cl-struct-js2-array-comp-loop-node 'js2-visitor 'js2-visit-array-comp-loop)
@@ -7958,20 +7953,12 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
   "Parser for for-statement.  Last matched token must be js2-FOR.
 Parses for, for-in, and for each-in statements."
   (let ((for-pos js2-token-beg)
-        pn
-        is-for-each
-        is-for-in-or-of
-        is-for-of
-        in-pos
-        each-pos
-        tmp-pos
+        pn is-for-each is-for-in-or-of is-for-of
+        in-pos each-pos tmp-pos
         init  ; Node init is also foo in 'foo in object'
         cond  ; Node cond is also object in 'foo in object'
         incr  ; 3rd section of for-loop initializer
-        body
-        tt
-        lp
-        rp)
+        body tt lp rp)
     (js2-consume-token)
     ;; See if this is a for each () instead of just a for ()
     (when (js2-match-token js2-NAME)
@@ -9557,15 +9544,7 @@ We should have just parsed the 'for' keyword before calling this function."
 Last token peeked should be the initial FOR."
   (let ((pos js2-token-beg)
         (pn (make-js2-array-comp-loop-node))
-        tt
-        iter
-        obj
-        foreach-p
-        forof-p
-        in-pos
-        each-pos
-        lp
-        rp)
+        tt iter obj foreach-p forof-p in-pos each-pos lp rp)
     (assert (= (js2-next-token) js2-FOR))  ; consumes token
     (js2-push-scope pn)
     (unwind-protect
