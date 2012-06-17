@@ -17,6 +17,7 @@
           (destructuring-bind (_ pos len) (first errors)
             (should (string= syntax-error (substring code-string
                                                      (1- pos) (+ pos len -1))))))
+      (should (= 0 (length (js2-ast-root-errors ast))))
       (ert-with-test-buffer (:name 'copy)
         (js2-print-tree ast)
         (skip-chars-backward " \t\n")
@@ -82,9 +83,9 @@ BIND defines bindings to apply them around the test."
   "[a + b for ([a, b] in [[0, 1], [1, 2]])];")
 
 (js2-deftest-ast destruct-in-catch-clause
-  "try {\n} catch ({a, b}) {\n  return a + b;\n}")
+  "try {\n} catch ({a, b}) {\n  a + b;\n}")
 
-;;; Function arguments.
+;;; Function parameters.
 
 (js2-deftest-ast function-with-default-parameters
   "function foo(a = 1, b = a + 1) {\n}")
@@ -96,3 +97,17 @@ BIND defines bindings to apply them around the test."
 (js2-deftest-ast function-with-destruct-after-default
   "function foo(a = 1, {b, c}) {\n}"
   :syntax-error "{")
+
+(js2-deftest-ast function-with-rest-parameter
+  "function foo(a, b, ...rest) {\n}")
+
+(js2-deftest-ast function-with-param-after-rest-parameter
+  "function foo(a, ...b, rest) {\n}"
+  :syntax-error "rest")
+
+(js2-deftest-ast function-with-destruct-after-rest-parameter
+  "function foo(a, ...b, {}) {\n}"
+  :syntax-error "{}")
+
+(js2-deftest-ast function-with-rest-after-default-parameter
+  "function foo(a = 1, ...rest) {\n}")

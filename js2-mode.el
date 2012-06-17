@@ -675,8 +675,9 @@ which doesn't seem particularly useful, but Rhino permits it."
 
 (defvar js2-COMMENT 160)
 (defvar js2-ENUM 161)  ; for "enum" reserved word
+(defvar js2-TRIPLEDOT 162) ; for rest parameter
 
-(defconst js2-num-tokens (1+ js2-ENUM))
+(defconst js2-num-tokens (1+ js2-TRIPLEDOT))
 
 (defconst js2-debug-print-trees nil)
 
@@ -1564,6 +1565,9 @@ the correct number of ARGS must be provided."
 
 (js2-msg "msg.no.default.after.default.param" ; added by js2-mode
          "parameter without default follows parameter with default")
+
+(js2-msg "msg.param.after.rest" ; added by js2-mode
+         "parameter after rest parameter")
 
 (js2-msg "msg.no.brace.body"
          "missing '{' before function body")
@@ -3016,6 +3020,7 @@ a `js2-label-node' or the innermost enclosing loop.")
                                                        (form 'FUNCTION_STATEMENT)
                                                        (name "")
                                                        params
+                                                       rest-p
                                                        body
                                                        lp
                                                        rp)))
@@ -3027,6 +3032,7 @@ The `params' field is a lisp list of nodes.  Each node is either a simple
   form             ; FUNCTION_{STATEMENT|EXPRESSION|EXPRESSION_STATEMENT}
   name             ; function name (a `js2-name-node', or nil if anonymous)
   params           ; a lisp list of destructuring forms or simple name nodes
+  rest-p           ; if t, the last
   body             ; a `js2-block-node' or expression node (1.8 only)
   lp               ; position of arg-list open-paren, or nil if omitted
   rp               ; position of arg-list close-paren, or nil if omitted
@@ -3049,6 +3055,7 @@ The `params' field is a lisp list of nodes.  Each node is either a simple
         (getter (js2-node-get-prop n 'GETTER_SETTER))
         (name (js2-function-node-name n))
         (params (js2-function-node-params n))
+        (rest-p (js2-function-node-rest-p n))
         (body (js2-function-node-body n))
         (expr (eq (js2-function-node-form n) 'FUNCTION_EXPRESSION)))
     (unless getter
@@ -3061,9 +3068,11 @@ The `params' field is a lisp list of nodes.  Each node is either a simple
           for param in params
           for count from 1
           do
+          (when (and rest-p (= count len))
+            (insert "..."))
           (js2-print-ast param 0)
-          (if (< count len)
-              (insert ", ")))
+          (when (< count len)
+            (insert ", ")))
     (insert ") {")
     (unless expr
       (insert "\n"))
@@ -5828,7 +5837,9 @@ corresponding number.  Otherwise return -1."
              (throw 'return js2-COLON)))
           (?.
            (if (js2-match-char ?.)
-               (js2-ts-return js2-DOTDOT)
+               (if (js2-match-char ?.)
+                   (js2-ts-return js2-TRIPLEDOT)
+                 (js2-ts-return js2-DOTDOT))
              (if (js2-match-char ?\()
                  (js2-ts-return js2-DOTQUERY)
                (throw 'return js2-DOT))))
@@ -7469,7 +7480,7 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
 (defun js2-parse-function-params (fn-node pos)
   (if (js2-match-token js2-RP)
       (setf (js2-function-node-rp fn-node) (- js2-token-beg pos))
-    (let (params len param default-found)
+    (let (params len param default-found rest-param-at)
       (loop for tt = (js2-peek-token)
             do
             (cond
@@ -7484,12 +7495,18 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
               (push param params))
              ;; variable name
              (t
+              (when (and (>= js2-language-version 200)
+                         (js2-match-token js2-TRIPLEDOT)
+                         (not rest-param-at))
+                ;; to report errors if there are more parameters
+                (setq rest-param-at (length params)))
               (js2-must-match js2-NAME "msg.no.parm")
               (js2-record-face 'js2-function-param-face)
               (setq param (js2-create-name-node))
               (js2-define-symbol js2-LP js2-ts-string param)
               ;; default parameter value
               (when (or (and default-found
+                             (not rest-param-at)
                              (js2-must-match js2-ASSIGN
                                              "msg.no.default.after.default.param"
                                              (js2-node-pos param)
@@ -7508,10 +7525,15 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
                         default-found t)
                   (js2-node-add-children param left right)))
               (push param params)))
+            (when (and rest-param-at (> (length params) (1+ rest-param-at)))
+              (js2-report-error "msg.param.after.rest" nil
+                                (js2-node-pos param) (js2-node-len param)))
             while
             (js2-match-token js2-COMMA))
-      (if (js2-must-match js2-RP "msg.no.paren.after.parms")
-          (setf (js2-function-node-rp fn-node) (- js2-token-beg pos)))
+      (when (js2-must-match js2-RP "msg.no.paren.after.parms")
+        (setf (js2-function-node-rp fn-node) (- js2-token-beg pos)))
+      (when rest-param-at
+        (setf (js2-function-node-rest-p fn-node) t))
       (dolist (p params)
         (js2-node-add-children fn-node p)
         (push p (js2-function-node-params fn-node))))))
