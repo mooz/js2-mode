@@ -75,5 +75,5 @@ When BINDINGS are specified, apply them around the test."
 (js2-deftest-ast destruct-in-array-comp-loop
   "[a + b for ([a, b] in [[0, 1], [1, 2]])];")
 
-;; (js2-deftest-ast destruct-in-catch-clause
-;;   "try {\n} catch ({a, b}) {return a + b;}")
+(js2-deftest-ast destruct-in-catch-clause
+  "try {\n} catch ({a, b}) {\n  return a + b;\n}")

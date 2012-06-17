@@ -8054,9 +8054,8 @@ Parses for, for-in, and for each-in statements."
            ;; destructuring pattern
            ;;     catch ({ message, file }) { ... }
            ((or (= tt js2-LB) (= tt js2-LC))
-            (setq param
-                  (js2-define-destruct-symbols (js2-parse-destruct-primary-expr)
-                                               js2-LET nil)))
+            (setq param (js2-parse-destruct-primary-expr))
+            (js2-define-destruct-symbols param js2-LET nil))
            ;; simple name
            (t
             (js2-must-match js2-NAME "msg.bad.catchcond")
