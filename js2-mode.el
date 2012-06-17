@@ -817,16 +817,8 @@ Will only be used when we finish implementing the interpreter.")
 (js2-deflocal js2-recorded-identifiers nil
   "Tracks identifiers found during parsing.")
 
-(defmacro js2-in-lhs (body)
-  `(let ((js2-is-in-lhs t))
-     ,body))
-
-(defmacro js2-in-rhs (body)
-  `(let ((js2-is-in-lhs nil))
-     ,body))
-
-(js2-deflocal js2-is-in-lhs nil
-  "True while parsing lhs statement")
+(js2-deflocal js2-is-in-destructuring nil
+  "True while parsing destructuring expression.")
 
 (defcustom js2-global-externs nil
   "A list of any extern names you'd like to consider always declared.
@@ -7480,7 +7472,7 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
             (cond
              ;; destructuring param
              ((or (= tt js2-LB) (= tt js2-LC))
-              (setq param (js2-parse-primary-expr-lhs))
+              (setq param (js2-parse-destruct-primary-expr))
               (js2-define-destruct-symbols param
                                            js2-LP
                                            'js2-function-param-face)
@@ -8063,7 +8055,7 @@ Parses for, for-in, and for each-in statements."
            ;;     catch ({ message, file }) { ... }
            ((or (= tt js2-LB) (= tt js2-LC))
             (setq param
-                  (js2-define-destruct-symbols (js2-parse-primary-expr-lhs)
+                  (js2-define-destruct-symbols (js2-parse-destruct-primary-expr)
                                                js2-LET nil)))
            ;; simple name
            (t
@@ -8506,7 +8498,7 @@ Returns the parsed `js2-var-decl-node' expression node."
             init nil)
       (if (or (= tt js2-LB) (= tt js2-LC))
           ;; Destructuring assignment, e.g., var [a, b] = ...
-          (setq destructuring (js2-parse-primary-expr-lhs)
+          (setq destructuring (js2-parse-destruct-primary-expr)
                 end (js2-node-end destructuring))
         ;; Simple variable name
         (when (js2-must-match js2-NAME "msg.bad.var")
@@ -9287,8 +9279,8 @@ For instance, @[expr], @*::[expr], or ns::[expr]."
                                           :rb (js2-relpos rb pos)))
       (js2-node-add-children pn namespace expr))))
 
-(defun js2-parse-primary-expr-lhs ()
-  (let ((js2-is-in-lhs t))
+(defun js2-parse-destruct-primary-expr ()
+  (let ((js2-is-in-destructuring t))
     (js2-parse-primary-expr)))
 
 (defun js2-parse-primary-expr ()
@@ -9414,7 +9406,7 @@ array-literals, array comprehensions and regular expressions."
         elems
         pn
         (continue t))
-    (unless js2-is-in-lhs
+    (unless js2-is-in-destructuring
         (js2-push-scope (make-js2-scope))) ; for array comp
     (while continue
       (setq tt (js2-peek-token))
@@ -9438,16 +9430,16 @@ array-literals, array comprehensions and regular expressions."
                                       :len (- js2-ts-cursor pos)
                                       :elems (nreverse elems)))
         (apply #'js2-node-add-children pn (js2-array-node-elems pn))
-        (when (and after-comma (not js2-is-in-lhs))
+        (when (and after-comma (not js2-is-in-destructuring))
           (js2-parse-warn-trailing-comma "msg.array.trailing.comma"
                                          pos elems after-comma)))
        ;; destructuring binding
-       (js2-is-in-lhs
+       (js2-is-in-destructuring
         (push (if (or (= tt js2-LC)
                       (= tt js2-LB)
                       (= tt js2-NAME))
                   ;; [a, b, c] | {a, b, c} | {a:x, b:y, c:z} | a
-                  (js2-parse-primary-expr-lhs)
+                  (js2-parse-destruct-primary-expr)
                 ;; invalid pattern
                 (js2-consume-token)
                 (js2-report-error "msg.bad.var")
@@ -9471,7 +9463,7 @@ array-literals, array comprehensions and regular expressions."
         (push (js2-parse-assign-expr) elems)
         (setq after-lb-or-comma nil
               after-comma nil))))
-    (unless js2-is-in-lhs
+    (unless js2-is-in-destructuring
       (js2-pop-scope))
     pn))
 
@@ -9546,8 +9538,7 @@ Last token peeked should be the initial FOR."
           (cond
            ((or (= tt js2-LB)
                 (= tt js2-LC))
-            ;; handle destructuring assignment
-            (setq iter (js2-parse-primary-expr-lhs))
+            (setq iter (js2-parse-destruct-primary-expr))
             (js2-define-destruct-symbols iter js2-LET
                                          'font-lock-variable-name-face t))
            ((js2-match-token js2-NAME)
@@ -9559,9 +9550,9 @@ Last token peeked should be the initial FOR."
           (if (js2-name-node-p iter)
               (js2-define-symbol js2-LET (js2-name-node-name iter) pn t))
           (if (or (js2-match-token js2-IN)
-              (and (>= js2-language-version 200)
-                   (js2-match-contextual-kwd "of")
-                   (setq forof-p t)))
+                  (and (>= js2-language-version 200)
+                       (js2-match-contextual-kwd "of")
+                       (setq forof-p t)))
               (setq in-pos (- js2-token-beg pos))
             (js2-report-error "msg.in.after.for.name"))
           (setq obj (js2-parse-expr))
@@ -9627,7 +9618,7 @@ Last token peeked should be the initial FOR."
 
 (defun js2-parse-named-prop (tt)
   "Parse a name, string, or getter/setter object property.
-When `js2-is-in-lhs' is t, forms like {a, b, c} will be permitted."
+When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
   (js2-consume-token)
   (let ((string-prop (and (= tt js2-STRING)
                           (make-js2-string-node)))
@@ -9647,12 +9638,14 @@ When `js2-is-in-lhs' is t, forms like {a, b, c} will be permitted."
       (js2-record-face 'font-lock-function-name-face)      ; for peeked name
       (setq name (js2-create-name-node)) ; discard get/set & use peeked name
       (js2-parse-getter-setter-prop ppos name (string= prop "get")))
-     ;; abbreviated destructuring bind e.g., {a, b} = c;
-     ;; XXX: To be honest, the value of `js2-is-in-lhs' becomes t only when
-     ;; patterns are appeared in variable declaration, function parameters, and catch-clause.
-     ;; We have to set t to `js2-is-in-lhs' when the current expressions are part of any
-     ;; assignment but it's difficult because it requires looking ahead of expression.
-     ((and js2-is-in-lhs
+     ;; Abbreviated destructuring binding, e.g. {a, b} = c;
+     ;; XXX: To be honest, the value of `js2-is-in-destructuring' becomes t only
+     ;; when patterns are used in variable declarations, function parameters,
+     ;; catch-clause, and iterators.
+     ;; We have to set `js2-is-in-destructuring' to t when the current
+     ;; expressions are on the left side of any assignment, but it's difficult
+     ;; because it requires looking ahead of expression.
+     ((and js2-is-in-destructuring
            (= tt js2-NAME)
            (let ((ctk (js2-peek-token)))
              (or (= ctk js2-COMMA)

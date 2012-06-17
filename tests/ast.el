@@ -50,11 +50,6 @@ When BINDINGS are specified, apply them around the test."
   "a = {in:1};"
   ((js2-allow-keywords-as-property-names t)))
 
-;;; Misc.
-
-(js2-deftest-ast parse-array-comp-loop
-  "[a for (a in [])];")
-
 ;;; 'of' contextual keyword.
 
 (js2-deftest-ast parse-array-comp-loop-with-of
@@ -68,3 +63,17 @@ When BINDINGS are specified, apply them around the test."
 
 (js2-deftest-ast of-can-be-function-name
   "function of() {\n}")
+
+;;; Destructuring binding.
+
+(js2-deftest-ast destruct-in-declaration
+  "var {a, b} = {a:1, b:2};")
+
+(js2-deftest-ast destruct-in-arguments
+  "function f({a:aa, b:bb}) {\n}")
+
+(js2-deftest-ast destruct-in-array-comp-loop
+  "[a + b for ([a, b] in [[0, 1], [1, 2]])];")
+
+;; (js2-deftest-ast destruct-in-catch-clause
+;;   "try {\n} catch ({a, b}) {return a + b;}")
