@@ -9,21 +9,29 @@
     (should (null js2-mode-buffer-dirty-p))
     js2-mode-ast))
 
-(defun js2-test-ast-string (code-string)
+(defun js2-test-ast-string (code-string &key syntax-error)
   (let ((ast (js2-test-string-to-ast code-string)))
-    (ert-with-test-buffer (:name 'copy)
-      (js2-print-tree ast)
-      (skip-chars-backward " \t\n")
-      (should (string= code-string (buffer-substring-no-properties
-                                    (point-min) (point)))))))
+    (if syntax-error
+        (let ((errors (js2-ast-root-errors ast)))
+          (should (= 1 (length errors)))
+          (destructuring-bind (_ pos len) (first errors)
+            (should (string= syntax-error (substring code-string
+                                                     (1- pos) (+ pos len -1))))))
+      (ert-with-test-buffer (:name 'copy)
+        (js2-print-tree ast)
+        (skip-chars-backward " \t\n")
+        (should (string= code-string (buffer-substring-no-properties
+                                      (point-min) (point))))))))
 
-(defmacro js2-deftest-ast (name code-string &optional bindings)
-  "Parse CODE-STRING, print it out with `js2-print-tree', and
-assert the result to be equal to the original string.
-When BINDINGS are specified, apply them around the test."
+(defmacro* js2-deftest-ast (name code-string &key bind syntax-error)
+  "Parse CODE-STRING.  If SYNTAX-ERROR is nil, print syntax tree
+with `js2-print-tree' and assert the result to be equal to the
+original string.  If SYNTAX-ERROR is passed, expect syntax error
+highlighting substring equal to SYNTAX-ERROR value.
+BIND defines bindings to apply them around the test."
   `(ert-deftest ,name ()
-     (let ,(append bindings '((js2-basic-offset 2)))
-       (js2-test-ast-string ,code-string))))
+     (let ,(append bind '((js2-basic-offset 2)))
+       (js2-test-ast-string ,code-string :syntax-error ,syntax-error))))
 
 (put 'js2-deftest-ast 'lisp-indent-function 'defun)
 
@@ -34,19 +42,19 @@ When BINDINGS are specified, apply them around the test."
 
 (js2-deftest-ast parse-property-access-when-keyword
   "A.in = 3;"
-  ((js2-allow-keywords-as-property-names t)))
+  :bind ((js2-allow-keywords-as-property-names t)))
 
 (js2-deftest-ast parse-property-access-when-keyword-no-xml
   "A.in = 3;"
-  ((js2-allow-keywords-as-property-names t)
-   (js2-compiler-xml-available nil)))
+  :bind ((js2-allow-keywords-as-property-names t)
+         (js2-compiler-xml-available nil)))
 
 (js2-deftest-ast parse-array-literal-when-not-keyword
   "a = {b: 1};")
 
 (js2-deftest-ast parse-array-literal-when-keyword
   "a = {in: 1};"
-  ((js2-allow-keywords-as-property-names t)))
+  :bind ((js2-allow-keywords-as-property-names t)))
 
 ;;; 'of' contextual keyword.
 
@@ -75,3 +83,16 @@ When BINDINGS are specified, apply them around the test."
 
 (js2-deftest-ast destruct-in-catch-clause
   "try {\n} catch ({a, b}) {\n  return a + b;\n}")
+
+;;; Function arguments.
+
+(js2-deftest-ast function-with-default-parameters
+  "function foo(a = 1, b = a + 1) {\n}")
+
+(js2-deftest-ast function-with-no-default-after-default
+  "function foo(a = 1, b) {\n}"
+  :syntax-error "b")
+
+(js2-deftest-ast function-with-destruct-after-default
+  "function foo(a = 1, {b, c}) {\n}"
+  :syntax-error "{")

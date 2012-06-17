@@ -1562,6 +1562,9 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.no.paren.after.parms"
          "missing ) after formal parameters")
 
+(js2-msg "msg.no.default.after.default.param" ; added by js2-mode
+         "parameter without default follows parameter with default")
+
 (js2-msg "msg.no.brace.body"
          "missing '{' before function body")
 
@@ -7466,23 +7469,44 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
 (defun js2-parse-function-params (fn-node pos)
   (if (js2-match-token js2-RP)
       (setf (js2-function-node-rp fn-node) (- js2-token-beg pos))
-    (let (params len param)
+    (let (params len param default-found)
       (loop for tt = (js2-peek-token)
             do
             (cond
              ;; destructuring param
              ((or (= tt js2-LB) (= tt js2-LC))
+              (when default-found
+                (js2-report-error "msg.no.default.after.default.param"))
               (setq param (js2-parse-destruct-primary-expr))
               (js2-define-destruct-symbols param
                                            js2-LP
                                            'js2-function-param-face)
               (push param params))
-             ;; simple name
+             ;; variable name
              (t
               (js2-must-match js2-NAME "msg.no.parm")
               (js2-record-face 'js2-function-param-face)
               (setq param (js2-create-name-node))
               (js2-define-symbol js2-LP js2-ts-string param)
+              ;; default parameter value
+              (when (or (and default-found
+                             (js2-must-match js2-ASSIGN
+                                             "msg.no.default.after.default.param"
+                                             (js2-node-pos param)
+                                             (js2-node-len param)))
+                        (and (>= js2-language-version 200)
+                             (js2-match-token js2-ASSIGN)))
+                (let* ((pos (js2-node-pos param))
+                       (tt js2-current-token)
+                       (op-pos (- js2-token-beg pos))
+                       (left param)
+                       (right (js2-parse-assign-expr))
+                       (len (- (js2-node-end right) pos)))
+                  (setq param (make-js2-assign-node
+                               :type tt :pos pos :len len :op-pos op-pos
+                               :left left :right right)
+                        default-found t)
+                  (js2-node-add-children param left right)))
               (push param params)))
             while
             (js2-match-token js2-COMMA))
