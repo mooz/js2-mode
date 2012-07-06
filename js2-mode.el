@@ -9984,7 +9984,8 @@ to a multiline declaration statement.  See `js2-pretty-multiline-declarations'."
               (backward-sexp)
             (scan-error (setq at-opening-bracket t))))
         (when (looking-at js2-declaration-keyword-re)
-          (- (1+ (match-end 0)) (point-at-bol)))))))
+          (goto-char (match-end 0))
+          (1+ (current-column)))))))
 
 (defun js2-ctrl-statement-indentation ()
   "Returns the proper indentation of the current line if it
