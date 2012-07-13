@@ -10636,9 +10636,10 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
         (unless interrupted-p
           (setq js2-mode-parse-timer nil))))))
 
-(defun js2-mode-show-node ()
+(defun js2-mode-show-node (event)
   "Debugging aid:  highlight selected AST node on mouse click."
-  (interactive)
+  (interactive "e")
+  (mouse-set-point event)
   (let ((node (js2-node-at-point))
         beg
         end)
@@ -10658,6 +10659,8 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
                  (if (js2-node-parent node)
                      (js2-node-short-name (js2-node-parent node))
                    "nil"))))))
+
+(put 'js2-mode-show-node 'CUA 'move)
 
 (defun js2-mode-hide-overlay (&optional p1 p2)
   "Remove the debugging overlay when the point moves.
