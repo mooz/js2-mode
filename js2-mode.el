@@ -4387,7 +4387,7 @@ For `js2-elem-get-node' structs, returns right-bracket position.
 Note that the position may be nil in the case of a parse error."
   (cond
    ((js2-elem-get-node-p node)
-    (js2-elem-get-node-lb node))
+    (js2-elem-get-node-rb node))
    ((js2-loop-node-p node)
     (js2-loop-node-rp node))
    ((js2-function-node-p node)
@@ -11445,9 +11445,10 @@ With ARG, do it that many times.  Negative arg -N means
 move backward across N balanced expressions."
   (interactive "p")
   (setq arg (or arg 1))
-  (if js2-mode-buffer-dirty-p
-      (js2-mode-wait-for-parse #'js2-mode-forward-sexp))
-  (let (node end (start (point)))
+  (when js2-mode-buffer-dirty-p
+    (js2-reparse))
+  (let ((scan-msg "Containing expression ends prematurely")
+        node (start (point)) pos lp rp)
     (cond
      ;; backward-sexp
      ;; could probably make this better for some cases:
@@ -11458,19 +11459,47 @@ move backward across N balanced expressions."
       (dotimes (i (- arg))
         (js2-backward-sws)
         (forward-char -1)  ; enter the node we backed up to
-        (setq node (js2-node-at-point (point) t))
-        (goto-char (if node
-                       (js2-node-abs-pos node)
-                     (point-min)))))
-    (t
-     ;; forward-sexp
-     (js2-forward-sws)
-     (dotimes (i arg)
-       (js2-forward-sws)
-       (setq node (js2-node-at-point (point) t)
-             end (if node (+ (js2-node-abs-pos node)
-                             (js2-node-len node))))
-       (goto-char (or end (point-max))))))))
+        (when (setq node (js2-node-at-point (point) t))
+          (setq pos (js2-node-abs-pos node))
+          (let ((parens (js2-mode-forward-sexp-parens node pos)))
+            (setq lp (car parens)
+                  rp (cdr parens))))
+        (goto-char (or (when (and lp (> start lp))
+                         (when (and rp (<= start rp))
+                           (goto-char start)
+                           (signal 'scan-error (list scan-msg lp lp)))
+                         lp)
+                       pos
+                       (point-min)))))
+     (t
+      ;; forward-sexp
+      (js2-forward-sws)
+      (dotimes (i arg)
+        (js2-forward-sws)
+        (when (setq node (js2-node-at-point (point) t))
+          (setq pos (js2-node-abs-pos node))
+          (let ((parens (js2-mode-forward-sexp-parens node pos)))
+            (setq lp (car parens)
+                  rp (cdr parens))))
+        (goto-char (or (when (and rp (< start rp))
+                         (when (> start lp)
+                           (signal 'scan-error (list scan-msg rp (1+ rp))))
+                         (1+ rp))
+                       (+ pos (js2-node-len node))
+                       (point-max))))))))
+
+(defun js2-mode-forward-sexp-parens (node abs-pos)
+  (cond
+   ((or (js2-array-node-p node)
+        (js2-object-node-p node)
+        (js2-array-comp-node-p node)
+        (eq 'cl-struct-js2-block-node (aref node 0)))
+    (cons abs-pos (+ abs-pos (js2-node-len node) -1)))
+   ((js2-paren-expr-node-p node)
+    (let ((lp (js2-node-lp node))
+          (rp (js2-node-rp node)))
+      (cons (when lp (+ abs-pos lp))
+            (when rp (+ abs-pos rp)))))))
 
 (defun js2-next-error (&optional arg reset)
   "Move to next parse error.
