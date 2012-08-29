@@ -11483,9 +11483,15 @@ move backward across N balanced expressions."
                   rp (cdr parens))))
         (goto-char (or (when (and rp (< start rp))
                          (when (> start lp)
+                           (goto-char start)
                            (signal 'scan-error (list scan-msg rp (1+ rp))))
                          (1+ rp))
-                       (+ pos (js2-node-len node))
+                       (+ pos
+                          (js2-node-len
+                           (if (js2-expr-stmt-node-p (js2-node-parent node))
+                               ;; stop after the semicolon
+                               (js2-node-parent node)
+                             node)))
                        (point-max))))))))
 
 (defun js2-mode-forward-sexp-parens (node abs-pos)
