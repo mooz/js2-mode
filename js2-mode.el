@@ -11481,7 +11481,7 @@ move backward across N balanced expressions."
           (let ((parens (js2-mode-forward-sexp-parens node pos)))
             (setq lp (car parens)
                   rp (cdr parens))))
-        (goto-char (or (when (and rp (< start rp))
+        (goto-char (or (when (and rp (<= start rp))
                          (when (> start lp)
                            (goto-char start)
                            (signal 'scan-error (list scan-msg rp (1+ rp))))
