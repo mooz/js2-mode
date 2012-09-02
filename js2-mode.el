@@ -11499,7 +11499,7 @@ move backward across N balanced expressions."
    ((or (js2-array-node-p node)
         (js2-object-node-p node)
         (js2-array-comp-node-p node)
-        (eq 'cl-struct-js2-block-node (aref node 0)))
+        (memq (aref node 0) '(cl-struct-js2-block-node cl-struct-js2-scope)))
     (cons abs-pos (+ abs-pos (js2-node-len node) -1)))
    ((js2-paren-expr-node-p node)
     (let ((lp (js2-node-lp node))
