@@ -11448,7 +11448,7 @@ move backward across N balanced expressions."
   (when js2-mode-buffer-dirty-p
     (js2-reparse))
   (let ((scan-msg "Containing expression ends prematurely")
-        node (start (point)) pos lp rp)
+        node (start (point)) pos lp rp child)
     (cond
      ;; backward-sexp
      ;; could probably make this better for some cases:
@@ -11464,13 +11464,16 @@ move backward across N balanced expressions."
           (let ((parens (js2-mode-forward-sexp-parens node pos)))
             (setq lp (car parens)
                   rp (cdr parens))))
-        (goto-char (or (when (and lp (> start lp))
-                         (when (and rp (<= start rp))
-                           (goto-char start)
-                           (signal 'scan-error (list scan-msg lp lp)))
-                         lp)
-                       pos
-                       (point-min)))))
+        (goto-char
+         (or (when (and lp (> start lp))
+               (if (and rp (<= start rp))
+                   (if (setq child (js2-node-closest-child node (point) lp t))
+                       (js2-node-abs-pos child)
+                     (goto-char start)
+                     (signal 'scan-error (list scan-msg lp lp)))
+                 lp))
+             pos
+             (point-min)))))
      (t
       ;; forward-sexp
       (js2-forward-sws)
@@ -11481,18 +11484,22 @@ move backward across N balanced expressions."
           (let ((parens (js2-mode-forward-sexp-parens node pos)))
             (setq lp (car parens)
                   rp (cdr parens))))
-        (goto-char (or (when (and rp (<= start rp))
-                         (when (> start lp)
-                           (goto-char start)
-                           (signal 'scan-error (list scan-msg rp (1+ rp))))
-                         (1+ rp))
-                       (+ pos
-                          (js2-node-len
-                           (if (js2-expr-stmt-node-p (js2-node-parent node))
-                               ;; stop after the semicolon
-                               (js2-node-parent node)
-                             node)))
-                       (point-max))))))))
+        (goto-char
+         (or (when (and rp (<= start rp))
+               (if (> start lp)
+                   (if (setq child (js2-node-closest-child node (point) rp))
+                       (js2-node-abs-end child)
+                     (goto-char start)
+                     (signal 'scan-error (list scan-msg rp (1+ rp))))
+                 (1+ rp)))
+             (and pos
+                  (+ pos
+                     (js2-node-len
+                      (if (js2-expr-stmt-node-p (js2-node-parent node))
+                          ;; stop after the semicolon
+                          (js2-node-parent node)
+                        node))))
+             (point-max))))))))
 
 (defun js2-mode-forward-sexp-parens (node abs-pos)
   (cond
@@ -11506,6 +11513,29 @@ move backward across N balanced expressions."
           (rp (js2-node-rp node)))
       (cons (when lp (+ abs-pos lp))
             (when rp (+ abs-pos rp)))))))
+
+(defun js2-node-closest-child (parent point limit &optional before)
+  (let* ((parent-pos (js2-node-abs-pos parent))
+         (rpoint (- point parent-pos))
+         (rlimit (- limit parent-pos))
+         (min (min rpoint rlimit))
+         (max (max rpoint rlimit))
+         found)
+    (catch 'done
+      (js2-visit-ast
+       parent
+       (lambda (node end-p)
+         (if (eq node parent)
+             t
+           (let ((pos (js2-node-pos node)) ;; Both relative values.
+                 (end (+ (js2-node-pos node) (js2-node-len node))))
+             (when (and (>= pos min) (<= end max)
+                        (if before (< pos rpoint) (> end rpoint)))
+               (setq found node))
+             (when (> end rpoint)
+               (throw 'done nil)))
+           nil))))
+    found))
 
 (defun js2-next-error (&optional arg reset)
   "Move to next parse error.
