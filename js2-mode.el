@@ -10552,9 +10552,12 @@ You can disable this by customizing `js2-cleanup-whitespace'."
   (if js2-mode-parse-timer
       (cancel-timer js2-mode-parse-timer))
   (setq js2-mode-parsing nil)
-  (setq js2-mode-parse-timer
-        (run-with-idle-timer js2-idle-timer-delay nil
-                             #'js2-mode-idle-reparse (current-buffer))))
+  (let ((timer (timer-create)))
+    (setq js2-mode-parse-timer timer)
+    (timer-set-function timer 'js2-mode-idle-reparse (list (current-buffer)))
+    (timer-set-idle-time timer js2-idle-timer-delay)
+    ;; http://debbugs.gnu.org/cgi/bugreport.cgi?bug=12326
+    (timer-activate-when-idle timer nil)))
 
 (defun js2-mode-idle-reparse (buffer)
   "Run `js2-reparse' if BUFFER is the current buffer, or schedule
