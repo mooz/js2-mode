@@ -11448,7 +11448,8 @@ With ARG, do it that many times.  Negative arg -N means
 move backward across N balanced expressions."
   (interactive "p")
   (setq arg (or arg 1))
-  (when js2-mode-buffer-dirty-p
+  (save-restriction
+    (widen) ;; `blink-matching-open' calls `narrow-to-region'
     (js2-reparse))
   (let ((scan-msg "Containing expression ends prematurely")
         node (start (point)) pos lp rp child)
