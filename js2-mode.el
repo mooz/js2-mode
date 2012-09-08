@@ -10410,9 +10410,9 @@ If so, we don't ever want to use bounce-indent."
               (not (js2-1-line-comment-continuation-p)))
          (js2-bounce-indent indent-col parse-status bounce-backwards))
         ;; just indent to the guesser's likely spot
-        (t (indent-line-to indent-col)))
-       (when (plusp offset)
-         (forward-char offset))))))
+        (t (indent-line-to indent-col))))
+     (when (plusp offset)
+       (forward-char offset)))))
 
 (defun js2-indent-region (start end)
   "Indent the region, but don't use bounce indenting."
