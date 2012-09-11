@@ -252,18 +252,6 @@ lines, it won't be indented additionally:
   :type 'symbol)
 (js2-mark-safe-local 'js2-pretty-multiline-declarations 'symbolp)
 
-(defcustom js2-indent-on-enter-key nil
-  "Non-nil to have Enter/Return key indent the line.
-This is unusual for Emacs modes but common in IDEs like Eclipse."
-  :type 'boolean
-  :group 'js2-mode)
-
-(defcustom js2-enter-indents-newline nil
-  "Non-nil to have Enter/Return key indent the newly-inserted line.
-This is unusual for Emacs modes but common in IDEs like Eclipse."
-  :type 'boolean
-  :group 'js2-mode)
-
 (defcustom js2-idle-timer-delay 0.2
   "Delay in secs before re-parsing after user makes changes.
 Multiplied by `js2-dynamic-idle-timer-adjust', which see."
@@ -1126,6 +1114,7 @@ another file, or you've got a potential bug."
   (let ((map (make-sparse-keymap))
         keys)
     (define-key map [mouse-1] #'js2-mode-show-node)
+    (define-key map (kbd "M-j") #'js2-line-break)
     (define-key map (kbd "C-c C-e") #'js2-mode-hide-element)
     (define-key map (kbd "C-c C-s") #'js2-mode-show-element)
     (define-key map (kbd "C-c C-a") #'js2-mode-show-all)
@@ -10640,7 +10629,10 @@ This ensures that the counts and `next-error' are correct."
 (defalias #'js2-echo-help #'js2-echo-error)
 
 (defun js2-line-break (&optional soft)
-  "Break line at point."
+  "Break line at point and indent, continuing comment if within one.
+If inside a string, and `js2-concat-multiline-strings' is not
+nil, turn it into concatenation."
+  (interactive)
   (let ((parse-status (syntax-ppss)))
     (cond
      ;; Check if we're inside a string.
@@ -10650,46 +10642,36 @@ This ensures that the counts and `next-error' are correct."
         (insert "\n")))
      ;; Check if inside a block comment.
      ((nth 4 parse-status)
-      (js2-mode-extend-comment))
+      (js2-mode-extend-comment (nth 8 parse-status)))
      (t
-      (newline)))))
+      (newline-and-indent)))))
 
 (defun js2-mode-split-string (parse-status)
   "Turn a newline in mid-string into a string concatenation.
 PARSE-STATUS is as documented in `parse-partial-sexp'."
   (let* ((col (current-column))
          (quote-char (nth 3 parse-status))
-         (quote-string (string quote-char))
          (string-beg (nth 8 parse-status))
-         (at-eol (eq js2-concat-multiline-strings 'eol))
-         (indent (or
-                  (save-excursion
-                    (back-to-indentation)
-                    (if (looking-at "\\+")
-                        (current-column)))
-                  (save-excursion
-                    (goto-char string-beg)
-                    (if (looking-back "\\+\\s-+")
-                        (goto-char (match-beginning 0)))
-                    (current-column)))))
+         (at-eol (eq js2-concat-multiline-strings 'eol)))
     (insert quote-char)
     (if at-eol
         (insert " +\n")
       (insert "\n"))
-    ;; FIXME: This does not match the behavior of `js2-indent-line'.
-    (indent-to indent)
     (unless at-eol
       (insert "+ "))
-    (insert quote-string)
+    (js2-indent-line)
+    (insert quote-char)
     (when (eolp)
-      (insert quote-string)
+      (insert quote-char)
       (backward-char 1))))
 
-(defun js2-mode-extend-comment ()
+(defun js2-mode-extend-comment (start-pos)
   "Indent the line and, when inside a comment block, add comment prefix."
   (let (star single col first-line needs-close)
     (save-excursion
       (back-to-indentation)
+      (when (< (point) start-pos)
+        (goto-char start-pos))
       (cond
        ((looking-at "\\*[^/]")
         (setq star t
@@ -10718,6 +10700,7 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
                 (save-excursion
                   (skip-chars-forward " \t\r\n")
                   (not (eq (char-after) ?*))))))
+    (delete-horizontal-space)
     (insert "\n")
     (cond
      (star
@@ -10734,9 +10717,8 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
                    (looking-at "\\s-*//"))))
       (indent-to col)
       (insert "// "))
-     ;; don't need to extend the comment after all
-     (js2-enter-indents-newline
-      (js2-indent-line)))))
+     ;; Don't need to extend the comment after all.
+     (js2-indent-line))))
 
 (defun js2-beginning-of-line ()
   "Toggles point between bol and first non-whitespace char in line.
