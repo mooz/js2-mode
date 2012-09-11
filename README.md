@@ -3,7 +3,7 @@ Description
 
 An improved JavaScript mode for GNU Emacs. Forked from <http://code.google.com/p/js2-mode/>.
 
-For the list of user-visible changes, see
+For some of the user-visible changes, see
 [Changes from the original mode](https://github.com/mooz/js2-mode/wiki/Changes-from-the-original-mode).
 
 Installation
@@ -11,6 +11,7 @@ Installation
 
     $ git clone git://github.com/mooz/js2-mode.git
     $ cd js2-mode
+    $ git checkout emacs24
     $ emacs --batch -f batch-byte-compile js2-mode.el
 
 Then put js2-mode.elc into your site-lisp directory.
@@ -22,6 +23,12 @@ In you emacs config:
 
 See <http://code.google.com/p/js2-mode/wiki/InstallationInstructions> for
 additional details.
+
+Emacs 22 and 23
+===============
+
+This version requires Emacs 24. For backwards-compatible version, check out [the
+`master` branch](https://github.com/mooz/js2-mode/tree/master).
 
 Bugs
 ====
