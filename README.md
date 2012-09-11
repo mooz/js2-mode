@@ -27,8 +27,7 @@ additional details.
 Emacs 22 and 23
 ===============
 
-This version requires Emacs 24. For backwards-compatible version, check out [the
-`master` branch](https://github.com/mooz/js2-mode/tree/master).
+This version requires Emacs 24. For backwards-compatible version, check out the [`master` branch](https://github.com/mooz/js2-mode/tree/master).
 
 Bugs
 ====
