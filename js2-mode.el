@@ -10372,10 +10372,6 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (set (make-local-variable 'line-move-ignore-invisible) t)
   (set (make-local-variable 'forward-sexp-function) #'js2-mode-forward-sexp)
 
-  (if (fboundp 'run-mode-hooks)
-      (run-mode-hooks 'js2-mode-hook)
-    (run-hooks 'js2-mode-hook))
-
   (setq js2-mode-functions-hidden nil
         js2-mode-comments-hidden nil
         js2-mode-buffer-dirty-p t
