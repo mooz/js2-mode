@@ -10203,7 +10203,7 @@ highlighting features of `js2-mode'."
             (lst type)
             "Add diagnostic TYPE and line number to errs list"
             (mapcar (lambda (err)
-                      (cons err (list type (line-number-at-pos (nth 1 err)))))
+                      (list err type (line-number-at-pos (nth 1 err))))
                     lst)))
     (let* ((srcbuf (current-buffer))
            (errbuf (get-buffer-create "*js-lint*"))
@@ -10219,7 +10219,7 @@ highlighting features of `js2-mode'."
         (let ((inhibit-read-only t))
           (erase-buffer)
           (dolist (err all-errs)
-            (destructuring-bind ((msg-key beg end &rest) . (type line)) err
+            (destructuring-bind ((msg-key beg end &rest) type line) err
               (insert-text-button
                (format "line %d: %s" line (js2-get-msg msg-key))
                'face type
