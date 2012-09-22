@@ -10710,9 +10710,9 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
               (and (zerop (forward-line 1))
                    (looking-at "\\s-*//"))))
       (indent-to col)
-      (insert "// "))
-     ;; Don't need to extend the comment after all.
-     (js2-indent-line))))
+      (insert "// ")))
+    ;; Don't need to extend the comment after all.
+    (js2-indent-line)))
 
 (defun js2-beginning-of-line ()
   "Toggles point between bol and first non-whitespace char in line.
