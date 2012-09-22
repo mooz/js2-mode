@@ -1269,7 +1269,7 @@ First match-group is the leading whitespace.")
 
 ;; TODO(stevey):  construct this table at compile-time.
 (defmacro js2-msg (key &rest strings)
-  `(puthash ,key (funcall #'concat ,@strings)
+  `(puthash ,key (concat ,@strings)
             js2-message-table))
 
 (defun js2-get-msg (msg-key)
@@ -10215,8 +10215,7 @@ highlighting features of `js2-mode'."
                       (when js2-mode-ast (js2-ast-root-warnings js2-mode-ast))
                       'js2-warning))  ; must be a valid face name
            (all-errs (sort (append errors warnings)
-                           (lambda (e1 e2)
-                             (funcall '< (nth 1 e1) (nth 1 e2))))))
+                           (lambda (e1 e2) (< (nth 1 e1) (nth 1 e2))))))
       (with-current-buffer errbuf
         (let ((inhibit-read-only t))
           (erase-buffer)
