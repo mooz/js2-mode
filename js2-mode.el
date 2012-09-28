@@ -9907,6 +9907,31 @@ comments have been removed."
        (unless noerror
          (error (error-message-string err)))))))
 
+(defun js2-search-newline-backward (&optional count)
+  "Search backward until a new line is found, ignoring strings and comments.
+This is a special case of the js2-re-search-backward function that handles
+newlines inside comments correctly. No errors are propagated."
+  (if (null count) (setq count 1))
+  (condition-case nil
+      (let (parse saved-point)
+        (while (> count 0)
+          (re-search-backward "\n" nil)
+          (setq parse (if saved-point
+                          (parse-partial-sexp saved-point (point))
+                        (syntax-ppss (point))))
+          ;; are we inside a string or inside a comment?
+          (cond ((or (nth 3 parse) (nth 7 parse))
+                 ;; jump to the beginning of string/comment
+                 (goto-char (nth 8 parse))
+
+                 (skip-chars-backward " \t")
+                 (if (not (bolp)) (setq count (1- count))))
+
+                (t
+                 (setq count (1- count))))))
+    (error nil)) ;; ignore all errors
+  (point))
+
 (defun js2-looking-at-operator-p ()
   "Return non-nil if text after point is an operator (that is not
 a comma)."
@@ -9923,7 +9948,7 @@ a comma)."
     (back-to-indentation)
     (or (js2-looking-at-operator-p)
         ;; comment
-        (and (js2-re-search-backward "\n" nil t)
+        (and (js2-search-newline-backward)
 	     (progn
 	       (skip-chars-backward " \t")
                (unless (bolp)
