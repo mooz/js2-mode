@@ -9922,16 +9922,19 @@ a comma)."
   (save-excursion
     (back-to-indentation)
     (or (js2-looking-at-operator-p)
-        ;; comment
-        (and (js2-re-search-backward "\n" nil t)
-	     (progn
-	       (skip-chars-backward " \t")
-               (unless (bolp)
-                 (backward-char)
-                 (and (js2-looking-at-operator-p)
-                      (and (progn
-                             (backward-char)
-                             (not (looking-at "\\*\\|++\\|--\\|/[/*]")))))))))))
+        (when (catch 'found
+                (while (and (re-search-backward "\n" nil t)
+                            (let ((state (syntax-ppss)))
+                              (when (nth 4 state)
+                                (goto-char (nth 8 state))) ;; skip comments
+                              (skip-chars-backward " \t")
+                              (if (bolp)
+                                  t
+                                (throw 'found t))))))
+          (backward-char)
+          (when (js2-looking-at-operator-p)
+            (backward-char)
+            (not (looking-at "\\*\\|++\\|--\\|/[/*]")))))))
 
 (defun js2-end-of-do-while-loop-p ()
   "Returns non-nil if word after point is `while' of a do-while
@@ -10393,10 +10396,10 @@ If so, we don't ever want to use bounce-indent."
         ;; This has to be set before calling parse-partial-sexp below.
         (inhibit-point-motion-hooks t))
     (setq parse-status (save-excursion
-                          (syntax-ppss (point-at-bol)))
+                         (syntax-ppss (point-at-bol)))
           offset (- (point) (save-excursion
-                               (back-to-indentation)
-                               (point))))
+                              (back-to-indentation)
+                              (point))))
     (js2-with-underscore-as-word-syntax
      (if (nth 4 parse-status)
          (js2-lineup-comment parse-status)
