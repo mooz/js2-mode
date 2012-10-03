@@ -2105,17 +2105,17 @@ modifications to the buffer."
   (declare (indent 0) (debug t))
   (let ((modified (make-symbol "modified")))
     `(let ((,modified (buffer-modified-p))
-	   (inhibit-read-only t)
-	   (inhibit-modification-hooks t)
-	   (buffer-undo-list t)
-	   (deactivate-mark nil)
-	   ;; Apparently these avoid file locking problems.
-	   (buffer-file-name nil)
-	   (buffer-file-truename nil))
+           (inhibit-read-only t)
+           (inhibit-modification-hooks t)
+           (buffer-undo-list t)
+           (deactivate-mark nil)
+           ;; Apparently these avoid file locking problems.
+           (buffer-file-name nil)
+           (buffer-file-truename nil))
        (unwind-protect
-	   (progn ,@body)
-	 (unless ,modified
-	   (restore-buffer-modified-p nil))))))
+           (progn ,@body)
+         (unless ,modified
+           (restore-buffer-modified-p nil))))))
 
 (defmacro js2-with-underscore-as-word-syntax (&rest body)
   "Evaluate BODY with the _ character set to be word-syntax."
@@ -9945,20 +9945,20 @@ indented to the same column as the current line."
   (save-excursion
     (save-match-data
       (when (looking-at "\\s-*\\<while\\>")
-	(if (save-excursion
-	      (skip-chars-backward "[ \t\n]*}")
-	      (looking-at "[ \t\n]*}"))
-	    (save-excursion
-	      (backward-list) (backward-word 1) (looking-at "\\<do\\>"))
-	  (js2-re-search-backward "\\<do\\>" (point-at-bol) t)
-	  (or (looking-at "\\<do\\>")
-	      (let ((saved-indent (current-indentation)))
-		(while (and (js2-re-search-backward "^[ \t]*\\<" nil t)
-			    (/= (current-indentation) saved-indent)))
-		(and (looking-at "[ \t]*\\<do\\>")
-		     (not (js2-re-search-forward
-			   "\\<while\\>" (point-at-eol) t))
-		     (= (current-indentation) saved-indent)))))))))
+        (if (save-excursion
+              (skip-chars-backward "[ \t\n]*}")
+              (looking-at "[ \t\n]*}"))
+            (save-excursion
+              (backward-list) (backward-word 1) (looking-at "\\<do\\>"))
+          (js2-re-search-backward "\\<do\\>" (point-at-bol) t)
+          (or (looking-at "\\<do\\>")
+              (let ((saved-indent (current-indentation)))
+                (while (and (js2-re-search-backward "^[ \t]*\\<" nil t)
+                            (/= (current-indentation) saved-indent)))
+                (and (looking-at "[ \t]*\\<do\\>")
+                     (not (js2-re-search-forward
+                           "\\<while\\>" (point-at-eol) t))
+                     (= (current-indentation) saved-indent)))))))))
 
 (defun js2-multiline-decl-indentation ()
   "Returns the declaration indentation column if the current line belongs
@@ -10430,7 +10430,9 @@ If so, we don't ever want to use bounce-indent."
 
 ;;;###autoload
 (defun js2-mode ()
-  "Major mode for editing JavaScript code."
+  "Major mode for editing JavaScript code.
+
+\\{js2-mode-map}"
   (interactive)
   (kill-all-local-variables)
   (set-syntax-table js2-mode-syntax-table)
