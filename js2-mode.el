@@ -10430,7 +10430,7 @@ If so, we don't ever want to use bounce-indent."
 
 ;;;###autoload
 (defun js2-mode ()
-  "Major mode for editing JavaScript code."
+  "Major mode for editing JavaScript code.\n\n\\{js2-mode-map}"
   (interactive)
   (kill-all-local-variables)
   (set-syntax-table js2-mode-syntax-table)
