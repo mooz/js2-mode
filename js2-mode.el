@@ -1,12 +1,12 @@
-;;; js2-mode.el --- an improved JavaScript editing mode
+;;; js2-mode.el --- Improved JavaScript editing mode
 
-;; Copyright (C) 2009  Free Software Foundation, Inc.
+;; Copyright (C) 2009, 2012  Free Software Foundation, Inc.
 
-;; Author:  Steve Yegge <steve.yegge@gmail.com>
-;; Contributors:  mooz <stillpedant@gmail.com>
-;;                Dmitry Gutov <dgutov@yandex.ru>
-;; Version:  See `js2-mode-version'
-;; Keywords:  languages, javascript
+;; Author: Steve Yegge <steve.yegge@gmail.com>
+;;         mooz <stillpedant@gmail.com>
+;;         Dmitry Gutov <dgutov@yandex.ru>
+;; Version: 1.0
+;; Keywords: languages, javascript
 
 ;; This file is part of GNU Emacs.
 
@@ -28,7 +28,7 @@
 ;; This JavaScript editing mode supports:
 
 ;;  - strict recognition of the Ecma-262 language standard
-;;  - support for most Rhino and SpiderMonkey extensions from 1.5 to 1.8
+;;  - support for most Rhino and SpiderMonkey extensions from 1.5 and up
 ;;  - parsing support for ECMAScript for XML (E4X, ECMA-357)
 ;;  - accurate syntax highlighting using a recursive-descent parser
 ;;  - on-the-fly reporting of syntax errors and strict-mode warnings
@@ -309,12 +309,6 @@ end of the line, otherwise, at the beginning of the next line."
   :type '(choice (const t) (const eol) (const nil))
   :group 'js2-mode)
 
-(defcustom js2-mode-squeeze-spaces t
-  "Non-nil to normalize whitespace when filling in comments.
-Multiple runs of spaces are converted to a single space."
-  :type 'boolean
-  :group 'js2-mode)
-
 (defcustom js2-mode-show-parse-errors t
   "True to highlight parse errors."
   :type 'boolean
@@ -469,9 +463,6 @@ is rewritten as:
 which doesn't seem particularly useful, but Rhino permits it."
   :type 'boolean
   :group 'js2-mode)
-
-(defvar js2-mode-version 20101228
-  "Release number for `js2-mode'.")
 
 ;; scanner variables
 
@@ -7081,8 +7072,8 @@ i.e. one or more nodes, and an integer position as the list tail."
 
 ;;; Parser
 
-(defconst js2-version "1.8.0"
-  "Version of JavaScript supported, plus minor js2 version.")
+(defconst js2-version "1.8.5"
+  "Version of JavaScript supported.")
 
 (defmacro js2-record-face (face)
   "Record a style run of FACE for the current token."
