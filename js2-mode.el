@@ -1174,9 +1174,6 @@ another file, or you've got a potential bug."
     (define-key map (kbd "C-c C-o") #'js2-mode-toggle-element)
     (define-key map (kbd "C-c C-w") #'js2-mode-toggle-warnings-and-errors)
     (define-key map (kbd "C-c C-`") #'js2-next-error)
-    ;; also define user's preference for next-error, if available
-    (if (setq keys (where-is-internal #'next-error))
-        (define-key map (car keys) #'js2-next-error))
     (define-key map (or (car (where-is-internal #'mark-defun))
                         (kbd "M-C-h"))
       #'js2-mark-defun)
