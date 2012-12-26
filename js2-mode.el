@@ -10705,7 +10705,7 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
     (js2-indent-line)))
 
 (defun js2-beginning-of-line ()
-  "Toggles point between bol and first non-whitespace char in line.
+  "Toggle point between bol and first non-whitespace char in line.
 Also moves past comment delimiters when inside comments."
   (interactive)
   (let (node beg)
@@ -10725,7 +10725,7 @@ Also moves past comment delimiters when inside comments."
       (goto-char (point-at-bol))))))
 
 (defun js2-end-of-line ()
-  "Toggles point between eol and last non-whitespace char in line."
+  "Toggle point between eol and last non-whitespace char in line."
   (interactive)
   (if (eolp)
       (skip-chars-backward " \t")
