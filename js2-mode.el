@@ -6693,7 +6693,7 @@ that it's an external variable, which must also be in the top-level scope."
      (t t))))
 
 (defun js2-wrapper-function-p (node)
-  "Returns t if NODE is a function expression that's immediately invoked.
+  "Return t if NODE is a function expression that's immediately invoked.
 NODE must be `js2-function-node'."
   (let ((parent (js2-node-parent node)))
     (or
@@ -6952,7 +6952,7 @@ The flags, if any, are saved in `js2-current-flagged-token'."
       tt)))  ; return unflagged token
 
 (defun js2-peek-flagged-token ()
-  "Returns the current token along with any flags set for it."
+  "Return the current token along with any flags set for it."
   (js2-peek-token)
   js2-current-flagged-token)
 
@@ -9681,7 +9681,7 @@ indented to the same column as the current line."
                    (= (current-indentation) saved-indent))))))))
 
 (defun js2-multiline-decl-indentation ()
-  "Returns the declaration indentation column if the current line belongs
+  "Return the declaration indentation column if the current line belongs
 to a multiline declaration statement.  See `js2-pretty-multiline-declarations'."
   (let (forward-sexp-function ; use Lisp version
         at-opening-bracket)
