@@ -1165,6 +1165,8 @@ another file, or you've got a potential bug."
     (define-key map (kbd "C-c C-o") #'js2-mode-toggle-element)
     (define-key map (kbd "C-c C-w") #'js2-mode-toggle-warnings-and-errors)
     (define-key map (kbd "C-c C-`") #'js2-next-error)
+	(define-key map (kbd "RET") 'js2-mode-return)
+
     (define-key map (or (car (where-is-internal #'mark-defun))
                         (kbd "M-C-h"))
       #'js2-mark-defun)
@@ -11730,6 +11732,11 @@ it marks the next defun after the ones already marked."
          (beg (js2-node-abs-pos fn)))
     (unless (js2-ast-root-p fn)
       (narrow-to-region beg (+ beg (js2-node-len fn))))))
+
+(defun js2-mode-return ()
+  "Bind RET to newline-and-indent."
+  (interactive)
+  (newline-and-indent))
 
 (provide 'js2-mode)
 
