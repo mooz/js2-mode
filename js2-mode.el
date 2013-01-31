@@ -80,6 +80,7 @@
 
 (require 'imenu)
 (require 'cc-cmds)  ; for `c-fill-paragraph'
+(require 'thingatpt)
 
 (eval-and-compile
   (require 'cc-mode)     ; (only) for `c-populate-syntax-table'
@@ -9685,7 +9686,6 @@ to a multiline declaration statement.  See `js2-pretty-multiline-declarations'."
   (let (forward-sexp-function ; use Lisp version
         at-opening-bracket)
     (save-excursion
-      (back-to-indentation)
       (when (not (looking-at js2-declaration-keyword-re))
         (when (looking-at js2-indent-operator-re)
           (goto-char (match-end 0))) ; continued expressions are ok
@@ -9776,13 +9776,14 @@ In particular, return the buffer position of the first `for' kwd."
   "Return the proper indentation for the current line."
   (save-excursion
     (back-to-indentation)
+    (+ (- (skip-chars-forward ", "))
     (let ((ctrl-stmt-indent (js2-ctrl-statement-indentation))
           (same-indent-p (looking-at "[]})]\\|\\<case\\>\\|\\<default\\>"))
           (continued-expr-p (js2-continued-expression-p))
           (declaration-indent (and js2-pretty-multiline-declarations
                                    (js2-multiline-decl-indentation)))
           (bracket (nth 1 parse-status))
-          beg)
+          beg in-elems)
       (cond
        ;; indent array comprehension continuation lines specially
        ((and bracket
@@ -9805,10 +9806,22 @@ In particular, return the buffer position of the first `for' kwd."
         (goto-char bracket)
         (cond
          ((looking-at "[({[][ \t]*\\(/[/*]\\|$\\)")
-          (when (save-excursion (skip-chars-backward " \t)")
-                                (looking-at ")"))
-            (backward-list))
+          (if (save-excursion (skip-chars-backward " \t)")
+                              (looking-at ")"))
+              (backward-list)
+            (if (looking-at "(")
+                (when (and
+                       (save-excursion
+                         (skip-chars-backward "[ \t\n]")
+                         (and (ignore-errors (beginning-of-thing 'symbol))
+                              (not (looking-at
+                                    (concat (regexp-opt '("catch" "for" "if"
+                                                          "while" "with" "let"))
+                                            "\\_>"))))))
+                  (setq in-elems t))
+              (setq in-elems t)))
           (back-to-indentation)
+          (skip-syntax-forward ".-")
           (and (eq js2-pretty-multiline-declarations 'all)
                (looking-at js2-declaration-keyword-re)
                (goto-char (1+ (match-end 0))))
@@ -9817,7 +9830,8 @@ In particular, return the buffer position of the first `for' kwd."
                 (continued-expr-p
                  (+ (current-column) (* 2 js2-basic-offset)))
                 (t
-                 (+ (current-column) js2-basic-offset))))
+                 (+ (current-column) js2-basic-offset
+                    (if in-elems 2 0)))))
          (t
           (unless same-indent-p
             (forward-char)
@@ -9826,7 +9840,7 @@ In particular, return the buffer position of the first `for' kwd."
 
        (continued-expr-p js2-basic-offset)
 
-       (t 0)))))
+       (t 0))))))
 
 (defun js2-lineup-comment (parse-status)
   "Indent a multi-line block comment continuation line."
