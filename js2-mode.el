@@ -879,7 +879,7 @@ externs appropriate for the specific file, perhaps based on its path.
 These should go in `js2-additional-externs', which is buffer-local.
 
 Finally, you can add a function to `js2-post-parse-callbacks',
-which is called after parsing completes, and `root' is bound to
+which is called after parsing completes, and `js2-mode-ast' is bound to
 the root of the parse tree.  At this stage you can set up an AST
 node visitor using `js2-visit-ast' and examine the parse tree
 for specific import patterns that may imply the existence of
@@ -7384,6 +7384,7 @@ Scanner should be initialized."
         (push comment (js2-ast-root-comments root))
         (js2-node-add-children root comment)))
     (setf (js2-node-len root) (- end pos))
+    (setq js2-mode-ast root)  ; Make sure this is available for callbacks.
     ;; Give extensions a chance to muck with things before highlighting starts.
     (let ((js2-additional-externs js2-additional-externs))
       (dolist (callback js2-post-parse-callbacks)
@@ -10608,7 +10609,7 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
                     (js2-time
                      (setq interrupted-p
                            (catch 'interrupted
-                             (setq js2-mode-ast (js2-parse))
+                             (js2-parse)
                              ;; if parsing is interrupted, comments and regex
                              ;; literals stay ignored by `parse-partial-sexp'
                              (remove-text-properties (point-min) (point-max)

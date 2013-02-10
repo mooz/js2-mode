@@ -104,8 +104,6 @@ prefix any functions defined inside the IIFE with the module name."
   (when (or js2-imenu-show-other-functions js2-imenu-show-module-pattern)
     (add-to-list 'js2-post-parse-callbacks 'js2-imenu-walk-ast t)))
 
-(declare (special root))
-
 (defun js2-imenu-record-declarations ()
   (let* ((styles (loop for style in js2-imenu-extension-styles
                        when (memq (plist-get style :framework)
@@ -113,9 +111,7 @@ prefix any functions defined inside the IIFE with the module name."
                        collect style))
          (re (mapconcat (lambda (style)
                           (concat "\\(" (plist-get style :call-re) "\\)"))
-                        styles "\\|"))
-         ;; Dynamic scoping. Ew.
-         (js2-mode-ast root))
+                        styles "\\|")))
     (goto-char (point-min))
     (while (js2-re-search-forward re nil t)
       (loop for i from 0 to (1- (length styles))
@@ -163,7 +159,7 @@ prefix any functions defined inside the IIFE with the module name."
 
 (defun js2-imenu-walk-ast ()
   (js2-visit-ast
-   root
+   js2-mode-ast
    (lambda (node end-p)
      (unless end-p
        (cond
