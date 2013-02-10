@@ -215,12 +215,16 @@ Similar to `c-basic-offset'."
   :group 'js2-mode
   :type 'boolean)
 
+(make-obsolete-variable 'js2-mirror-mode 'electric-pair-mode "1.0")
+
 (defcustom js2-auto-indent-p nil
   "Automatic indentation with punctuation characters.
 If non-nil, the current line is indented when certain punctuations
 are inserted."
   :group 'js2-mode
   :type 'boolean)
+
+(make-obsolete-variable 'js2-auto-indent-p 'electric-indent-mode "1.0")
 
 (defcustom js2-bounce-indent-p nil
   "Non-nil to have indent-line function choose among alternatives.
@@ -259,11 +263,15 @@ This is unusual for Emacs modes but common in IDEs like Eclipse."
   :type 'boolean
   :group 'js2-mode)
 
+(make-obsolete-variable 'js2-indent-on-enter-key nil "1.0")
+
 (defcustom js2-enter-indents-newline nil
   "Non-nil to have Enter/Return key indent the newly-inserted line.
 This is unusual for Emacs modes but common in IDEs like Eclipse."
   :type 'boolean
   :group 'js2-mode)
+
+(make-obsolete-variable 'js2-enter-indents-newline nil "1.0")
 
 (defcustom js2-rebind-eol-bol-keys t
   "Non-nil to rebind `beginning-of-line' and `end-of-line' keys.
@@ -271,11 +279,15 @@ If non-nil, bounce between bol/eol and first/last non-whitespace char."
   :group 'js2-mode
   :type 'boolean)
 
+(make-obsolete-variable 'js2-rebind-eol-bol-keys nil "1.0")
+
 (defcustom js2-electric-keys '("{" "}" "(" ")" "[" "]" ":" ";" "," "*")
   "Keys that auto-indent when `js2-auto-indent-p' is non-nil.
 Each value in the list is passed to `define-key'."
   :type 'list
   :group 'js2-mode)
+
+(make-obsolete-variable 'js2-electric-keys 'electric-indent-chars "1.0")
 
 (defcustom js2-idle-timer-delay 0.2
   "Delay in secs before re-parsing after user makes changes.
@@ -301,6 +313,8 @@ If `js2-dynamic-idle-timer-adjust' is 0 or negative,
   "Non-nil to disable automatic quote-escaping inside strings."
   :type 'boolean
   :group 'js2-mode)
+
+(make-obsolete-variable 'js2-mode-escape-quotes nil "1.0")
 
 (defcustom js2-concat-multiline-strings t
   "Non-nil to automatically turn a newline in mid-string into a
@@ -406,6 +420,8 @@ This is useful for xulrunner apps."
   "Non-nil to invoke `delete-trailing-whitespace' before saves."
   :type 'boolean
   :group 'js2-mode)
+
+(make-obsolete-variable 'js2-cleanup-whitespace 'before-save-hook "1.0")
 
 (defcustom js2-move-point-on-right-click t
   "Non-nil to move insertion point when you right-click.
