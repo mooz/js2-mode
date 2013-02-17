@@ -3,8 +3,7 @@ Description
 
 An improved JavaScript mode for GNU Emacs. Forked from <http://code.google.com/p/js2-mode/>.
 
-For some of the user-visible changes, see
-[Changes from the original mode](https://github.com/mooz/js2-mode/wiki/Changes-from-the-original-mode).
+For some of the latest changes, see [latest user-visible changes](https://github.com/mooz/js2-mode/wiki/Latest-user-visible-changes).
 
 Installation
 ======
