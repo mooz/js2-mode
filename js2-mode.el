@@ -219,8 +219,6 @@ Similar to `c-basic-offset'."
   :type 'integer)
 (js2-mark-safe-local 'js2-basic-offset 'integerp)
 
-(make-obsolete-variable 'js2-auto-indent-p 'electric-indent-mode "1.0")
-
 (defcustom js2-bounce-indent-p nil
   "Non-nil to have indent-line function choose among alternatives.
 If nil, the indent-line function will indent to a predetermined column
