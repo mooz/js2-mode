@@ -337,8 +337,7 @@ even if this flag is non-nil."
 
 (defcustom js2-strict-trailing-comma-warning t
   "Non-nil to warn about trailing commas in array literals.
-Ecma-262 forbids them, but many browsers permit them.  IE is the
-big exception, and can produce bugs if you have trailing commas."
+Ecma-262-5.1 allows them, but older versions of IE raise an error."
   :type 'boolean
   :group 'js2-mode)
 
@@ -1748,7 +1747,7 @@ the correct number of ARGS must be provided."
          "Code has no side effects")
 
 (js2-msg "msg.extra.trailing.comma"
-         "Trailing comma is not legal in an ECMA-262 object initializer")
+         "Trailing comma is not supported in some browsers")
 
 (js2-msg "msg.array.trailing.comma"
          "Trailing comma yields different behavior across browsers")
