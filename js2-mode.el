@@ -360,7 +360,7 @@ Examples:
   var foo = {int: 5, while: 6, continue: 7};
   foo.return = 8;
 
-Ecma-262 forbids this syntax, but many browsers support it."
+Ecma-262 5.1 allows this syntax, but some engines still don't."
   :type 'boolean
   :group 'js2-mode)
 
