@@ -25,7 +25,9 @@ additional details.
 Emacs 24
 ========
 
-The version from the [branch `emacs24`](https://github.com/mooz/js2-mode/tree/emacs24) is recommended.
+This is the backward compatible version, for Emacs 22 and 23.
+
+For Emacs 24 and newer, the [master](https://github.com/mooz/js2-mode/tree/master) branch is recommended.
 
 Bugs
 ====
