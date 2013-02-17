@@ -1,11 +1,11 @@
 ;;; js2-mode.el --- Improved JavaScript editing mode
 
-;; Copyright (C) 2009, 2011, 2012  Free Software Foundation, Inc.
+;; Copyright (C) 2009, 2011-2013  Free Software Foundation, Inc.
 
 ;; Author: Steve Yegge <steve.yegge@gmail.com>
 ;;         mooz <stillpedant@gmail.com>
 ;;         Dmitry Gutov <dgutov@yandex.ru>
-;; Version: 1.1
+;; Version: 20130217
 ;; Keywords: languages, javascript
 ;; Package-Requires: ((emacs "24.1"))
 
