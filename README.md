@@ -22,10 +22,10 @@ In your emacs config:
 See <http://code.google.com/p/js2-mode/wiki/InstallationInstructions> for
 additional details.
 
-Emacs 24
-========
+Emacs 22 and 23
+===============
 
-The version from the [branch `emacs24`](https://github.com/mooz/js2-mode/tree/emacs24) is recommended.
+This version requires Emacs 24. For a backward compatible version, check out the branch [emacs23](https://github.com/mooz/js2-mode/tree/emacs23).
 
 Bugs
 ====
