@@ -10,6 +10,7 @@ Installation
 
     $ git clone git://github.com/mooz/js2-mode.git
     $ cd js2-mode
+    $ git checkout emacs23
     $ emacs --batch -f batch-byte-compile js2-mode.el
 
 Then put js2-mode.elc into your site-lisp directory.
