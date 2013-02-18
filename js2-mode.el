@@ -147,7 +147,12 @@
             DocumentRange Range RangeException
 
             ;; W3C XML
-            XPathResult XMLHttpRequest))
+            XPathResult XMLHttpRequest
+
+            ;; NodeJS                                                           
+            console process exports module require Buffer
+            __filename __dirname setTimeout clearTimeout
+            setInterval clearInterval global)) 
   "Browser externs.
 You can cause these to be included or excluded with the custom
 variable `js2-include-browser-externs'.")
