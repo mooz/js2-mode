@@ -180,6 +180,13 @@ variable `js2-include-browser-externs'.")
   "Mozilla Rhino externs.
 Set `js2-include-rhino-externs' to t to include them.")
 
+(defvar js2-node-externs
+  (mapcar 'symbol-name
+          '(__dirname __filename Buffer clearInterval clearTimeout require
+            console exports global module process setInterval setTimeout))
+  "Node.js externs.
+Set `js2-include-node-externs' to t to include them.")
+
 ;;; Variables
 
 (defun js2-mark-safe-local (name pred)
@@ -791,9 +798,9 @@ These are currently only used for highlighting undeclared variables,
 which only worries about top-level (unqualified) references.
 As js2-mode's processing improves, we will flesh out this list.
 
-The initial value is set to `js2-ecma-262-externs', unless you
-have set `js2-include-browser-externs', in which case the browser
-externs are also included.
+The initial value is set to `js2-ecma-262-externs', unless some
+of the `js2-include-?-externs' variables are set to t, in which
+case the browser, Rhino and/or Node.js externs are also included.
 
 See `js2-additional-externs' for more information.")
 
@@ -807,6 +814,12 @@ See `js2-additional-externs' for more information about externs."
 
 (defcustom js2-include-rhino-externs t
   "Non-nil to include Mozilla Rhino externs in the master externs list.
+See `js2-additional-externs' for more information about externs."
+  :type 'boolean
+  :group 'js2-mode)
+
+(defcustom js2-include-node-externs nil
+  "Non-nil to include Node.js externs in the master externs list.
 See `js2-additional-externs' for more information about externs."
   :type 'boolean
   :group 'js2-mode)
@@ -10144,7 +10157,8 @@ highlighting features of `js2-mode'."
   (setq js2-default-externs
         (append js2-ecma-262-externs
                 (if js2-include-browser-externs js2-browser-externs)
-                (if js2-include-rhino-externs js2-rhino-externs)))
+                (if js2-include-rhino-externs js2-rhino-externs)
+                (if js2-include-node-externs js2-node-externs)))
   ;; Experiment:  make reparse-delay longer for longer files.
   (if (plusp js2-dynamic-idle-timer-adjust)
       (setq js2-idle-timer-delay
@@ -10328,7 +10342,8 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (setq js2-default-externs
         (append js2-ecma-262-externs
                 (if js2-include-browser-externs js2-browser-externs)
-                (if js2-include-rhino-externs js2-rhino-externs)))
+                (if js2-include-rhino-externs js2-rhino-externs)
+                (if js2-include-node-externs js2-node-externs)))
 
   (setq font-lock-defaults '(nil t))
 
