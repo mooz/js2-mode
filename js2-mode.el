@@ -180,14 +180,6 @@ variable `js2-include-browser-externs'.")
   "Mozilla Rhino externs.
 Set `js2-include-rhino-externs' to t to include them.")
 
-(defvar js2-gears-externs
-  (mapcar 'symbol-name
-          '(
-            ;; TODO(stevey):  add these
-            ))
-  "Google Gears externs.
-Set `js2-include-gears-externs' to t to include them.")
-
 ;;; Variables
 
 (defun js2-mark-safe-local (name pred)
@@ -818,12 +810,6 @@ See `js2-additional-externs' for more information about externs."
 
 (defcustom js2-include-rhino-externs t
   "Non-nil to include Mozilla Rhino externs in the master externs list.
-See `js2-additional-externs' for more information about externs."
-  :type 'boolean
-  :group 'js2-mode)
-
-(defcustom js2-include-gears-externs t
-  "Non-nil to include Google Gears externs in the master externs list.
 See `js2-additional-externs' for more information about externs."
   :type 'boolean
   :group 'js2-mode)
@@ -10161,7 +10147,6 @@ highlighting features of `js2-mode'."
   (setq js2-default-externs
         (append js2-ecma-262-externs
                 (if js2-include-browser-externs js2-browser-externs)
-                (if js2-include-gears-externs js2-gears-externs)
                 (if js2-include-rhino-externs js2-rhino-externs)))
   ;; Experiment:  make reparse-delay longer for longer files.
   (if (plusp js2-dynamic-idle-timer-adjust)
@@ -10346,7 +10331,6 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (setq js2-default-externs
         (append js2-ecma-262-externs
                 (if js2-include-browser-externs js2-browser-externs)
-                (if js2-include-gears-externs js2-gears-externs)
                 (if js2-include-rhino-externs js2-rhino-externs)))
 
   (setq font-lock-defaults '(nil t))
