@@ -49,7 +49,7 @@
 ;;
 ;; To install it as your major mode for JavaScript editing:
 
-;;   (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+;;   (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
 
 ;; Alternately, to install it as a minor mode just for JavaScript linting,
 ;; you must add it to the appropriate major-mode hook.  Normally this would be:
