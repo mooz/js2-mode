@@ -5,6 +5,8 @@
 ;; Author: Steve Yegge <steve.yegge@gmail.com>
 ;;         mooz <stillpedant@gmail.com>
 ;;         Dmitry Gutov <dgutov@yandex.ru>
+;; URL:  https://github.com/mooz/js2-mode/
+;;       http://code.google.com/p/js2-mode/
 ;; Version: 20130217
 ;; Keywords: languages, javascript
 ;; Package-Requires: ((emacs "24.1"))
@@ -72,6 +74,10 @@
 ;; and `mumamo', although it could be made to do so with some effort.
 ;; This means that `js2-mode' is currently only useful for editing JavaScript
 ;; files, and not for editing JavaScript within <script> tags or templates.
+
+;; The project page on GitHub is used for development and issue tracking.
+;; The original homepage at Google Code is mentioned here for posterity, it has
+;; outdated information and is mostly unmaintained.
 
 ;;; Code:
 
