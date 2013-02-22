@@ -5,7 +5,9 @@
 ;; Author: Steve Yegge <steve.yegge@gmail.com>
 ;;         mooz <stillpedant@gmail.com>
 ;;         Dmitry Gutov <dgutov@yandex.ru>
-;; Version: 20130217
+;; URL:  https://github.com/mooz/js2-mode/
+;;       http://code.google.com/p/js2-mode/
+;; Version: 20130219
 ;; Keywords: languages, javascript
 ;; Package-Requires: ((emacs "24.1"))
 
@@ -47,7 +49,7 @@
 ;;
 ;; To install it as your major mode for JavaScript editing:
 
-;;   (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+;;   (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
 
 ;; Alternately, to install it as a minor mode just for JavaScript linting,
 ;; you must add it to the appropriate major-mode hook.  Normally this would be:
@@ -72,6 +74,10 @@
 ;; and `mumamo', although it could be made to do so with some effort.
 ;; This means that `js2-mode' is currently only useful for editing JavaScript
 ;; files, and not for editing JavaScript within <script> tags or templates.
+
+;; The project page on GitHub is used for development and issue tracking.
+;; The original homepage at Google Code is mentioned here for posterity, it has
+;; outdated information and is mostly unmaintained.
 
 ;;; Code:
 
@@ -175,13 +181,12 @@ variable `js2-include-browser-externs'.")
   "Mozilla Rhino externs.
 Set `js2-include-rhino-externs' to t to include them.")
 
-(defvar js2-gears-externs
+(defvar js2-node-externs
   (mapcar 'symbol-name
-          '(
-            ;; TODO(stevey):  add these
-            ))
-  "Google Gears externs.
-Set `js2-include-gears-externs' to t to include them.")
+          '(__dirname __filename Buffer clearInterval clearTimeout require
+            console exports global module process setInterval setTimeout))
+  "Node.js externs.
+Set `js2-include-node-externs' to t to include them.")
 
 ;;; Variables
 
@@ -794,9 +799,9 @@ These are currently only used for highlighting undeclared variables,
 which only worries about top-level (unqualified) references.
 As js2-mode's processing improves, we will flesh out this list.
 
-The initial value is set to `js2-ecma-262-externs', unless you
-have set `js2-include-browser-externs', in which case the browser
-externs are also included.
+The initial value is set to `js2-ecma-262-externs', unless some
+of the `js2-include-?-externs' variables are set to t, in which
+case the browser, Rhino and/or Node.js externs are also included.
 
 See `js2-additional-externs' for more information.")
 
@@ -804,21 +809,18 @@ See `js2-additional-externs' for more information.")
   "Non-nil to include browser externs in the master externs list.
 If you work on JavaScript files that are not intended for browsers,
 such as Mozilla Rhino server-side JavaScript, set this to nil.
-You can always include them on a per-file basis by calling
-`js2-add-browser-externs' from a function on `js2-mode-hook'.
-
 See `js2-additional-externs' for more information about externs."
   :type 'boolean
   :group 'js2-mode)
 
-(defcustom js2-include-rhino-externs t
+(defcustom js2-include-rhino-externs nil
   "Non-nil to include Mozilla Rhino externs in the master externs list.
 See `js2-additional-externs' for more information about externs."
   :type 'boolean
   :group 'js2-mode)
 
-(defcustom js2-include-gears-externs t
-  "Non-nil to include Google Gears externs in the master externs list.
+(defcustom js2-include-node-externs nil
+  "Non-nil to include Node.js externs in the master externs list.
 See `js2-additional-externs' for more information about externs."
   :type 'boolean
   :group 'js2-mode)
@@ -10165,8 +10167,8 @@ highlighting features of `js2-mode'."
   (setq js2-default-externs
         (append js2-ecma-262-externs
                 (if js2-include-browser-externs js2-browser-externs)
-                (if js2-include-gears-externs js2-gears-externs)
-                (if js2-include-rhino-externs js2-rhino-externs)))
+                (if js2-include-rhino-externs js2-rhino-externs)
+                (if js2-include-node-externs js2-node-externs)))
   ;; Experiment:  make reparse-delay longer for longer files.
   (if (plusp js2-dynamic-idle-timer-adjust)
       (setq js2-idle-timer-delay
@@ -10350,8 +10352,8 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (setq js2-default-externs
         (append js2-ecma-262-externs
                 (if js2-include-browser-externs js2-browser-externs)
-                (if js2-include-gears-externs js2-gears-externs)
-                (if js2-include-rhino-externs js2-rhino-externs)))
+                (if js2-include-rhino-externs js2-rhino-externs)
+                (if js2-include-node-externs js2-node-externs)))
 
   (setq font-lock-defaults '(nil t))
 
