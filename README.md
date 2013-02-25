@@ -17,7 +17,7 @@ Then put js2-mode.elc into your site-lisp directory.
 In your emacs config:
 
     (autoload 'js2-mode "js2-mode" nil t)
-    (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+    (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
 
 See <http://code.google.com/p/js2-mode/wiki/InstallationInstructions> for
 additional details.
