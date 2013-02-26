@@ -7,7 +7,7 @@
 ;;         Dmitry Gutov <dgutov@yandex.ru>
 ;; URL:  https://github.com/mooz/js2-mode/
 ;;       http://code.google.com/p/js2-mode/
-;; Version: 20130219
+;; Version: 20130227
 ;; Keywords: languages, javascript
 ;; Package-Requires: ((emacs "24.1"))
 
@@ -1952,12 +1952,6 @@ Returns nil if element is not found in the list."
   (and (>= pos (point-at-bol))
        (<= pos (point-at-eol))))
 
-(defun js2-same-line-2 (p1 p2)
-  "Return t if P1 is on the same line as P2."
-  (save-excursion
-    (goto-char p1)
-    (js2-same-line p2)))
-
 (defun js2-code-bug ()
   "Signal an error when we encounter an unexpected code path."
   (error "failed assertion"))
@@ -2185,12 +2179,6 @@ If any given node in NODES is nil, doesn't record that link."
 
 (put 'cl-struct-js2-scope 'js2-visitor 'js2-visit-block)
 (put 'cl-struct-js2-scope 'js2-printer 'js2-print-none)
-
-(defun js2-scope-set-parent-scope (scope parent)
-  (setf (js2-scope-parent-scope scope) parent
-        (js2-scope-top scope) (if (null parent)
-                                  scope
-                                (js2-scope-top parent))))
 
 (defun js2-node-get-enclosing-scope (node)
   "Return the innermost `js2-scope' node surrounding NODE.
@@ -4072,18 +4060,6 @@ If N has no parent pointer, returns N."
         (js2-node-root parent)
       n)))
 
-(defun js2-node-position-in-parent (node &optional parent)
-  "Return the position of NODE in parent's block-kids list.
-PARENT can be supplied if known.  Positioned returned is zero-indexed.
-Returns 0 if NODE is not a child of a block statement, or if NODE
-is not a statement node."
-  (let ((p (or parent (js2-node-parent node)))
-        (i 0))
-    (if (not (js2-block-node-p p))
-        i
-      (or (js2-position node (js2-block-node-kids p))
-          0))))
-
 (defsubst js2-node-short-name (n)
   "Return the short name of node N as a string, e.g. `js2-if-node'."
   (substring (symbol-name (aref n 0))
@@ -4488,25 +4464,6 @@ If NODE is the ast-root, returns nil."
       (setq node (js2-node-parent node)))
     node))
 
-(defun js2-nested-function-p (node)
-  "Return t if NODE is a nested function, or is inside a nested function."
-  (unless (js2-ast-root-p node)
-    (js2-function-node-p (if (js2-function-node-p node)
-                             (js2-node-parent-script-or-fn node)
-                           (js2-node-parent-script-or-fn
-                            (js2-node-parent-script-or-fn node))))))
-
-(defun js2-mode-shift-kids (kids start offset)
-  (dolist (kid kids)
-    (if (> (js2-node-pos kid) start)
-        (incf (js2-node-pos kid) offset))))
-
-(defun js2-mode-shift-children (parent start offset)
-  "Update start-positions of all children of PARENT beyond START."
-  (let ((root (js2-node-root parent)))
-    (js2-mode-shift-kids (js2-node-child-list parent) start offset)
-    (js2-mode-shift-kids (js2-ast-root-comments root) start offset)))
-
 (defun js2-node-is-descendant (node ancestor)
   "Return t if NODE is a descendant of ANCESTOR."
   (while (and node
@@ -4660,28 +4617,6 @@ You should use `js2-print-tree' instead of this function."
         nil)
        (t
         (aref js2-side-effecting-tokens tt))))))
-
-(defun js2-member-expr-leftmost-name (node)
-  "For an expr such as foo.bar.baz, return leftmost node foo.
-NODE is any `js2-node' object.  If it represents a member expression,
-which is any sequence of property gets, element-gets, function calls,
-or xml descendants/filter operators, then we look at the lexically
-leftmost (first) node in the chain.  If it is a name-node we return it.
-Note that NODE can be a raw name-node and it will be returned as well.
-If NODE is not a name-node or member expression, or if it is a member
-expression whose leftmost target is not a name node, returns nil."
-  (let ((continue t)
-        result)
-    (while (and continue (not result))
-      (cond
-       ((js2-name-node-p node)
-        (setq result node))
-       ((js2-prop-get-node-p node)
-        (setq node (js2-prop-get-node-left node)))
-       ;; TODO:  handle call-nodes, xml-nodes, others?
-       (t
-        (setq continue nil))))
-    result))
 
 (defconst js2-stmt-node-types
   (list js2-BLOCK
@@ -6032,10 +5967,6 @@ corresponding number.  Otherwise return -1."
       (js2-xml-discard-string)
       nil)))
 
-(defun js2-scanner-get-line ()
-  "Return the text of the current scan line."
-  (buffer-substring (point-at-bol) (point-at-eol)))
-
 ;;; Highlighting
 
 (defun js2-set-face (beg end face &optional record)
@@ -6048,19 +5979,6 @@ corresponding number.  Otherwise return -1."
     (if record
         (push (list beg end face) js2-mode-fontifications)
       (put-text-property beg end 'font-lock-face face))))
-
-(defun js2-set-kid-face (pos kid len face)
-  "Set-face on a child node.
-POS is absolute buffer position of parent.
-KID is the child node.
-LEN is the length to fontify.
-FACE is the face to fontify with."
-  (js2-set-face (+ pos (js2-node-pos kid))
-                (+ pos (js2-node-pos kid) (js2-node-len kid))
-                face))
-
-(defsubst js2-fontify-kwd (start length)
-  (js2-set-face start (+ start length) 'font-lock-keyword-face))
 
 (defsubst js2-clear-face (beg end)
   (remove-text-properties beg end '(font-lock-face nil
@@ -9887,14 +9805,6 @@ If POS is non-nil, go to that point and return indentation for that line."
     (skip-chars-forward " \t")
     (looking-at "case\\s-.+:")))
 
-(defun js2-syntax-bol ()
-  "Return the point at the first non-whitespace char on the line.
-Returns `point-at-bol' if the line is empty."
-  (save-excursion
-    (beginning-of-line)
-    (skip-chars-forward " \t")
-    (point)))
-
 (defun js2-bounce-indent (normal-col parse-status &optional backwards)
   "Cycle among alternate computed indentation positions.
 PARSE-STATUS is the result of `parse-partial-sexp' from the beginning
@@ -10710,48 +10620,6 @@ Also moves past comment delimiters when inside comments."
   (if (eolp)
       (skip-chars-backward " \t")
     (goto-char (point-at-eol))))
-
-(defsubst js2-mode-inside-string ()
-  "Return non-nil if inside a string.
-Actually returns the quote character that begins the string."
-  (nth 3 (syntax-ppss)))
-
-(defun js2-mode-inside-comment-or-string ()
-  "Return non-nil if inside a comment or string."
-  (or
-   (let ((comment-start
-          (save-excursion
-            (goto-char (point-at-bol))
-            (if (re-search-forward "//" (point-at-eol) t)
-                (match-beginning 0)))))
-     (and comment-start
-          (<= comment-start (point))))
-   (let ((parse-state (syntax-ppss)))
-     (or (nth 3 parse-state)
-         (nth 4 parse-state)))))
-
-
-(defun js2-insert-catch-skel (try-pos)
-  "Complete a try/catch block after inserting a { following a try keyword.
-Rationale is that a try always needs a catch or a finally, and the catch is
-the more likely of the two.
-
-TRY-POS is the buffer position of the try keyword.  The open-curly should
-already have been inserted."
-  (insert "{")
-  (let ((try-col (save-excursion
-                   (goto-char try-pos)
-                   (current-column))))
-    (insert "\n")
-    (undo-boundary)
-    (js2-indent-line) ;; indent the blank line where cursor will end up
-    (save-excursion
-      (insert "\n")
-      (indent-to try-col)
-      (insert "} catch (x) {\n\n")
-      (indent-to try-col)
-      (insert "}"))))
-
 
 (defun js2-mode-wait-for-parse (callback)
   "Invoke CALLBACK when parsing is finished.
