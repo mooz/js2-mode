@@ -9707,6 +9707,8 @@ statement without braces, else returns nil."
                      (skip-chars-backward " \t" (point-at-bol)))
                    (let ((pt (point)))
                      (back-to-indentation)
+                     (when (looking-at "}[ \t]*")
+                       (goto-char (match-end 0)))
                      (and (looking-at js2-possibly-braceless-keywords-re)
                           (= (match-end 0) pt)
                           (not (js2-end-of-do-while-loop-p))))))
