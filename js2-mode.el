@@ -9529,29 +9529,6 @@ of continued expressions.")
   (regexp-opt '("var" "let" "const") 'words)
   "Regular expression matching variable declaration keywords.")
 
-;; This function has horrible results if you're typing an array
-;; such as [[1, 2], [3, 4], [5, 6]].  Bounce indenting -really- sucks
-;; in conjunction with electric-indent, so just disabling it.
-(defsubst js2-code-at-bol-p ()
-  "Return t if the first character on line is non-whitespace."
-  nil)
-
-(defun js2-insert-and-indent (key)
-  "Run command bound to KEY and indent current line.
-Runs the command bound to KEY in the global keymap and indents
-the current line."
-  (interactive (list (this-command-keys)))
-  (let ((cmd (lookup-key (current-global-map) key)))
-    (if (commandp cmd)
-        (call-interactively cmd)))
-  ;; don't do the electric keys inside comments or strings,
-  ;; and don't do bounce-indent with them.
-  (let ((parse-state (syntax-ppss (point)))
-        (js2-bounce-indent-p (js2-code-at-bol-p)))
-    (unless (or (nth 3 parse-state)
-                (nth 4 parse-state))
-      (indent-according-to-mode))))
-
 (defun js2-re-search-forward-inner (regexp &optional bound count)
   "Auxiliary function for `js2-re-search-forward'."
   (let (parse saved-point)
