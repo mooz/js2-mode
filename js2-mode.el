@@ -4162,7 +4162,7 @@ Note that the position may be nil in the case of a parse error."
    ((js2-call-node-p node)
     (js2-call-node-lp node))
    ((js2-paren-node-p node)
-    (js2-node-pos node))
+    0)
    ((js2-switch-node-p node)
     (js2-switch-node-lp node))
    ((js2-catch-node-p node)
@@ -4197,7 +4197,7 @@ Note that the position may be nil in the case of a parse error."
    ((js2-call-node-p node)
     (js2-call-node-rp node))
    ((js2-paren-node-p node)
-    (+ (js2-node-pos node) (js2-node-len node)))
+    (1- (js2-node-len node)))
    ((js2-switch-node-p node)
     (js2-switch-node-rp node))
    ((js2-catch-node-p node)
@@ -10954,7 +10954,6 @@ move backward across N balanced expressions."
              (point-min)))))
      (t
       ;; forward-sexp
-      (js2-forward-sws)
       (dotimes (i arg)
         (js2-forward-sws)
         (when (setq node (js2-node-at-point (point) t))
