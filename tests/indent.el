@@ -13,7 +13,8 @@
 (defmacro* js2-deftest-indent (name content &key bind)
   `(ert-deftest ,name ()
      (let ,(append '((js2-basic-offset 2)
-                     (js2-pretty-multiline-declarations t))
+                     (js2-pretty-multiline-declarations t)
+                     (inhibit-point-motion-hooks t))
                    bind)
        (js2-test-indent ,content))))
 

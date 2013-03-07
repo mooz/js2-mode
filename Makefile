@@ -20,4 +20,4 @@ js2-imenu-extras.elc: js2-mode.elc
 	emacs $(BATCHFLAGS) -l ./js2-mode.elc -f batch-byte-compile $*.el
 
 test:
-	emacs $(BATCHFLAGS) -l js2-mode.el -l tests/ast.el -f ert-run-tests-batch
+	emacs $(BATCHFLAGS) -l js2-mode.el -l tests/*.el -f ert-run-tests-batch
