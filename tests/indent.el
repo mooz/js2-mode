@@ -7,7 +7,8 @@
       (insert (replace-regexp-in-string "^ *" "" s))
       (js2-mode)
       (indent-region (point-min) (point-max))
-      (should (string= s (buffer-substring (point-min) (point)))))))
+      (should (string= s (buffer-substring-no-properties
+                          (point-min) (point)))))))
 
 (defmacro* js2-deftest-indent (name content &key bind)
   `(ert-deftest ,name ()
@@ -38,6 +39,10 @@
 (js2-deftest-indent multiline-decl-with-continued-expr-same-line
   "var foo = 100500 /
   |      16;")
+
+(js2-deftest-indent no-multiline-decl-with-operator-inside-string
+  "var foo = bar('/protocols/')
+  |baz()")
 
 (js2-deftest-indent no-multiline-decl-implicit-semicolon
   "var foo = 100500
