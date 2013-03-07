@@ -9,7 +9,7 @@
     (should (null js2-mode-buffer-dirty-p))
     js2-mode-ast))
 
-(defun js2-test-ast-string (code-string &key syntax-error)
+(defun js2-test-parse-string (code-string &key syntax-error)
   (let ((ast (js2-test-string-to-ast code-string)))
     (if syntax-error
         (let ((errors (js2-ast-root-errors ast)))
@@ -24,7 +24,7 @@
         (should (string= code-string (buffer-substring-no-properties
                                       (point-min) (point))))))))
 
-(defmacro* js2-deftest-ast (name code-string &key bind syntax-error)
+(defmacro* js2-deftest-parse (name code-string &key bind syntax-error)
   "Parse CODE-STRING.  If SYNTAX-ERROR is nil, print syntax tree
 with `js2-print-tree' and assert the result to be equal to the
 original string.  If SYNTAX-ERROR is passed, expect syntax error
@@ -32,82 +32,82 @@ highlighting substring equal to SYNTAX-ERROR value.
 BIND defines bindings to apply them around the test."
   `(ert-deftest ,name ()
      (let ,(append bind '((js2-basic-offset 2)))
-       (js2-test-ast-string ,code-string :syntax-error ,syntax-error))))
+       (js2-test-parse-string ,code-string :syntax-error ,syntax-error))))
 
-(put 'js2-deftest-ast 'lisp-indent-function 'defun)
+(put 'js2-deftest-parse 'lisp-indent-function 'defun)
 
 ;;; Callers of `js2-valid-prop-name-token'.
 
-(js2-deftest-ast parse-property-access-when-not-keyword
+(js2-deftest-parse parse-property-access-when-not-keyword
   "A.foo = 3;")
 
-(js2-deftest-ast parse-property-access-when-keyword
+(js2-deftest-parse parse-property-access-when-keyword
   "A.in = 3;"
   :bind ((js2-allow-keywords-as-property-names t)))
 
-(js2-deftest-ast parse-property-access-when-keyword-no-xml
+(js2-deftest-parse parse-property-access-when-keyword-no-xml
   "A.in = 3;"
   :bind ((js2-allow-keywords-as-property-names t)
          (js2-compiler-xml-available nil)))
 
-(js2-deftest-ast parse-array-literal-when-not-keyword
+(js2-deftest-parse parse-array-literal-when-not-keyword
   "a = {b: 1};")
 
-(js2-deftest-ast parse-array-literal-when-keyword
+(js2-deftest-parse parse-array-literal-when-keyword
   "a = {in: 1};"
   :bind ((js2-allow-keywords-as-property-names t)))
 
 ;;; 'of' contextual keyword.
 
-(js2-deftest-ast parse-array-comp-loop-with-of
+(js2-deftest-parse parse-array-comp-loop-with-of
   "[a for (a of [])];")
 
-(js2-deftest-ast parse-for-of
+(js2-deftest-parse parse-for-of
   "for (var a of []) {\n}")
 
-(js2-deftest-ast of-can-be-var-name
+(js2-deftest-parse of-can-be-var-name
   "var of = 3;")
 
-(js2-deftest-ast of-can-be-function-name
+(js2-deftest-parse of-can-be-function-name
   "function of() {\n}")
 
 ;;; Destructuring binding.
 
-(js2-deftest-ast destruct-in-declaration
+(js2-deftest-parse destruct-in-declaration
   "var {a, b} = {a: 1, b: 2};")
 
-(js2-deftest-ast destruct-in-arguments
+(js2-deftest-parse destruct-in-arguments
   "function f({a: aa, b: bb}) {\n}")
 
-(js2-deftest-ast destruct-in-array-comp-loop
+(js2-deftest-parse destruct-in-array-comp-loop
   "[a + b for ([a, b] in [[0, 1], [1, 2]])];")
 
-(js2-deftest-ast destruct-in-catch-clause
+(js2-deftest-parse destruct-in-catch-clause
   "try {\n} catch ({a, b}) {\n  a + b;\n}")
 
 ;;; Function parameters.
 
-(js2-deftest-ast function-with-default-parameters
+(js2-deftest-parse function-with-default-parameters
   "function foo(a = 1, b = a + 1) {\n}")
 
-(js2-deftest-ast function-with-no-default-after-default
+(js2-deftest-parse function-with-no-default-after-default
   "function foo(a = 1, b) {\n}"
   :syntax-error "b")
 
-(js2-deftest-ast function-with-destruct-after-default
+(js2-deftest-parse function-with-destruct-after-default
   "function foo(a = 1, {b, c}) {\n}"
   :syntax-error "{")
 
-(js2-deftest-ast function-with-rest-parameter
+(js2-deftest-parse function-with-rest-parameter
   "function foo(a, b, ...rest) {\n}")
 
-(js2-deftest-ast function-with-param-after-rest-parameter
+(js2-deftest-parse function-with-param-after-rest-parameter
   "function foo(a, ...b, rest) {\n}"
   :syntax-error "rest")
 
-(js2-deftest-ast function-with-destruct-after-rest-parameter
+(js2-deftest-parse function-with-destruct-after-rest-parameter
   "function foo(a, ...b, {}) {\n}"
   :syntax-error "{}")
 
-(js2-deftest-ast function-with-rest-after-default-parameter
+(js2-deftest-parse function-with-rest-after-default-parameter
   "function foo(a = 1, ...rest) {\n}")
