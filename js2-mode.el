@@ -4601,7 +4601,7 @@ You should use `js2-print-tree' instead of this function."
         (let ((expr (js2-expr-stmt-node-expr node)))
           (or (js2-node-has-side-effects expr)
               (when (js2-string-node-p expr)
-                (string= "use strict" (js2-string-node-value expr))))))
+                (member (js2-string-node-value expr) '("use strict" "use asm"))))))
        ((= tt js2-COMMA)
         (js2-node-has-side-effects (js2-infix-node-right node)))
        ((or (= tt js2-AND)
