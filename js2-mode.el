@@ -165,7 +165,15 @@
             DocumentRange Range RangeException
 
             ;; W3C XML
-            XPathResult XMLHttpRequest))
+            XPathResult XMLHttpRequest
+
+            ;; Khronos Typed Array Specification
+            ArrayBuffer Uint8ClampedArray DataView
+            Int8Array Uint8Array Int16Array Uint16Array Int32Array Uint32Array
+            Float32Array Float64Array
+
+            ;; console object.  Provided by at least Chrome and Firefox.
+            console))
   "Browser externs.
 You can cause these to be included or excluded with the custom
 variable `js2-include-browser-externs'.")
