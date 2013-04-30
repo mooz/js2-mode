@@ -191,7 +191,12 @@ Set `js2-include-rhino-externs' to t to include them.")
 (defvar js2-node-externs
   (mapcar 'symbol-name
           '(__dirname __filename Buffer clearInterval clearTimeout require
-            console exports global module process setInterval setTimeout))
+            console exports global module process setInterval setTimeout
+
+            ;; node.js also supports Typed Arrays
+            ArrayBuffer Uint8ClampedArray DataView
+            Int8Array Uint8Array Int16Array Uint16Array Int32Array Uint32Array
+            Float32Array Float64Array))
   "Node.js externs.
 Set `js2-include-node-externs' to t to include them.")
 
