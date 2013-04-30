@@ -5204,20 +5204,20 @@ into temp buffers."
 The values are default faces to use for highlighting the keywords.")
 
 (defconst js2-reserved-words
-  '(abstract
-    boolean byte
-    char class
-    double
-    enum export extends
-    final float
-    goto
-    implements import int interface
-    long
-    native
-    package private protected public
-    short static super synchronized
-    throws transient
-    volatile))
+  '(class
+    export
+    extends
+    super
+    implements
+    interface
+    package
+    private
+    protected
+    public
+    static)
+  "Keywords reserved for possible future use.
+See section 7.6.1 of the ECMAScript standard, available at
+http://es5.github.io/#x7.6.1")
 
 (defconst js2-keyword-names
   (let ((table (make-hash-table :test 'equal)))
