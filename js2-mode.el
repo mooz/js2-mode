@@ -167,11 +167,6 @@
             ;; W3C XML
             XPathResult XMLHttpRequest
 
-            ;; Khronos Typed Array Specification
-            ArrayBuffer Uint8ClampedArray DataView
-            Int8Array Uint8Array Int16Array Uint16Array Int32Array Uint32Array
-            Float32Array Float64Array
-
             ;; console object.  Provided by at least Chrome and Firefox.
             console))
   "Browser externs.
@@ -194,6 +189,15 @@ Set `js2-include-rhino-externs' to t to include them.")
             console exports global module process setInterval setTimeout))
   "Node.js externs.
 Set `js2-include-node-externs' to t to include them.")
+
+(defvar js2-typed-array-externs
+  (mapcar 'symbol-name
+          '(ArrayBuffer Uint8ClampedArray DataView
+            Int8Array Uint8Array Int16Array Uint16Array Int32Array Uint32Array
+            Float32Array Float64Array))
+  "Khronos typed array externs. Available in most modern browsers and
+in node.js >= 0.6. If `js2-include-node-externs' or `js2-include-browser-externs'
+are enabled, these will also be included.")
 
 ;;; Variables
 
@@ -6410,6 +6414,17 @@ it is considered declared."
                               'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
 
+(defun js2-set-default-externs ()
+  "Set the value of `js2-default-externs' based on the various
+`js2-include-?-externs' variables."
+  (setq js2-default-externs
+        (append js2-ecma-262-externs
+                (if js2-include-browser-externs js2-browser-externs)
+                (if js2-include-rhino-externs js2-rhino-externs)
+                (if js2-include-node-externs js2-node-externs)
+                (if (or js2-include-browser-externs js2-include-node-externs)
+                    js2-typed-array-externs))))
+
 ;;; IMenu support
 
 ;; We currently only support imenu, but eventually should support speedbar and
@@ -10050,11 +10065,7 @@ highlighting features of `js2-mode'."
   (set (make-local-variable 'max-lisp-eval-depth)
        (max max-lisp-eval-depth 3000))
   (setq next-error-function #'js2-next-error)
-  (setq js2-default-externs
-        (append js2-ecma-262-externs
-                (if js2-include-browser-externs js2-browser-externs)
-                (if js2-include-rhino-externs js2-rhino-externs)
-                (if js2-include-node-externs js2-node-externs)))
+  (js2-set-default-externs)
   ;; Experiment:  make reparse-delay longer for longer files.
   (if (plusp js2-dynamic-idle-timer-adjust)
       (setq js2-idle-timer-delay
@@ -10235,12 +10246,6 @@ Selecting an error will jump it to the corresponding source-buffer error.
     (make-local-variable 'adaptive-fill-regexp)
     (c-setup-paragraph-variables))
 
-  (setq js2-default-externs
-        (append js2-ecma-262-externs
-                (if js2-include-browser-externs js2-browser-externs)
-                (if js2-include-rhino-externs js2-rhino-externs)
-                (if js2-include-node-externs js2-node-externs)))
-
   (setq font-lock-defaults '(nil t))
 
   ;; Experiment:  make reparse-delay longer for longer files.
@@ -10262,6 +10267,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
         js2-mode-comments-hidden nil
         js2-mode-buffer-dirty-p t
         js2-mode-parsing nil)
+  (js2-set-default-externs)
   (js2-reparse))
 
 (defun js2-mode-exit ()
