@@ -7136,8 +7136,7 @@ Scanner should be initialized."
     ;; Give extensions a chance to muck with things before highlighting starts.
     (let ((js2-additional-externs js2-additional-externs))
       (save-excursion
-        (dolist (callback js2-post-parse-callbacks)
-          (funcall callback)))
+        (run-hooks 'js2-post-parse-callbacks))
       (js2-highlight-undeclared-vars))
     root))
 
