@@ -858,6 +858,9 @@ Next, you can add a function to `js2-mode-hook' that adds additional
 externs appropriate for the specific file, perhaps based on its path.
 These should go in `js2-additional-externs', which is buffer-local.
 
+Third, you can use JSLint's global declaration, as long as
+`js2-include-jslint-globals' is non-nil, which see.
+
 Finally, you can add a function to `js2-post-parse-callbacks',
 which is called after parsing completes, and `js2-mode-ast' is bound to
 the root of the parse tree.  At this stage you can set up an AST
@@ -1103,6 +1106,14 @@ An undeclared variable is any variable not declared with var or let
 in the current scope or any lexically enclosing scope.  If you use
 such a variable, then you are either expecting it to originate from
 another file, or you've got a potential bug."
+  :type 'boolean
+  :group 'js2-mode)
+
+(defcustom js2-include-jslint-globals t
+  "Non-nil to include the identifiers from JSLint global
+declaration (see http://www.jslint.com/lint.html#global) in the
+buffer-local externs list.  See `js2-additional-externs' for more
+information."
   :type 'boolean
   :group 'js2-mode)
 
@@ -6424,6 +6435,31 @@ it is considered declared."
                 (if (or js2-include-browser-externs js2-include-node-externs)
                     js2-typed-array-externs))))
 
+(defun js2-apply-jslint-globals ()
+  (setq js2-additional-externs
+        (nconc (js2-get-jslint-globals)
+               js2-additional-externs)))
+
+(defun js2-get-jslint-globals ()
+  (loop for node in (js2-ast-root-comments js2-mode-ast)
+        when (and (eq 'block (js2-comment-node-format node))
+                  (save-excursion
+                    (goto-char (js2-node-abs-pos node))
+                    (looking-at "/\\*global ")))
+        append (js2-get-jslint-globals-in
+                (match-end 0)
+                (js2-node-abs-end node))))
+
+(defun js2-get-jslint-globals-in (beg end)
+  (let (res)
+    (save-excursion
+      (goto-char beg)
+      (while (re-search-forward js2-mode-identifier-re end t)
+        (let ((match (match-string 0)))
+          (unless (member match '("true" "false"))
+            (push match res)))))
+    (nreverse res)))
+
 ;;; IMenu support
 
 ;; We currently only support imenu, but eventually should support speedbar and
@@ -10074,6 +10110,8 @@ highlighting features of `js2-mode'."
   (set (make-local-variable 'js2-highlight-level) 0) ; no syntax highlighting
   (add-hook 'after-change-functions #'js2-minor-mode-edit nil t)
   (add-hook 'change-major-mode-hook #'js2-minor-mode-exit nil t)
+  (when js2-include-jslint-globals
+    (add-hook 'js2-post-parse-callbacks 'js2-apply-jslint-globals nil t))
   (js2-reparse))
 
 (defun js2-minor-mode-exit ()
@@ -10085,6 +10123,7 @@ highlighting features of `js2-mode'."
     (delete-overlay js2-mode-node-overlay)
     (setq js2-mode-node-overlay nil))
   (js2-remove-overlays)
+  (remove-hook 'js2-post-parse-callbacks 'js2-apply-jslint-globals t)
   (setq js2-mode-ast nil))
 
 (defvar js2-source-buffer nil "Linked source buffer for diagnostics view")
@@ -10265,7 +10304,12 @@ Selecting an error will jump it to the corresponding source-buffer error.
         js2-mode-comments-hidden nil
         js2-mode-buffer-dirty-p t
         js2-mode-parsing nil)
+
   (js2-set-default-externs)
+
+  (when js2-include-jslint-globals
+    (add-hook 'js2-post-parse-callbacks 'js2-apply-jslint-globals nil t))
+
   (js2-reparse))
 
 (defun js2-mode-exit ()
