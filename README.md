@@ -1,4 +1,4 @@
-Description
+About
 ======
 
 Improved JavaScript editing mode for GNU Emacs ([description here](http://elpa.gnu.org/packages/js2-mode.html)).
