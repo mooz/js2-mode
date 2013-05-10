@@ -7,7 +7,7 @@
 ;;         Dmitry Gutov <dgutov@yandex.ru>
 ;; URL:  https://github.com/mooz/js2-mode/
 ;;       http://code.google.com/p/js2-mode/
-;; Version: 20130307
+;; Version: 20130510
 ;; Keywords: languages, javascript
 ;; Package-Requires: ((emacs "24.1"))
 
