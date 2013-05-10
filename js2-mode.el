@@ -51,7 +51,7 @@
 
 ;;   (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
 
-;; Alternately, to install it as a minor mode just for JavaScript linting,
+;; Alternatively, to install it as a minor mode just for JavaScript linting,
 ;; you must add it to the appropriate major-mode hook.  Normally this would be:
 
 ;;   (add-hook 'js-mode-hook 'js2-minor-mode)
