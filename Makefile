@@ -21,4 +21,4 @@ js2-imenu-extras.elc: js2-mode.elc
 
 test:
 	emacs $(BATCHFLAGS) -l js2-mode.el -l tests/parser.el\
-	  -l tests/indent.el -f ert-run-tests-batch
+	  -l tests/indent.el -l tests/externs.el -f ert-run-tests-batch
