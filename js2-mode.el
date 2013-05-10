@@ -1106,11 +1106,6 @@ another file, or you've got a potential bug."
   :type 'boolean
   :group 'js2-mode)
 
-(defcustom js2-auto-insert-catch-block t
-  "Non-nil to insert matching catch block on open-curly after `try'."
-  :type 'boolean
-  :group 'js2-mode)
-
 (defvar js2-mode-map
   (let ((map (make-sparse-keymap))
         keys)
