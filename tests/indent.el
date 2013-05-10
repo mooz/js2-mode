@@ -11,7 +11,7 @@
                           (point-min) (point)))))))
 
 (defmacro* js2-deftest-indent (name content &key bind)
-  `(ert-deftest ,name ()
+  `(ert-deftest ,(intern (format "js2-%s" name)) ()
      (let ,(append '((js2-basic-offset 2)
                      (js2-pretty-multiline-declarations t)
                      (inhibit-point-motion-hooks t))

@@ -30,7 +30,7 @@ with `js2-print-tree' and assert the result to be equal to the
 original string.  If SYNTAX-ERROR is passed, expect syntax error
 highlighting substring equal to SYNTAX-ERROR value.
 BIND defines bindings to apply them around the test."
-  `(ert-deftest ,name ()
+  `(ert-deftest ,(intern (format "js2-%s" name)) ()
      (let ,(append bind '((js2-basic-offset 2)))
        (js2-test-parse-string ,code-string :syntax-error ,syntax-error))))
 
