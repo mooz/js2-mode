@@ -7,7 +7,7 @@
 ;;         Dmitry Gutov <dgutov@yandex.ru>
 ;; URL:  https://github.com/mooz/js2-mode/
 ;;       http://code.google.com/p/js2-mode/
-;; Version: 20130510
+;; Version: 20130608
 ;; Keywords: languages, javascript
 ;; Package-Requires: ((emacs "24.1"))
 
@@ -854,7 +854,7 @@ First, you can add externs that are valid for all your JavaScript files.
 You should probably do this by adding them to `js2-global-externs', which
 is a global list used for all js2-mode files.
 
-Next, you can add a function to `js2-mode-hook' that adds additional
+Next, you can add a function to `js2-init-hook' that adds additional
 externs appropriate for the specific file, perhaps based on its path.
 These should go in `js2-additional-externs', which is buffer-local.
 
@@ -1093,11 +1093,19 @@ Not currently used."
   '((t :foreground "orange"))
   "Face used to highlight undeclared variable identifiers.")
 
+(defcustom js2-init-hook nil
+  "List of functions to be called after `js2-mode' or
+`js2-minor-mode' has initialized all variables, before parsing
+the buffer for the first time."
+  :type 'hook
+  :group 'js2-mode
+  :version "20130608")
+
 (defcustom js2-post-parse-callbacks nil
-  "A list of callback functions invoked after parsing finishes.
+  "List of callback functions invoked after parsing finishes.
 Currently, the main use for this function is to add synthetic
 declarations to `js2-recorded-identifiers', which see."
-  :type 'list
+  :type 'hook
   :group 'js2-mode)
 
 (defcustom js2-highlight-external-variables t
@@ -10112,6 +10120,7 @@ highlighting features of `js2-mode'."
   (add-hook 'change-major-mode-hook #'js2-minor-mode-exit nil t)
   (when js2-include-jslint-globals
     (add-hook 'js2-post-parse-callbacks 'js2-apply-jslint-globals nil t))
+  (run-hooks 'js2-init-hook)
   (js2-reparse))
 
 (defun js2-minor-mode-exit ()
@@ -10309,6 +10318,8 @@ Selecting an error will jump it to the corresponding source-buffer error.
 
   (when js2-include-jslint-globals
     (add-hook 'js2-post-parse-callbacks 'js2-apply-jslint-globals nil t))
+
+  (run-hooks 'js2-init-hook)
 
   (js2-reparse))
 
