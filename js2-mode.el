@@ -11139,6 +11139,8 @@ RESET means start over from the beginning."
           (if (zerop (decf count))
               (setq continue nil)))
         (setq errs (cdr errs)))
+      ;; Clear for `js2-echo-error'.
+      (message nil)
       (if err
           (goto-char (second err))
         ;; Wrap around to first error.
