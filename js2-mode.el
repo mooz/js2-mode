@@ -292,8 +292,8 @@ If `js2-dynamic-idle-timer-adjust' is 0 or negative,
   :group 'js2-mode)
 
 (defcustom js2-concat-multiline-strings t
-  "Non-nil to automatically turn a newline in mid-string into a
-string concatenation.  When `eol', the '+' will be inserted at the
+  "When non-nil, `js2-line-break' in mid-string will make it a
+string concatenation. When `eol', the '+' will be inserted at the
 end of the line, otherwise, at the beginning of the next line."
   :type '(choice (const t) (const eol) (const nil))
   :group 'js2-mode)
