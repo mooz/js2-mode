@@ -10248,8 +10248,10 @@ Selecting an error will jump it to the corresponding source-buffer error.
 (define-derived-mode js2-mode prog-mode "Javascript-IDE"
   ;; FIXME: Should derive from js-mode.
   "Major mode for editing JavaScript code."
-  (setq comment-start "//"  ; used by comment-region; don't change it
-        comment-end "")
+  ;; Used by comment-region; don't change it.
+  (set (make-local-variable 'comment-start) "//")
+  (set (make-local-variable 'comment-end) "")
+  (set (make-local-variable 'comment-start-skip) js2-comment-start-skip)
   (set (make-local-variable 'max-lisp-eval-depth)
        (max max-lisp-eval-depth 3000))
   (set (make-local-variable 'indent-line-function) #'js2-indent-line)
@@ -10278,7 +10280,6 @@ Selecting an error will jump it to the corresponding source-buffer error.
         c-line-comment-starter "//"
         c-paragraph-start js2-paragraph-start
         c-paragraph-separate "$"
-        comment-start-skip js2-comment-start-skip
         c-syntactic-ws-start js2-syntactic-ws-start
         c-syntactic-ws-end js2-syntactic-ws-end
         c-syntactic-eol js2-syntactic-eol)
