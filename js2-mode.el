@@ -80,8 +80,8 @@
 ;; files, and not for editing JavaScript within <script> tags or templates.
 
 ;; The project page on GitHub is used for development and issue tracking.
-;; The original homepage at Google Code is mentioned here for posterity, it has
-;; outdated information and is mostly unmaintained.
+;; The original homepage at Google Code has outdated information and is mostly
+;; unmaintained.
 
 ;;; Code:
 
