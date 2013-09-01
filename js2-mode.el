@@ -5041,12 +5041,10 @@ Signals an error if it's not a recognized token."
   (unless no-throw
     (throw 'return js2-ERROR)))
 
-(defun js2-get-string-from-buffer ()
-  "Reverse the char accumulator and return it as a string."
-  (setf (js2-token-end (js2-current-token)) js2-ts-cursor)
-  (if js2-ts-string-buffer
-      (apply #'string (nreverse js2-ts-string-buffer))
-    ""))
+(defun js2-set-string-from-buffer (token)
+  "Set `string' and `end' slots for TOKEN, return the string."
+  (setf (js2-token-end token) js2-ts-cursor
+        (js2-token-string token) (js2-collect-string js2-ts-string-buffer)))
 
 ;; TODO:  could potentially avoid a lot of consing by allocating a
 ;; char buffer the way Rhino does.
@@ -5279,15 +5277,9 @@ The values are default faces to use for highlighting the keywords.")
 (defun js2-collect-string (buf)
   "Convert BUF, a list of chars, to a string.
 Reverses BUF before converting."
-  (cond
-   ((stringp buf)
-    buf)
-   ((null buf)  ; for emacs21 compat
-    "")
-   (t
-    (if buf
-        (apply #'string (nreverse buf))
-      ""))))
+  (if buf
+      (apply #'string (nreverse buf))
+    ""))
 
 (defun js2-string-to-keyword (s)
   "Return token for S, a string, if S is a keyword or reserved word.
@@ -5472,7 +5464,8 @@ its relevant fields and puts it into `js2-ti-tokens'."
                       (throw 'break nil))
                   (js2-add-to-string c))))))
           (js2-unget-char)
-          (setq str (js2-get-string-from-buffer))
+          (setf str (js2-collect-string js2-ts-string-buffer)
+                (js2-token-end token) js2-ts-cursor)
           (unless contains-escape
             ;; OPT we shouldn't have to make a string (object!) to
             ;; check if it's a keyword.
@@ -5539,9 +5532,8 @@ its relevant fields and puts it into `js2-ti-tokens'."
                     (setq c (js2-get-char))
                     while (js2-digit-p c))))
           (js2-unget-char)
-          (let ((str (js2-get-string-from-buffer)))
-            (setf (js2-token-string token) str
-                  (js2-token-number token)
+          (let ((str (js2-set-string-from-buffer token)))
+            (setf (js2-token-number token)
                   (if (and (eq base 10) (not is-integer))
                       (string-to-number str)
                     ;; TODO:  call runtime number-parser.  Some of it is in
@@ -5645,7 +5637,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
                        (setq c val)))))
                 (js2-add-to-string c)
                 (setq c (js2-get-char)))))
-          (setf (js2-token-string token) (js2-get-string-from-buffer))
+          (js2-set-string-from-buffer token)
           (throw 'return js2-STRING))
         (case c
           (?\;
@@ -5862,8 +5854,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
       (if (js2-alpha-p (js2-peek-char))
           (js2-report-scan-error "msg.invalid.re.flag" t
                                  js2-ts-cursor 1))
-      (setf (js2-token-string token) (js2-collect-string js2-ts-string-buffer)
-            (js2-token-end token) js2-ts-cursor)
+      (js2-set-string-from-buffer token)
       ;; tell `parse-partial-sexp' to ignore this range of chars
       (js2-record-text-property (js2-current-token-beg)
                                 (js2-current-token-end) 'syntax-class '(2)))
@@ -5908,7 +5899,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
                      (decf js2-ts-xml-open-tags-count)))
                   (?{
                    (js2-unget-char)
-                   (setf (js2-token-string token) (js2-get-string-from-buffer))
+                   (js2-set-string-from-buffer token)
                    (throw 'return js2-XML))
                   ((?\' ?\")
                    (js2-add-to-string c)
@@ -5924,7 +5915,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
                    (setq js2-ts-is-xml-attribute nil)))
                 (when (and (not js2-ts-xml-is-tag-content)
                            (zerop js2-ts-xml-open-tags-count))
-                  (setf (js2-token-string token) (js2-get-string-from-buffer))
+                  (js2-set-string-from-buffer token)
                   (throw 'return js2-XMLEND)))
                (t
                 ;; else not tag content
@@ -5995,7 +5986,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
                       (incf js2-ts-xml-open-tags-count))))
                   (?{
                    (js2-unget-char)
-                   (setf (js2-token-string token) (js2-get-string-from-buffer))
+                   (js2-set-string-from-buffer token)
                    (throw 'return js2-XML))
                   (t
                    (js2-add-to-string c))))))))
