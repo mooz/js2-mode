@@ -708,6 +708,18 @@ List of chars built up while scanning various tokens.")
   comment-type
   follows-eol-p)
 
+(defstruct (js2-ts-state
+            (:constructor make-js2-ts-state (&key (lineno js2-ts-lineno)
+                                                  (cursor js2-ts-cursor)
+                                                  (tokens js2-ti-tokens)
+                                                  (tokens-cursor js2-ti-tokens-cursor)
+                                                  (lookahead js2-ti-lookahead))))
+  lineno
+  cursor
+  tokens
+  tokens-cursor
+  lookahead)
+
 ;;; Parser variables
 
 (js2-deflocal js2-parsed-errors nil
@@ -1949,6 +1961,13 @@ the correct number of ARGS must be provided."
   (let ((token (js2-current-token)))
     (- (js2-token-end token)
        (js2-token-beg token))))
+
+(defun js2-ts-set-state (state)
+  (setq js2-ts-lineno (js2-ts-state-lineno state)
+        js2-ts-cursor (js2-ts-state-cursor state)
+        js2-ti-tokens (js2-ts-state-tokens state)
+        js2-ti-tokens-cursor (js2-ts-state-tokens-cursor state)
+        js2-ti-lookahead (js2-ts-state-lookahead state)))
 
 ;;; Utilities
 
