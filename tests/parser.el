@@ -70,7 +70,20 @@ the test."
   "d = /eee/, 42;")
 
 (js2-deftest-parse return-statement
-  "function() {\n  return 2;\n}")
+  "function foo() {\n  return 2;\n}")
+
+(js2-deftest-parse function-statement
+  "function foo() {\n}")
+
+(js2-deftest-parse function-expression-statements-are-verboten
+  "function() {\n}" :syntax-error "function")
+
+(js2-deftest-parse member-expr-as-function-name
+  "function a.b.c[2](x, y) {\n}"
+  :bind ((js2-allow-member-expr-as-function-name t)))
+
+(js2-deftest-parse named-function-expression
+  "a = function b() {};")
 
 ;;; Callers of `js2-valid-prop-name-token'.
 

@@ -1495,6 +1495,9 @@ the correct number of ARGS must be provided."
          "Line terminator is not allowed between the throw "
          "keyword and throw expression.")
 
+(js2-msg "msg.unnamed.function.stmt" ; added by js2-mode
+         "function statement requires a name")
+
 (js2-msg "msg.no.paren.parms"
          "missing ( before function parameters.")
 
@@ -2957,7 +2960,7 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
 `js2-name-node', or if it's a destructuring-assignment parameter, a
 `js2-array-node' or `js2-object-node'."
   ftype            ; FUNCTION, GETTER or SETTER
-  form             ; FUNCTION_{STATEMENT|EXPRESSION|EXPRESSION_STATEMENT}
+  form             ; FUNCTION_{STATEMENT|EXPRESSION}
   name             ; function name (a `js2-name-node', or nil if anonymous)
   params           ; a Lisp list of destructuring forms or simple name nodes
   rest-p           ; if t, the last parameter is rest parameter
@@ -2982,15 +2985,16 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
   (let ((pad (js2-make-pad i))
         (getter (js2-node-get-prop n 'GETTER_SETTER))
         (name (js2-function-node-name n))
+        (member-expr (js2-function-node-member-expr n))
         (params (js2-function-node-params n))
         (rest-p (js2-function-node-rest-p n))
         (body (js2-function-node-body n))
         (expr (eq (js2-function-node-form n) 'FUNCTION_EXPRESSION)))
     (unless getter
       (insert pad "function"))
-    (when name
-        (insert " ")
-        (js2-print-ast name 0))
+    (when (or name member-expr)
+      (insert " ")
+      (js2-print-ast (or name member-expr) 0))
     (insert "(")
     (loop with len = (length params)
           for param in params
@@ -7192,9 +7196,9 @@ Scanner should be initialized."
     (while (/= (setq tt (js2-get-token)) js2-EOF)
       (if (= tt js2-FUNCTION)
           (progn
-            (setq n (js2-parse-function (if js2-called-by-compile-function
-                                            'FUNCTION_EXPRESSION
-                                          'FUNCTION_STATEMENT))))
+            (setq n (if js2-called-by-compile-function
+                        (js2-parse-function-expr)
+                      (js2-parse-function-stmt))))
         ;; not a function - parse a statement
         (js2-unget-token)
         (setq n (js2-parse-statement)))
@@ -7219,7 +7223,7 @@ Scanner should be initialized."
 
 (defun js2-function-parser ()
   (js2-get-token)
-  (js2-parse-function 'FUNCTION_EXPRESSION_STATEMENT))
+  (js2-parse-function-stmt))
 
 (defun js2-parse-function-closure-body (fn-node)
   "Parse a JavaScript 1.8 function closure body."
@@ -7248,7 +7252,7 @@ Scanner should be initialized."
           (js2-block-node-push pn (if (/= tt js2-FUNCTION)
                                       (js2-parse-statement)
                                     (js2-get-token)
-                                    (js2-parse-function 'FUNCTION_STATEMENT))))
+                                    (js2-parse-function-stmt))))
       (decf js2-nesting-of-function))
     (setq end (js2-current-token-end))  ; assume no curly and leave at current token
     (if (js2-must-match js2-RC "msg.no.brace.after.body" pos)
@@ -7366,50 +7370,45 @@ Last token scanned is the close-curly for the function body."
                                   (js2-name-node-name name) pos end)
         (js2-add-strict-warning "msg.anon.no.return.value" nil pos end)))))
 
-(defun js2-parse-function (function-type)
-  "Function parser.  FUNCTION-TYPE is a symbol."
-  (let ((pos (js2-current-token-beg))  ; start of 'function' keyword
-        name name-beg name-end fn-node lp
-        (synthetic-type function-type)
-        member-expr-node)
-    ;; parse function name, expression, or non-name (anonymous)
-    (cond
-     ;; function foo(...)
-     ((js2-match-token js2-NAME)
-      (setq name (js2-create-name-node t)
-            name-beg (js2-current-token-beg)
-            name-end (js2-current-token-end))
-      (unless (js2-match-token js2-LP)
-        (when js2-allow-member-expr-as-function-name
-          ;; function foo.bar(...)
-          (setq member-expr-node name
-                name nil
-                member-expr-node (js2-parse-member-expr-tail
-                                  nil member-expr-node)))
-        (js2-must-match js2-LP "msg.no.paren.parms")))
-     ((js2-match-token js2-LP)
-      nil)  ; anonymous function:  leave name as null
-     (t
-      ;; function random-member-expr(...)
-      (when js2-allow-member-expr-as-function-name
-        ;; Note that memberExpr can not start with '(' like
-        ;; in function (1+2).toString(), because 'function (' already
-        ;; processed as anonymous function
-        (setq member-expr-node (js2-parse-member-expr)))
-      (js2-must-match js2-LP "msg.no.paren.parms")))
+(defun js2-parse-function-stmt ()
+  (let ((pos (js2-current-token-beg)))
+    (js2-must-match js2-NAME "msg.unnamed.function.stmt")
+    (let ((name (js2-create-name-node t))
+          pn member-expr)
+      (cond
+       ((js2-match-token js2-LP)
+        (js2-parse-function 'FUNCTION_STATEMENT pos name))
+       (js2-allow-member-expr-as-function-name
+        (setq member-expr (js2-parse-member-expr-tail nil name))
+        (js2-parse-highlight-member-expr-fn-name member-expr)
+        (js2-must-match js2-LP "msg.no.paren.parms")
+        (setf pn (js2-parse-function 'FUNCTION_STATEMENT pos)
+              (js2-function-node-member-expr pn) member-expr)
+        pn)
+       (t
+        (js2-report-error "msg.no.paren.parms"))))))
+
+(defun js2-parse-function-expr ()
+  (let ((pos (js2-current-token-beg))
+        name)
+    (when (js2-match-token js2-NAME)
+      (setq name (js2-create-name-node t)))
+    (js2-must-match js2-LP "msg.no.paren.parms")
+    (js2-parse-function 'FUNCTION_EXPRESSION pos name)))
+
+(defun js2-parse-function (function-type pos &optional name)
+  "Function parser.  FUNCTION-TYPE is a symbol, POS is the
+beginning of the first token (function keyword, unless it's an
+arrow function), NAME is js2-name-node."
+  (let (fn-node lp)
     (if (= (js2-current-token-type) js2-LP) ; eventually matched LP?
         (setq lp (js2-current-token-beg)))
-    (if member-expr-node
-        (progn
-          (setq synthetic-type 'FUNCTION_EXPRESSION)
-          (js2-parse-highlight-member-expr-fn-name member-expr-node))
-      (if name
-          (js2-set-face name-beg name-end
-                        'font-lock-function-name-face 'record)))
-    (if (and (not (eq synthetic-type 'FUNCTION_EXPRESSION))
-             (plusp (js2-name-node-length name)))
+    (when name
+      (js2-set-face (js2-node-pos name) (js2-node-end name)
+                    'font-lock-function-name-face 'record)
+      (when (plusp (js2-name-node-length name))
         ;; Function statements define a symbol in the enclosing scope
-        (js2-define-symbol js2-FUNCTION (js2-name-node-name name) fn-node))
+        (js2-define-symbol js2-FUNCTION (js2-name-node-name name) fn-node)))
     (setf fn-node (make-js2-function-node :pos pos
                                           :name name
                                           :form function-type
@@ -7434,23 +7433,22 @@ Last token scanned is the close-curly for the function body."
                (/= (js2-peek-token) js2-LC))
           (js2-parse-function-closure-body fn-node)
         (js2-parse-function-body fn-node))
-      (if name
-          (js2-node-add-children fn-node name))
       (js2-check-inconsistent-return-warning fn-node name)
-      ;; Function expressions define a name only in the body of the
-      ;; function, and only if not hidden by a parameter name
-      (if (and name
-               (eq synthetic-type 'FUNCTION_EXPRESSION)
-               (null (js2-scope-get-symbol js2-current-scope
-                                           (js2-name-node-name name))))
+
+      (when name
+        (js2-node-add-children fn-node name)
+        ;; Function expressions define a name only in the body of the
+        ;; function, and only if not hidden by a parameter name
+        (when (and (eq function-type 'FUNCTION_EXPRESSION)
+                   (null (js2-scope-get-symbol js2-current-scope
+                                               (js2-name-node-name name))))
           (js2-define-symbol js2-FUNCTION
                              (js2-name-node-name name)
                              fn-node))
-      (if (and name
-               (not (eq function-type 'FUNCTION_EXPRESSION)))
-          (js2-record-imenu-functions fn-node)))
-    (setf (js2-node-len fn-node) (- js2-ts-cursor pos)
-          (js2-function-node-member-expr fn-node) member-expr-node)  ; may be nil
+        (when (eq function-type 'FUNCTION_STATEMENT)
+          (js2-record-imenu-functions fn-node))))
+
+    (setf (js2-node-len fn-node) (- js2-ts-cursor pos))
     ;; Rhino doesn't do this, but we need it for finding undeclared vars.
     ;; We wait until after parsing the function to set its parent scope,
     ;; since `js2-define-symbol' needs the defining-scope check to stop
@@ -9084,7 +9082,7 @@ array-literals, array comprehensions and regular expressions."
     (setq tt (js2-current-token-type))
     (cond
      ((= tt js2-FUNCTION)
-      (js2-parse-function 'FUNCTION_EXPRESSION))
+      (js2-parse-function-expr))
      ((= tt js2-LB)
       (js2-parse-array-literal))
      ((= tt js2-LC)
@@ -9446,7 +9444,7 @@ PROP is the `js2-name-node' representing the property name.
 GET-P is non-nil if the keyword was `get'."
   (let ((type (if get-p js2-GET js2-SET))
         result end
-        (fn (js2-parse-function 'FUNCTION_EXPRESSION)))
+        (fn (js2-parse-function-expr)))
     ;; it has to be an anonymous function, as we already parsed the name
     (if (/= (js2-node-type fn) js2-FUNCTION)
         (js2-report-error "msg.bad.prop")
