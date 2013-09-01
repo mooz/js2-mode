@@ -5357,32 +5357,34 @@ the token is flagged as such."
   (setq js2-ti-tokens-cursor (mod (1- js2-ti-tokens-cursor) js2-ti-ntokens)))
 
 (defun js2-get-token-internal ()
-  (let ((tt (js2-get-token-internal-1))      ; call scanner
-        saw-eol
-        face)
+  (let* ((token (js2-get-token-internal-1)) ; call scanner
+         (tt (js2-token-type token))
+         saw-eol
+         face)
     ;; process comments
     (while (or (= tt js2-EOL) (= tt js2-COMMENT))
       (if (= tt js2-EOL)
           (setq saw-eol t)
         (setq saw-eol nil)
-        (if js2-record-comments
-          (js2-record-comment)))
+        (when js2-record-comments
+          (js2-record-comment token)))
       (setq js2-ti-tokens-cursor (mod (1- js2-ti-tokens-cursor) js2-ti-ntokens))
-      (setq tt (js2-get-token-internal-1)))  ; call scanner again
+      (setq token (js2-get-token-internal-1) ; call scanner again
+            tt (js2-token-type token)))
 
     (when saw-eol
-      (setf (js2-token-follows-eol-p (js2-current-token)) t))
+      (setf (js2-token-follows-eol-p token) t))
 
     ;; perform lexical fontification as soon as token is scanned
     (when js2-parse-ide-mode
       (cond
        ((minusp tt)
-        (js2-record-face 'js2-error))
+        (js2-record-face 'js2-error token))
        ((setq face (aref js2-kwd-tokens tt))
-        (js2-record-face face))
+        (js2-record-face face token))
        ((and (= tt js2-NAME)
-             (equal (js2-current-token-string) "undefined"))
-        (js2-record-face 'font-lock-constant-face))))
+             (equal (js2-token-string token) "undefined"))
+        (js2-record-face 'font-lock-constant-face token))))
     tt))
 
 (defun js2-get-token-internal-1 ()
@@ -5812,7 +5814,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
           (otherwise
            (js2-report-scan-error "msg.illegal.character"))))))
    (setf (js2-token-type token) tt)
-   tt))
+   token))
 
 (defun js2-read-regexp (start-tt)
   "Called by parser when it gets / or /= in literal context."
@@ -6944,9 +6946,10 @@ i.e. one or more nodes, and an integer position as the list tail."
 (defconst js2-version "1.8.5"
   "Version of JavaScript supported.")
 
-(defmacro js2-record-face (face)
-  "Record a style run of FACE for the current token."
-  `(js2-set-face (js2-current-token-beg) (js2-current-token-end) ,face 'record))
+(defun js2-record-face (face &optional token)
+  "Record a style run of FACE for TOKEN or the current token."
+  (unless token (setq token (js2-current-token)))
+  (js2-set-face (js2-token-beg token) (js2-token-end token) face 'record))
 
 (defsubst js2-node-end (n)
   "Computes the absolute end of node N.
@@ -6955,23 +6958,22 @@ is only true until the node is added to its parent; i.e., while parsing."
   (+ (js2-node-pos n)
      (js2-node-len n)))
 
-(defun js2-record-comment ()
+(defun js2-record-comment (token)
   "Record a comment in `js2-scanned-comments'."
-  (push (make-js2-comment-node :len (js2-current-token-len)
-                               :format (js2-token-comment-type
-                                        (js2-current-token)))
-        js2-scanned-comments)
-  (when js2-parse-ide-mode
-    (js2-record-face (if (eq (js2-token-comment-type
-                              (js2-current-token))
-                             'jsdoc)
-                         'font-lock-doc-face
-                       'font-lock-comment-face))
-    (when (memq (js2-token-comment-type
-                 (js2-current-token))
-                '(html preprocessor))
-      ;; Tell cc-engine the bounds of the comment.
-      (js2-record-text-property (js2-current-token-beg) (1- (js2-current-token-end)) 'c-in-sws t))))
+  (let ((ct (js2-token-comment-type token))
+        (beg (js2-token-beg token))
+        (end (js2-token-end token)))
+    (push (make-js2-comment-node :len (- end beg)
+                                 :format ct)
+          js2-scanned-comments)
+    (when js2-parse-ide-mode
+      (js2-record-face (if (eq ct 'jsdoc)
+                           'font-lock-doc-face
+                         'font-lock-comment-face)
+                       token)
+      (when (memq ct '(html preprocessor))
+        ;; Tell cc-engine the bounds of the comment.
+        (js2-record-text-property beg (1- end) 'c-in-sws t)))))
 
 (defun js2-peek-token ()
   "Return the next token type without consuming it.
