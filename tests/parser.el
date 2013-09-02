@@ -230,7 +230,7 @@ the test."
   (should (eq js2-NAME (js2-current-token-type)))
   (should (equal "x" (js2-current-token-string))))
 
-(js2-deftest ts-set-state "(1+2)"
+(js2-deftest ts-seek "(1+2)"
   (js2-init-scanner)
   (should (eq js2-LP (js2-next-token)))
   (should (eq js2-NUMBER (js2-next-token)))
@@ -238,7 +238,7 @@ the test."
   (let ((state (make-js2-ts-state)))
     (should (eq js2-NUMBER (js2-next-token)))
     (should (eq js2-ADD (js2-next-token)))
-    (js2-ts-set-state state)
+    (js2-ts-seek state)
     (should (eq 1 js2-ti-lookahead))
     (should (eq js2-NUMBER (js2-next-token)))
     (should (eq 1 (js2-token-number
