@@ -76,7 +76,7 @@ the test."
   "function foo() {\n}")
 
 (js2-deftest-parse function-expression-statements-are-verboten
-  "function() {\n}" :syntax-error "function")
+  "function() {}" :syntax-error "function")
 
 (js2-deftest-parse member-expr-as-function-name
   "function a.b.c[2](x, y) {\n}"
@@ -160,6 +160,20 @@ the test."
 
 (js2-deftest-parse function-with-rest-after-default-parameter
   "function foo(a = 1, ...rest) {\n}")
+
+;;; Arrow functions.
+
+(js2-deftest-parse arrow-function-with-empty-args-and-no-curlies
+  "() => false;" :reference "() => {false};")
+
+(js2-deftest-parse arrow-function-with-args-and-curlies
+  "(a, b = 1, ...c) => {  c;\n};")
+
+(js2-deftest-parse parenless-arrow-function-prohibits-rest
+  "...b => {b + 1;};" :syntax-error "b" :errors-count 2)
+
+(js2-deftest-parse parenless-arrow-function-prohibits-destructuring
+  "[a, b] => {a + b;};" :syntax-error "]" :errors-count 5)
 
 ;;; Automatic semicolon insertion.
 

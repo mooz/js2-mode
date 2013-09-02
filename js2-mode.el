@@ -644,10 +644,11 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-DEBUGGER 159)
 
 (defvar js2-COMMENT 160)
-(defvar js2-ENUM 161)  ; for "enum" reserved word
-(defvar js2-TRIPLEDOT 162) ; for rest parameter
+(defvar js2-ENUM 161)          ; for "enum" reserved word
+(defvar js2-TRIPLEDOT 162)     ; for rest parameter
+(defvar js2-ARROW 163)         ; function arrow (=>)
 
-(defconst js2-num-tokens (1+ js2-TRIPLEDOT))
+(defconst js2-num-tokens (1+ js2-ARROW))
 
 (defconst js2-debug-print-trees nil)
 
@@ -711,7 +712,7 @@ List of chars built up while scanning various tokens.")
 (defstruct (js2-ts-state
             (:constructor make-js2-ts-state (&key (lineno js2-ts-lineno)
                                                   (cursor js2-ts-cursor)
-                                                  (tokens js2-ti-tokens)
+                                                  (tokens (copy-sequence js2-ti-tokens))
                                                   (tokens-cursor js2-ti-tokens-cursor)
                                                   (lookahead js2-ti-lookahead))))
   lineno
@@ -1513,6 +1514,9 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.param.after.rest" ; added by js2-mode
          "parameter after rest parameter")
 
+(js2-msg "msg.bad.arrow.args" ; added by js2-mode
+         "invalid arrow-function arguments (parentheses around the arrow-function may help)")
+
 (js2-msg "msg.no.brace.body"
          "missing '{' before function body")
 
@@ -1965,7 +1969,7 @@ the correct number of ARGS must be provided."
     (- (js2-token-end token)
        (js2-token-beg token))))
 
-(defun js2-ts-set-state (state)
+(defun js2-ts-seek (state)
   (setq js2-ts-lineno (js2-ts-state-lineno state)
         js2-ts-cursor (js2-ts-state-cursor state)
         js2-ti-tokens (js2-ts-state-tokens state)
@@ -2960,7 +2964,7 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
 `js2-name-node', or if it's a destructuring-assignment parameter, a
 `js2-array-node' or `js2-object-node'."
   ftype            ; FUNCTION, GETTER or SETTER
-  form             ; FUNCTION_{STATEMENT|EXPRESSION}
+  form             ; FUNCTION_{STATEMENT|EXPRESSION|ARROW}
   name             ; function name (a `js2-name-node', or nil if anonymous)
   params           ; a Lisp list of destructuring forms or simple name nodes
   rest-p           ; if t, the last parameter is rest parameter
@@ -2982,19 +2986,20 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
   (js2-visit-ast (js2-function-node-body n) v))
 
 (defun js2-print-function-node (n i)
-  (let ((pad (js2-make-pad i))
-        (getter (js2-node-get-prop n 'GETTER_SETTER))
-        (name (js2-function-node-name n))
-        (member-expr (js2-function-node-member-expr n))
-        (params (js2-function-node-params n))
-        (rest-p (js2-function-node-rest-p n))
-        (body (js2-function-node-body n))
-        (expr (eq (js2-function-node-form n) 'FUNCTION_EXPRESSION)))
-    (unless getter
+  (let* ((pad (js2-make-pad i))
+         (getter (js2-node-get-prop n 'GETTER_SETTER))
+         (name (or (js2-function-node-name n)
+                   (js2-function-node-member-expr n)))
+         (params (js2-function-node-params n))
+         (arrow (eq (js2-function-node-form n) 'FUNCTION_ARROW))
+         (rest-p (js2-function-node-rest-p n))
+         (body (js2-function-node-body n))
+         (expr (not (eq (js2-function-node-form n) 'FUNCTION_STATEMENT))))
+    (unless (or getter arrow)
       (insert pad "function"))
-    (when (or name member-expr)
+    (when name
       (insert " ")
-      (js2-print-ast (or name member-expr) 0))
+      (js2-print-ast name 0))
     (insert "(")
     (loop with len = (length params)
           for param in params
@@ -3005,11 +3010,16 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
           (js2-print-ast param 0)
           (when (< count len)
             (insert ", ")))
-    (insert ") {")
+    (insert ") ")
+    (when arrow
+      (insert "=> "))
+    (insert "{")
+    ;; TODO:  fix this to be smarter about indenting, etc.
     (unless expr
       (insert "\n"))
-    ;; TODO:  fix this to be smarter about indenting, etc.
-    (js2-print-body body (1+ i))
+    (if (js2-block-node-p body)
+        (js2-print-body body (1+ i))
+      (js2-print-ast body 0))
     (insert pad "}")
     (unless expr
       (insert "\n"))))
@@ -5714,7 +5724,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
                (if (js2-match-char ?=)
                    (js2-ts-return token js2-SHEQ)
                  (throw 'return js2-EQ))
-             (throw 'return js2-ASSIGN)))
+             (if (js2-match-char ?>)
+                 (js2-ts-return token js2-ARROW)
+               (throw 'return js2-ASSIGN))))
           (?!
            (if (js2-match-char ?=)
                (if (js2-match-char ?=)
@@ -7290,15 +7302,20 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
    (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
                         (js2-node-len node)))))
 
-(defun js2-parse-function-params (fn-node pos)
+(defun js2-parse-function-params (function-type fn-node pos)
   (if (js2-match-token js2-RP)
       (setf (js2-function-node-rp fn-node) (- (js2-current-token-beg) pos))
-    (let (params len param default-found rest-param-at)
+    (let ((paren-free-arrow (and (eq function-type 'FUNCTION_ARROW)
+                                 (eq (js2-current-token-type) js2-NAME)))
+          params len param default-found rest-param-at)
+      (when paren-free-arrow
+        (js2-unget-token))
       (loop for tt = (js2-peek-token)
             do
             (cond
              ;; destructuring param
-             ((or (= tt js2-LB) (= tt js2-LC))
+             ((and (not paren-free-arrow)
+                   (or (= tt js2-LB) (= tt js2-LC)))
               (js2-get-token)
               (when default-found
                 (js2-report-error "msg.no.default.after.default.param"))
@@ -7310,6 +7327,7 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
              ;; variable name
              (t
               (when (and (>= js2-language-version 200)
+                         (not paren-free-arrow)
                          (js2-match-token js2-TRIPLEDOT)
                          (not rest-param-at))
                 ;; to report errors if there are more parameters
@@ -7327,6 +7345,7 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
                                              (js2-node-len param)))
                         (and (>= js2-language-version 200)
                              (js2-match-token js2-ASSIGN)))
+                (assert (not paren-free-arrow))
                 (let* ((pos (js2-node-pos param))
                        (tt (js2-current-token-type))
                        (op-pos (- (js2-current-token-beg) pos))
@@ -7344,7 +7363,8 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
                                 (js2-node-pos param) (js2-node-len param)))
             while
             (js2-match-token js2-COMMA))
-      (when (js2-must-match js2-RP "msg.no.paren.after.parms")
+      (when (and (not paren-free-arrow)
+                 (js2-must-match js2-RP "msg.no.paren.after.parms"))
         (setf (js2-function-node-rp fn-node) (- (js2-current-token-beg) pos)))
       (when rest-param-at
         (setf (js2-function-node-rest-p fn-node) t))
@@ -7428,7 +7448,9 @@ arrow function), NAME is js2-name-node."
           js2-label-set
           js2-loop-set
           js2-loop-and-switch-set)
-      (js2-parse-function-params fn-node pos)
+      (js2-parse-function-params function-type fn-node pos)
+      (when (eq function-type 'FUNCTION_ARROW)
+        (js2-must-match js2-ARROW "msg.bad.arrow.args"))
       (if (and (>= js2-language-version 180)
                (/= (js2-peek-token) js2-LC))
           (js2-parse-function-closure-body fn-node)
@@ -8462,15 +8484,20 @@ If NODE is non-nil, it is the AST node associated with the symbol."
 (defun js2-parse-assign-expr ()
   (let ((tt (js2-get-token))
         (pos (js2-current-token-beg))
-        pn left right op-pos)
+        pn left right op-pos
+        ts-state recorded-identifiers)
     (if (= tt js2-YIELD)
         (js2-parse-return-or-yield tt t)
+      ;; Save the tokenizer state in case we find an arrow function
+      ;; and have to rewind.
+      (setq ts-state (make-js2-ts-state)
+            recorded-identifiers js2-recorded-identifiers)
       ;; not yield - parse assignment expression
       (setq pn (js2-parse-cond-expr)
             tt (js2-get-token))
-      (if (not (and (<= js2-first-assign tt)
-                    (<= tt js2-last-assign)))
-          (js2-unget-token)
+      (cond
+       ((and (<= js2-first-assign tt)
+             (<= tt js2-last-assign))
         ;; tt express assignment (=, |=, ^=, ..., %=)
         (setq op-pos (- (js2-current-token-beg) pos)  ; relative
               left pn)
@@ -8486,6 +8513,13 @@ If NODE is non-nil, it is the AST node associated with the symbol."
           (js2-record-imenu-functions right left))
         ;; do this last so ide checks above can use absolute positions
         (js2-node-add-children pn left right))
+       ((and (= tt js2-ARROW)
+             (>= js2-language-version 200))
+        (js2-ts-seek ts-state)
+        (setq js2-recorded-identifiers recorded-identifiers)
+        (setq pn (js2-parse-function 'FUNCTION_ARROW (js2-current-token-beg))))
+       (t
+        (js2-unget-token)))
       pn)))
 
 (defun js2-parse-cond-expr ()
@@ -9125,6 +9159,28 @@ array-literals, array comprehensions and regular expressions."
           (= tt js2-FALSE)
           (= tt js2-TRUE))
       (make-js2-keyword-node :type tt))
+     ((= tt js2-RP)
+      ;; Not valid expression syntax, but this is valid in an arrow
+      ;; function with no params: () => body.
+      (if (eq (js2-peek-token) js2-ARROW)
+          (progn
+            (js2-unget-token)  ; Put back the right paren.
+            ;; Return whatever, it will hopefully be rewinded and
+            ;; reparsed when we reach the =>.
+            (make-js2-keyword-node :type js2-NULL))
+        (js2-report-error "msg.syntax")
+        (make-js2-error-node)))
+     ((= tt js2-TRIPLEDOT)
+      ;; Likewise, only valid in an arrow function with a rest param.
+      (if (and (js2-match-token js2-NAME)
+               (js2-match-token js2-RP)
+               (eq (js2-peek-token) js2-ARROW))
+          (progn
+            (js2-unget-token)  ; Put back the right paren.
+            ;; See the previous case.
+            (make-js2-keyword-node :type js2-NULL))
+        (js2-report-error "msg.syntax")
+        (make-js2-error-node)))
      ((= tt js2-RESERVED)
       (js2-report-error "msg.reserved.id")
       (make-js2-name-node))
