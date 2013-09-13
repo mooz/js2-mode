@@ -271,6 +271,14 @@ lines, it won't be indented additionally:
   :type 'symbol)
 (js2-mark-safe-local 'js2-pretty-multiline-declarations 'symbolp)
 
+(defcustom js2-indent-switch-body nil
+  "When nil, case labels are indented on the same level as the
+containing switch statement.  Otherwise, all lines inside
+switch statement body are indented one additional level."
+  :type 'boolean
+  :group 'js2-mode)
+(js2-mark-safe-local 'js2-indent-case-same-as-switch 'booleanp)
+
 (defcustom js2-idle-timer-delay 0.2
   "Delay in secs before re-parsing after user makes changes.
 Multiplied by `js2-dynamic-idle-timer-adjust', which see."
@@ -9721,13 +9729,15 @@ In particular, return the buffer position of the first `for' kwd."
   "Return the proper indentation for the current line."
   (save-excursion
     (back-to-indentation)
-    (let ((ctrl-stmt-indent (js2-ctrl-statement-indentation))
-          (same-indent-p (looking-at "[]})]\\|\\<case\\>\\|\\<default\\>"))
-          (continued-expr-p (js2-continued-expression-p))
-          (declaration-indent (and js2-pretty-multiline-declarations
-                                   (js2-multiline-decl-indentation)))
-          (bracket (nth 1 parse-status))
-          beg)
+    (let* ((ctrl-stmt-indent (js2-ctrl-statement-indentation))
+           (at-closing-bracket (looking-at "[]})]"))
+           (same-indent-p (or at-closing-bracket
+                              (looking-at "\\<case\\>\\|\\<default\\>")))
+           (continued-expr-p (js2-continued-expression-p))
+           (declaration-indent (and js2-pretty-multiline-declarations
+                                    (js2-multiline-decl-indentation)))
+           (bracket (nth 1 parse-status))
+           beg indent)
       (cond
        ;; indent array comprehension continuation lines specially
        ((and bracket
@@ -9757,12 +9767,18 @@ In particular, return the buffer position of the first `for' kwd."
           (and (eq js2-pretty-multiline-declarations 'all)
                (looking-at js2-declaration-keyword-re)
                (goto-char (1+ (match-end 0))))
-          (cond (same-indent-p
-                 (current-column))
-                (continued-expr-p
-                 (+ (current-column) (* 2 js2-basic-offset)))
-                (t
-                 (+ (current-column) js2-basic-offset))))
+          (setq indent
+                (cond (same-indent-p
+                       (current-column))
+                      (continued-expr-p
+                       (+ (current-column) (* 2 js2-basic-offset)))
+                      (t
+                       (+ (current-column) js2-basic-offset))))
+          (if (and js2-indent-switch-body
+                   (not at-closing-bracket)
+                   (looking-at "\\_<switch\\_>"))
+              (+ indent js2-basic-offset)
+            indent))
          (t
           (unless same-indent-p
             (forward-char)
