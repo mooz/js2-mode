@@ -10985,64 +10985,64 @@ move backward across N balanced expressions."
   (setq arg (or arg 1))
   (save-restriction
     (widen) ;; `blink-matching-open' calls `narrow-to-region'
-    (js2-reparse))
-  (let (forward-sexp-function
-        node (start (point)) pos lp rp child)
-    (cond
-     ;; backward-sexp
-     ;; could probably make this better for some cases:
-     ;;  - if in statement block (e.g. function body), go to parent
-     ;;  - infix exprs like (foo in bar) - maybe go to beginning
-     ;;    of infix expr if in the right-side expression?
-     ((and arg (minusp arg))
-      (dotimes (_ (- arg))
-        (js2-backward-sws)
-        (forward-char -1)   ; Enter the node we backed up to.
-        (when (setq node (js2-node-at-point (point) t))
-          (setq pos (js2-node-abs-pos node))
-          (let ((parens (js2-mode-forward-sexp-parens node pos)))
-            (setq lp (car parens)
-                  rp (cdr parens)))
-          (when (and lp (> start lp))
-            (if (and rp (<= start rp))
-                ;; Between parens, check if there's a child node we can jump.
-                (when (setq child (js2-node-closest-child node (point) lp t))
-                  (setq pos (js2-node-abs-pos child)))
-              ;; Before both parens.
-              (setq pos lp)))
-          (let ((state (parse-partial-sexp start pos)))
-            (goto-char (if (not (zerop (car state)))
-                           ;; Stumble at the unbalanced paren if < 0, or
-                           ;; jump a bit further if > 0.
-                           (scan-sexps start -1)
-                         pos))))
-        (unless pos (goto-char (point-min)))))
-     (t
-      ;; forward-sexp
-      (dotimes (_ arg)
-        (js2-forward-sws)
-        (when (setq node (js2-node-at-point (point) t))
-          (setq pos (js2-node-abs-pos node))
-          (let ((parens (js2-mode-forward-sexp-parens node pos)))
-            (setq lp (car parens)
-                  rp (cdr parens)))
-          (or
-           (when (and rp (<= start rp))
-             (if (> start lp)
-                 (when (setq child (js2-node-closest-child node (point) rp))
-                   (setq pos (js2-node-abs-end child)))
-               (setq pos (1+ rp))))
-           ;; No parens or child nodes, looks for the end of the curren node.
-           (incf pos (js2-node-len
-                      (if (js2-expr-stmt-node-p (js2-node-parent node))
-                          ;; Stop after the semicolon.
-                          (js2-node-parent node)
-                        node))))
-          (let ((state (save-excursion (parse-partial-sexp start pos))))
-            (goto-char (if (not (zerop (car state)))
-                           (scan-sexps start 1)
-                         pos))))
-        (unless pos (goto-char (point-max))))))))
+    (js2-reparse)
+    (let (forward-sexp-function
+          node (start (point)) pos lp rp child)
+      (cond
+       ;; backward-sexp
+       ;; could probably make this better for some cases:
+       ;;  - if in statement block (e.g. function body), go to parent
+       ;;  - infix exprs like (foo in bar) - maybe go to beginning
+       ;;    of infix expr if in the right-side expression?
+       ((and arg (minusp arg))
+        (dotimes (_ (- arg))
+          (js2-backward-sws)
+          (forward-char -1)   ; Enter the node we backed up to.
+          (when (setq node (js2-node-at-point (point) t))
+            (setq pos (js2-node-abs-pos node))
+            (let ((parens (js2-mode-forward-sexp-parens node pos)))
+              (setq lp (car parens)
+                    rp (cdr parens)))
+            (when (and lp (> start lp))
+              (if (and rp (<= start rp))
+                  ;; Between parens, check if there's a child node we can jump.
+                  (when (setq child (js2-node-closest-child node (point) lp t))
+                    (setq pos (js2-node-abs-pos child)))
+                ;; Before both parens.
+                (setq pos lp)))
+            (let ((state (parse-partial-sexp start pos)))
+              (goto-char (if (not (zerop (car state)))
+                             ;; Stumble at the unbalanced paren if < 0, or
+                             ;; jump a bit further if > 0.
+                             (scan-sexps start -1)
+                           pos))))
+          (unless pos (goto-char (point-min)))))
+       (t
+        ;; forward-sexp
+        (dotimes (_ arg)
+          (js2-forward-sws)
+          (when (setq node (js2-node-at-point (point) t))
+            (setq pos (js2-node-abs-pos node))
+            (let ((parens (js2-mode-forward-sexp-parens node pos)))
+              (setq lp (car parens)
+                    rp (cdr parens)))
+            (or
+             (when (and rp (<= start rp))
+               (if (> start lp)
+                   (when (setq child (js2-node-closest-child node (point) rp))
+                     (setq pos (js2-node-abs-end child)))
+                 (setq pos (1+ rp))))
+             ;; No parens or child nodes, looks for the end of the curren node.
+             (incf pos (js2-node-len
+                        (if (js2-expr-stmt-node-p (js2-node-parent node))
+                            ;; Stop after the semicolon.
+                            (js2-node-parent node)
+                          node))))
+            (let ((state (save-excursion (parse-partial-sexp start pos))))
+              (goto-char (if (not (zerop (car state)))
+                             (scan-sexps start 1)
+                           pos))))
+          (unless pos (goto-char (point-max)))))))))
 
 (defun js2-mode-forward-sexp-parens (node abs-pos)
   "Return a cons cell with positions of main parens in NODE."
