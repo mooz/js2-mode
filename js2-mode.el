@@ -7597,7 +7597,7 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
     pn))
 
 (defun js2-parse-switch ()
-  "Parser for if-statement.  Last matched token must be js2-SWITCH."
+  "Parser for switch-statement.  Last matched token must be js2-SWITCH."
   (let ((pos js2-token-beg)
         tt pn discriminant has-default case-expr case-node
         case-pos cases stmt lp)
