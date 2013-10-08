@@ -8245,13 +8245,13 @@ up any following labels and the next non-label statement into a
 `js2-labeled-stmt-node' bundle and return that.  Otherwise we parse an
 expression and return it wrapped in a `js2-expr-stmt-node'."
   (let ((pos (js2-current-token-beg))
-        expr stmt pn bundle
+        expr stmt bundle
         (continue t))
     ;; set check for label and call down to `js2-parse-primary-expr'
     (setq expr (js2-maybe-parse-label))
     (if (null expr)
         ;; Parse the non-label expression and wrap with expression stmt.
-        (setq pn (js2-wrap-with-expr-stmt pos (js2-parse-expr) t)) ;FIXME: `pn' is unused!
+        (js2-wrap-with-expr-stmt pos (js2-parse-expr) t)
       ;; else parsed a label
       (setq bundle (make-js2-labeled-stmt-node :pos pos))
       (js2-record-label expr bundle)
