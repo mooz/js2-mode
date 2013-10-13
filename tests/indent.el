@@ -73,3 +73,10 @@
   |    },
   |    bar = 8;"
   :bind ((js2-pretty-multiline-declarations 'all)))
+
+(js2-deftest-indent default-keyword-as-property
+  "var foo = {
+  |  case: 'zzzz',
+  |  default: 'donkey',
+  |  tee: 'ornery'
+  |};")

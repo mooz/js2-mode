@@ -9803,7 +9803,11 @@ In particular, return the buffer position of the first `for' kwd."
     (let* ((ctrl-stmt-indent (js2-ctrl-statement-indentation))
            (at-closing-bracket (looking-at "[]})]"))
            (same-indent-p (or at-closing-bracket
-                              (looking-at "\\<case\\>\\|\\<default\\>")))
+                              (looking-at "\\<case\\>[^:]")
+                              (and (looking-at "\\<default:")
+                                   (save-excursion
+                                     (js2-backward-sws)
+                                     (not (memq (char-before) '(?, ?{)))))))
            (continued-expr-p (js2-continued-expression-p))
            (declaration-indent (and js2-pretty-multiline-declarations
                                     (js2-multiline-decl-indentation)))
