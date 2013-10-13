@@ -214,6 +214,7 @@ the test."
   (let* ((scope (js2-node-at-point (point-min)))
          (fn-entry (js2-scope-get-symbol scope 'bar))
          (var-entry (js2-scope-get-symbol scope 'x)))
+    (should (string= (js2-name-node-name (js2-function-node-name scope)) "foo"))
     (should (= (js2-symbol-decl-type fn-entry) js2-FUNCTION))
     (should (js2-function-node-p (js2-symbol-ast-node fn-entry)))
     (should (= (js2-symbol-decl-type var-entry) js2-VAR))
