@@ -197,6 +197,28 @@ the test."
   (let ((assignment (js2-expr-stmt-node-expr (car (js2-scope-kids js2-mode-ast)))))
     (should (js2-name-node-p (js2-assign-node-right assignment)))))
 
+;;; Scopes
+
+(js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"
+  (js2-mode)
+  (let ((entry (js2-scope-get-symbol js2-mode-ast 'foo)))
+    (should (= (js2-symbol-decl-type entry) js2-FUNCTION))
+    (should (equal (js2-symbol-name entry) "foo"))
+    (should (js2-function-node-p (js2-symbol-ast-node entry)))))
+
+(js2-deftest fn-symbol-table-includes-nested-fn "function foo() {
+  function bar() {}
+  var x;
+}"
+  (js2-mode)
+  (let* ((scope (js2-node-at-point (point-min)))
+         (fn-entry (js2-scope-get-symbol scope 'bar))
+         (var-entry (js2-scope-get-symbol scope 'x)))
+    (should (= (js2-symbol-decl-type fn-entry) js2-FUNCTION))
+    (should (js2-function-node-p (js2-symbol-ast-node fn-entry)))
+    (should (= (js2-symbol-decl-type var-entry) js2-VAR))
+    (should (js2-name-node-p (js2-symbol-ast-node var-entry)))))
+
 ;;; Tokenizer
 
 (js2-deftest get-token "(1+1)"

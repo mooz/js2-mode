@@ -7426,16 +7426,16 @@ arrow function), NAME is js2-name-node."
   (let (fn-node lp)
     (if (= (js2-current-token-type) js2-LP) ; eventually matched LP?
         (setq lp (js2-current-token-beg)))
+    (setf fn-node (make-js2-function-node :pos pos
+                                          :name name
+                                          :form function-type
+                                          :lp (if lp (- lp pos))))
     (when name
       (js2-set-face (js2-node-pos name) (js2-node-end name)
                     'font-lock-function-name-face 'record)
       (when (plusp (js2-name-node-length name))
         ;; Function statements define a symbol in the enclosing scope
         (js2-define-symbol js2-FUNCTION (js2-name-node-name name) fn-node)))
-    (setf fn-node (make-js2-function-node :pos pos
-                                          :name name
-                                          :form function-type
-                                          :lp (if lp (- lp pos))))
     (if (or (js2-inside-function) (plusp js2-nesting-of-with))
         ;; 1. Nested functions are not affected by the dynamic scope flag
         ;;    as dynamic scope is already a parent of their scope.
