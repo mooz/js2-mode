@@ -85,7 +85,7 @@ the test."
 (js2-deftest-parse named-function-expression
   "a = function b() {};")
 
-;;; Callers of `js2-valid-prop-name-token'.
+;;; Callers of `js2-valid-prop-name-token'
 
 (js2-deftest-parse parse-property-access-when-not-keyword
   "A.foo = 3;")
@@ -106,7 +106,7 @@ the test."
   "a = {in: 1};"
   :bind ((js2-allow-keywords-as-property-names t)))
 
-;;; 'of' contextual keyword.
+;;; 'of' contextual keyword
 
 (js2-deftest-parse parse-array-comp-loop-with-of
   "[a for (a of [])];")
@@ -120,7 +120,7 @@ the test."
 (js2-deftest-parse of-can-be-function-name
   "function of() {\n}")
 
-;;; Destructuring binding.
+;;; Destructuring binding
 
 (js2-deftest-parse destruct-in-declaration
   "var {a, b} = {a: 1, b: 2};")
@@ -134,7 +134,7 @@ the test."
 (js2-deftest-parse destruct-in-catch-clause
   "try {\n} catch ({a, b}) {\n  a + b;\n}")
 
-;;; Function parameters.
+;;; Function parameters
 
 (js2-deftest-parse function-with-default-parameters
   "function foo(a = 1, b = a + 1) {\n}")
@@ -161,7 +161,7 @@ the test."
 (js2-deftest-parse function-with-rest-after-default-parameter
   "function foo(a = 1, ...rest) {\n}")
 
-;;; Arrow functions.
+;;; Arrow functions
 
 (js2-deftest-parse arrow-function-with-empty-args-and-no-curlies
   "() => false;" :reference "() => {false};")
@@ -175,7 +175,7 @@ the test."
 (js2-deftest-parse parenless-arrow-function-prohibits-destructuring
   "[a, b] => {a + b;};" :syntax-error "]" :errors-count 5)
 
-;;; Automatic semicolon insertion.
+;;; Automatic semicolon insertion
 
 (js2-deftest-parse no-auto-semi-insertion-after-if
   "if (true) {\n}")
@@ -243,3 +243,14 @@ the test."
     (should (eq js2-NUMBER (js2-next-token)))
     (should (eq 1 (js2-token-number
                    (js2-current-token))))))
+
+;;; Error handling
+
+(js2-deftest for-node-with-error-len "for "
+  (js2-mode)
+  (let ((node (js2-node-at-point (point-min))))
+    (should (= (js2-node-len (js2-node-parent node)) 4))))
+
+(js2-deftest function-without-parens-error "function b {}"
+  ;; Should finish the parse.
+  (js2-mode))

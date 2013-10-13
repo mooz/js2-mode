@@ -5434,6 +5434,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
           (setq c (js2-get-char))
           (cond
            ((eq c js2-EOF_CHAR)
+            (js2-unget-char)
             (js2-ts-set-char-token-bounds token)
             (throw 'return js2-EOF))
            ((eq c ?\n)
@@ -7407,7 +7408,8 @@ Last token scanned is the close-curly for the function body."
               (js2-function-node-member-expr pn) member-expr)
         pn)
        (t
-        (js2-report-error "msg.no.paren.parms"))))))
+        (js2-report-error "msg.no.paren.parms")
+        (make-js2-error-node))))))
 
 (defun js2-parse-function-expr ()
   (let ((pos (js2-current-token-beg))
@@ -8189,7 +8191,7 @@ Current token type is `js2-SEMI' or `js2-ERROR'."
     (if (eq tt js2-SEMI)
         (make-js2-empty-expr-node :len 1)
       (setq pos (js2-current-token-beg)
-            len (- (js2-current-token-beg) pos))
+            len (- (js2-current-token-end) pos))
       (js2-report-error "msg.syntax" nil pos len)
       (make-js2-error-node :pos pos :len len))))
 
@@ -9189,7 +9191,7 @@ array-literals, array comprehensions and regular expressions."
       (setq px-pos (point-at-bol)
             len (- js2-ts-cursor px-pos))
       (js2-report-error "msg.unexpected.eof" nil px-pos len)
-      (make-js2-error-node :pos px-pos :len len))
+      (make-js2-error-node :pos (1- js2-ts-cursor)))
      (t
       (js2-report-error "msg.syntax")
       (make-js2-error-node)))))
