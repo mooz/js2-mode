@@ -2885,7 +2885,7 @@ Returns nil if no such label is in the list."
 (defun js2-print-labeled-stmt (n i)
   (dolist (label (js2-labeled-stmt-node-labels n))
     (js2-print-ast label i))
-  (js2-print-ast (js2-labeled-stmt-node-stmt n) (1+ i)))
+  (js2-print-ast (js2-labeled-stmt-node-stmt n) i))
 
 (defun js2-labeled-stmt-node-contains (node label)
   "Return t if NODE contains LABEL in its label set.
@@ -8269,6 +8269,7 @@ expression and return it wrapped in a `js2-expr-stmt-node'."
       (unwind-protect
             (unless stmt
               (let ((js2-labeled-stmt bundle))  ; bind dynamically
+                (js2-unget-token)
                 (setq stmt (js2-statement-helper))))
         ;; remove the labels for this statement from the global set
         (dolist (label (js2-labeled-stmt-node-labels bundle))

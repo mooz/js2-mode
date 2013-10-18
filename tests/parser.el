@@ -189,13 +189,20 @@ the test."
 ;;; Labels
 
 (js2-deftest-parse labeled-stmt-node
-  "foo:\nbar:\n  x = y + 1;")
+  "foo:\nbar:\nx = y + 1;")
 
 (js2-deftest no-label-node-inside-expr "x = y:"
   (let (js2-parse-interruptable-p)
     (js2-mode))
   (let ((assignment (js2-expr-stmt-node-expr (car (js2-scope-kids js2-mode-ast)))))
     (should (js2-name-node-p (js2-assign-node-right assignment)))))
+
+(js2-deftest-parse label-and-loops "for (; ; ) {
+  loop:
+  for (; ; ) {
+    continue loop;
+  }
+}")
 
 ;;; Scopes
 
