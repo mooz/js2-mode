@@ -926,7 +926,6 @@ buffer text for your imports, using regular expressions.")
 (defconst js2-end-drops-off     #x1)
 (defconst js2-end-returns       #x2)
 (defconst js2-end-returns-value #x4)
-(defconst js2-end-yields        #x8)
 
 ;; Rhino awkwardly passes a statementLabel parameter to the
 ;; statementHelper() function, the main statement parser, which
@@ -1675,10 +1674,10 @@ the correct number of ARGS must be provided."
          "return statement is inconsistent with previous usage")
 
 (js2-msg "msg.generator.returns"
-         "TypeError: generator function '%s' returns a value")
+         "TypeError: legacy generator function '%s' returns a value")
 
 (js2-msg "msg.anon.generator.returns"
-         "TypeError: anonymous generator function returns a value")
+         "TypeError: anonymous legacy generator function returns a value")
 
 (js2-msg "msg.syntax"
          "syntax error")
@@ -2964,6 +2963,7 @@ a `js2-label-node' or the innermost enclosing loop.")
                                                        (name "")
                                                        params rest-p
                                                        body
+                                                       generator-type
                                                        lp rp)))
   "AST node for a function declaration.
 The `params' field is a Lisp list of nodes.  Each node is either a simple
@@ -2979,7 +2979,7 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
   rp               ; position of arg-list close-paren, or nil if omitted
   ignore-dynamic   ; ignore value of the dynamic-scope flag (interpreter only)
   needs-activation ; t if we need an activation object for this frame
-  is-generator     ; t if this function contains a yield
+  generator-type   ; STAR, LEGACY or nil
   member-expr)     ; nonstandard Ecma extension from Rhino
 
 (put 'cl-struct-js2-function-node 'js2-visitor 'js2-visit-function-node)
@@ -3002,7 +3002,9 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
          (body (js2-function-node-body n))
          (expr (not (eq (js2-function-node-form n) 'FUNCTION_STATEMENT))))
     (unless (or getter arrow)
-      (insert pad "function"))
+      (insert pad "function")
+      (when (eq (js2-function-node-generator-type n) 'STAR)
+        (insert "*")))
     (when name
       (insert " ")
       (js2-print-ast name 0))
@@ -7093,8 +7095,10 @@ Returns t on match, nil if no match."
         (js2-set-requires-activation))))
 
 (defun js2-set-is-generator ()
-  (if (js2-function-node-p js2-current-script-or-fn)
-      (setf (js2-function-node-is-generator js2-current-script-or-fn) t)))
+  (let ((fn-node js2-current-script-or-fn))
+    (when (and (js2-function-node-p fn-node)
+               (not (js2-function-node-generator-type fn-node)))
+      (setf (js2-function-node-generator-type js2-current-script-or-fn) 'LEGACY))))
 
 (defun js2-must-have-xml ()
   (unless js2-compiler-xml-available
@@ -7393,18 +7397,19 @@ Last token scanned is the close-curly for the function body."
         (js2-add-strict-warning "msg.anon.no.return.value" nil pos end)))))
 
 (defun js2-parse-function-stmt ()
-  (let ((pos (js2-current-token-beg)))
+  (let ((pos (js2-current-token-beg))
+        (star-p (js2-match-token js2-MUL)))
     (js2-must-match js2-NAME "msg.unnamed.function.stmt")
     (let ((name (js2-create-name-node t))
           pn member-expr)
       (cond
        ((js2-match-token js2-LP)
-        (js2-parse-function 'FUNCTION_STATEMENT pos name))
+        (js2-parse-function 'FUNCTION_STATEMENT pos star-p name))
        (js2-allow-member-expr-as-function-name
         (setq member-expr (js2-parse-member-expr-tail nil name))
         (js2-parse-highlight-member-expr-fn-name member-expr)
         (js2-must-match js2-LP "msg.no.paren.parms")
-        (setf pn (js2-parse-function 'FUNCTION_STATEMENT pos)
+        (setf pn (js2-parse-function 'FUNCTION_STATEMENT pos star-p)
               (js2-function-node-member-expr pn) member-expr)
         pn)
        (t
@@ -7413,13 +7418,14 @@ Last token scanned is the close-curly for the function body."
 
 (defun js2-parse-function-expr ()
   (let ((pos (js2-current-token-beg))
+        (star-p (js2-match-token js2-MUL))
         name)
     (when (js2-match-token js2-NAME)
       (setq name (js2-create-name-node t)))
     (js2-must-match js2-LP "msg.no.paren.parms")
-    (js2-parse-function 'FUNCTION_EXPRESSION pos name)))
+    (js2-parse-function 'FUNCTION_EXPRESSION pos star-p name)))
 
-(defun js2-parse-function (function-type pos &optional name)
+(defun js2-parse-function (function-type pos star-p &optional name)
   "Function parser.  FUNCTION-TYPE is a symbol, POS is the
 beginning of the first token (function keyword, unless it's an
 arrow function), NAME is js2-name-node."
@@ -7429,7 +7435,8 @@ arrow function), NAME is js2-name-node."
     (setf fn-node (make-js2-function-node :pos pos
                                           :name name
                                           :form function-type
-                                          :lp (if lp (- lp pos))))
+                                          :lp (if lp (- lp pos))
+                                          :generator-type (and star-p 'STAR)))
     (when name
       (js2-set-face (js2-node-pos name) (js2-node-end name)
                     'font-lock-function-name-face 'record)
@@ -8146,7 +8153,6 @@ but not BEFORE."
      (t
       (unless (js2-inside-function)
         (js2-report-error "msg.bad.yield"))
-      (js2-set-flag js2-end-flags js2-end-yields)
       (setq ret (make-js2-yield-node :pos pos
                                      :len (- end pos)
                                      :value e))
@@ -8158,8 +8164,9 @@ but not BEFORE."
       (js2-set-is-generator))))
     ;; see if we are mixing yields and value returns.
     (when (and inside-function
-               (js2-now-all-set before js2-end-flags
-                                (logior js2-end-yields js2-end-returns-value)))
+               (js2-flag-set-p js2-end-flags js2-end-returns-value)
+               (eq (js2-function-node-generator-type js2-current-script-or-fn)
+                   'LEGACY))
       (setq name (js2-function-name js2-current-script-or-fn))
       (if (zerop (length name))
           (js2-report-error "msg.anon.generator.returns" nil pos (- end pos))
@@ -8519,7 +8526,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
              (>= js2-language-version 200))
         (js2-ts-seek ts-state)
         (setq js2-recorded-identifiers recorded-identifiers)
-        (setq pn (js2-parse-function 'FUNCTION_ARROW (js2-current-token-beg))))
+        (setq pn (js2-parse-function 'FUNCTION_ARROW (js2-current-token-beg) nil)))
        (t
         (js2-unget-token)))
       pn)))

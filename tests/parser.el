@@ -204,6 +204,15 @@ the test."
   }
 }")
 
+;;; Generators
+
+(js2-deftest-parse legacy-generator "function foo() {\n  yield 1;\n}")
+
+(js2-deftest-parse legacy-generator-cannot-return
+  "function foo() {\n  yield 1;\n return 2;\n}" :syntax-error "return 2")
+
+(js2-deftest-parse harmony-generator "function* bar() {\n  yield 2;\n  return 3;\n}")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"
