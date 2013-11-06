@@ -161,6 +161,14 @@ the test."
 (js2-deftest-parse function-with-rest-after-default-parameter
   "function foo(a = 1, ...rest) {\n}")
 
+;;; Spread operator
+
+(js2-deftest-parse spread-in-array-literal
+  "[1, ...[2, 3], 4, ...[5, 6]];")
+
+(js2-deftest-parse spread-in-function-call
+  "f(3, ...[t(2), t(3)], 42, ...[t(4)]);")
+
 ;;; Arrow functions
 
 (js2-deftest-parse arrow-function-with-empty-args-and-no-curlies

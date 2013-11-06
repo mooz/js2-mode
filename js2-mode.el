@@ -3200,6 +3200,7 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-BITNOT "~")
                (cons js2-POS "+")       ; unary plus
                (cons js2-NEG "-")       ; unary minus
+               (cons js2-TRIPLEDOT "...")
                (cons js2-SHEQ "===")    ; shallow equality
                (cons js2-SHNE "!==")    ; shallow inequality
                (cons js2-ASSIGN "=")
@@ -3252,7 +3253,7 @@ The type field holds the actual assignment operator.")
                                                     len operand)))
   "AST node type for unary operator nodes.
 The type field can be NOT, BITNOT, POS, NEG, INC, DEC,
-TYPEOF, or DELPROP.  For INC or DEC, a 'postfix node
+TYPEOF, DELPROP or TRIPLEDOT.  For INC or DEC, a 'postfix node
 property is added if the operator follows the operand."
   operand)  ; a `js2-node' expression
 
@@ -8833,9 +8834,14 @@ Returns the list in reverse order.  Consumes the right-paren token."
   (let (result)
     (unless (js2-match-token js2-RP)
       (loop do
-            (if (= (js2-peek-token) js2-YIELD)
-                (js2-report-error "msg.yield.parenthesized"))
-            (push (js2-parse-assign-expr) result)
+            (let ((tt (js2-get-token)))
+              (if (= tt js2-YIELD)
+                  (js2-report-error "msg.yield.parenthesized"))
+              (if (and (= tt js2-TRIPLEDOT)
+                       (>= js2-language-version 200))
+                  (push (js2-make-unary tt 'js2-parse-assign-expr) result)
+                (js2-unget-token)
+                (push (js2-parse-assign-expr) result)))
             while
             (js2-match-token js2-COMMA))
       (js2-must-match js2-RP "msg.no.paren.arg")
@@ -9278,13 +9284,17 @@ array-literals, array comprehensions and regular expressions."
         (js2-unget-token)
         (setf continue nil
               pn (js2-parse-array-comprehension (car elems) pos)))
-
        ;; another element
        (t
         (unless after-lb-or-comma
           (js2-report-error "msg.no.bracket.arg"))
-        (js2-unget-token)
-        (push (js2-parse-assign-expr) elems)
+        (if (and (= tt js2-TRIPLEDOT)
+                 (>= js2-language-version 200))
+            ;; spread operator
+            (push (js2-make-unary tt 'js2-parse-assign-expr)
+                  elems)
+          (js2-unget-token)
+          (push (js2-parse-assign-expr) elems))
         (setq after-lb-or-comma nil
               after-comma nil))))
     (unless js2-is-in-destructuring
