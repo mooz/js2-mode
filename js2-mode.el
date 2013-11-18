@@ -9605,7 +9605,7 @@ of continued expressions.")
                     (syntax-ppss (point))))
       (cond ((nth 3 parse)
              (re-search-forward
-              (concat "\\([^\\]\\|^\\)" (string (nth 3 parse)))
+              (concat "\\(\\=\\|[^\\]\\|^\\)" (string (nth 3 parse)))
               (save-excursion (end-of-line) (point)) t))
             ((nth 7 parse)
              (forward-line))
