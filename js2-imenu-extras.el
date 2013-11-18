@@ -52,7 +52,11 @@
 
     (:framework backbone
      :call-re   ,(concat "\\_<" js2-mode-identifier-re "\\.extend\\s-*(")
-     :recorder  js2-imenu-record-backbone-extend))
+     :recorder  js2-imenu-record-backbone-extend)
+
+    (:framework enyo
+     :call-re   "\\_<enyo\\.kind\\s-*("
+     :recorder  js2-imenu-record-enyo-kind))
   "List of JavaScript class definition or extension styles.
 
 :framework is a valid value in `js2-imenu-enabled-frameworks'.
@@ -159,6 +163,28 @@ prefix any functions defined inside the IIFE with the module name."
           (js2-record-object-literal methods
                                      (js2-compute-nested-prop-get subject)
                                      (js2-node-abs-pos methods)))))))
+
+(defun js2-imenu-record-enyo-kind ()
+  (let* ((node (js2-node-at-point (1- (point))))
+         (args (js2-call-node-args node))
+         (options (first args)))
+    (when (js2-object-node-p options)
+      (let ((name-value
+             (loop for elem in (js2-object-node-elems options)
+                   thereis
+                   (let ((key (js2-object-prop-node-left elem))
+                         (value (js2-object-prop-node-right elem)))
+                     (when (and (equal
+                                 (cond ((js2-name-node-p key)
+                                        (js2-name-node-name key))
+                                       ((js2-string-node-p key)
+                                        (js2-string-node-value key)))
+                                 "name")
+                                (js2-string-node-p value))
+                       (js2-string-node-value value))))))
+        (when name-value
+          (js2-record-object-literal options (split-string name-value "\\.")
+                                     (js2-node-abs-pos options)))))))
 
 (defun js2-imenu-walk-ast ()
   (js2-visit-ast
