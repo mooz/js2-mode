@@ -100,6 +100,12 @@ prefix any functions defined inside the IIFE with the module name."
   :type 'boolean
   :group 'js2-imenu)
 
+(defcustom js2-imenu-split-string-identifiers t
+  "When non-nil, split string identifiers on dots.
+Currently used for jQuery widgets, Dojo and Enyo declarations."
+  :type 'boolean
+  :group 'js2-imenu)
+
 ;;;###autoload
 (defun js2-imenu-extras-setup ()
   (when js2-imenu-enabled-frameworks
@@ -137,7 +143,10 @@ prefix any functions defined inside the IIFE with the module name."
 (defun js2-imenu-record-string-declare ()
   (js2-imenu-record-extend-first-arg
    (1- (point)) 'js2-string-node-p
-   (lambda (node) (split-string (js2-string-node-value node) "\\." t))))
+   (lambda (node)
+     (if js2-imenu-split-string-identifiers
+         (split-string (js2-string-node-value node) "\\." t)
+       (list (js2-string-node-value node))))))
 
 (defun js2-imenu-record-extend-first-arg (point pred qname-fn)
   (let* ((node (js2-node-at-point point))
@@ -183,7 +192,10 @@ prefix any functions defined inside the IIFE with the module name."
                                 (js2-string-node-p value))
                        (js2-string-node-value value))))))
         (when name-value
-          (js2-record-object-literal options (split-string name-value "\\.")
+          (js2-record-object-literal options
+                                     (if js2-imenu-split-string-identifiers
+                                         (split-string name-value "\\.")
+                                       (list name-value))
                                      (js2-node-abs-pos options)))))))
 
 (defun js2-imenu-walk-ast ()
