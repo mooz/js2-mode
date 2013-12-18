@@ -212,6 +212,32 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
          (js2-imenu-record-module-pattern node)))
        t))))
 
+(defun js2-imenu-get-parent-keyname-list (node)
+  "get the list of keys of parent of node
+for example, for javascript code, {rules:{ password {required: function(){}}}}
+the return will be '(rules password)."
+  (let (rlt
+        (n node))
+    (while (setq n (js2-imenu-parent-prop-node n))
+      (add-to-list 'rlt (js2-prop-node-name (js2-object-prop-node-left n))))
+    rlt
+    ))
+
+(defun js2-imenu-parent-prop-node (node)
+  "for javascript code: parent-key-name:{ required:function(){} }
+we need know the  parent-key-name.
+ step1, 'required:function(){}' is the js2-object-prop-node
+ step2, '{ required:function(){} }' is the js2-object-node
+ step3, 'parent-key-name:{ required:function(){} }' is js2-object-prop-node
+"
+  (let (p2 p3)
+    ;; step 2
+    (setq p2 (js2-node-parent node))
+    ;; step 3
+    (when (and p2 (js2-object-node-p p2))
+      (setq p3 (js2-node-parent p2))
+      (if (and p3 (js2-object-prop-node-p p3)) p3))))
+
 (defun js2-imenu-record-orphan-function (node)
   "Record orphan function when it's the value of NODE.
 NODE must be `js2-object-prop-node'."
@@ -219,10 +245,13 @@ NODE must be `js2-object-prop-node'."
     (let ((fn-node (js2-object-prop-node-right node)))
       (unless (and js2-imenu-function-map
                    (gethash fn-node js2-imenu-function-map))
-        (let ((key-node (js2-object-prop-node-left node)))
-          (js2-record-imenu-entry fn-node
-                                  (list js2-imenu-other-functions-ns
-                                        (js2-prop-node-name key-node))
+        (let ((key-node (js2-object-prop-node-left node))
+              (parent-prop-node (js2-imenu-parent-prop-node node))
+              mylist)
+          (setq mylist (append (js2-imenu-get-parent-keyname-list node)
+                               (list (js2-prop-node-name key-node))))
+          (add-to-list 'mylist js2-imenu-other-functions-ns)
+          (js2-record-imenu-entry fn-node mylist
                                   (js2-node-abs-pos key-node)))))))
 
 (defun js2-imenu-record-module-pattern (node)
