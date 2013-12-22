@@ -7176,7 +7176,6 @@ leaving a statement, an expression, or a function definition."
         (max-specpdl-size (max max-specpdl-size 3000))
         (case-fold-search nil)
         ast)
-    (message nil)  ; clear any error message from previous parse
     (with-current-buffer (or buf (current-buffer))
       (setq js2-scanned-comments nil
             js2-parsed-errors nil
