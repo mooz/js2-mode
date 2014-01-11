@@ -1050,6 +1050,11 @@ in large files.")
   "Face used to highlight function parameters in javascript."
   :group 'js2-mode)
 
+(defface js2-function-call
+  '((t :inherit default))
+  "Face used to highlight function name in calls."
+  :group 'js2-mode)
+
 (defface js2-instance-member
   '((t :foreground "DarkOrchid"))
   "Face used to highlight instance variables in javascript.
@@ -8897,9 +8902,9 @@ Returns an expression tree that includes PN, the parent node."
        ((= tt js2-LB)
         (setq pn (js2-parse-element-get pn)))
        ((= tt js2-LP)
+        (js2-unget-token)
         (if allow-call-syntax
             (setq pn (js2-parse-function-call pn))
-          (js2-unget-token)
           (setq continue nil)))
        (t
         (js2-unget-token)
@@ -8952,6 +8957,8 @@ Last token parsed must be `js2-RB'."
     pn))
 
 (defun js2-parse-function-call (pn)
+  (js2-record-face 'js2-function-call)
+  (js2-get-token)
   (let (args
         (pos (js2-node-pos pn)))
     (setq pn (make-js2-call-node :pos pos
