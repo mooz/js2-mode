@@ -1,6 +1,6 @@
 ;;; js2-imenu-extras.el --- Imenu support for additional constructs
 
-;; Copyright (C) 2012-2013  Free Software Foundation, Inc.
+;; Copyright (C) 2012-2014  Free Software Foundation, Inc.
 
 ;; Author:    Dmitry Gutov <dgutov@yandex.ru>
 ;; Keywords:  languages, javascript, imenu
