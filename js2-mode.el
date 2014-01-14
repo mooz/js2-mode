@@ -8865,6 +8865,7 @@ Returns the list in reverse order.  Consumes the right-paren token."
             pn (make-js2-new-node :pos pos
                                   :target target
                                   :len (- end pos)))
+      (js2-highlight-function-call (js2-current-token))
       (js2-node-add-children pn target)
       (when (js2-match-token js2-LP)
         ;; Add the arguments to pn, if any are supplied.
@@ -8956,8 +8957,12 @@ Last token parsed must be `js2-RB'."
                            (js2-elem-get-node-element pn))
     pn))
 
+(defun js2-highlight-function-call (token)
+  (when (eq (js2-token-type token) js2-NAME)
+    (js2-record-face 'js2-function-call token)))
+
 (defun js2-parse-function-call (pn)
-  (js2-record-face 'js2-function-call)
+  (js2-highlight-function-call (js2-current-token))
   (js2-get-token)
   (let (args
         (pos (js2-node-pos pn)))
