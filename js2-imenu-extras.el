@@ -56,7 +56,11 @@
 
     (:framework enyo
      :call-re   "\\_<enyo\\.kind\\s-*("
-     :recorder  js2-imenu-record-enyo-kind))
+     :recorder  js2-imenu-record-enyo-kind)
+
+    (:framework react
+     :call-re "\\_<React\\.createClass\\s-*("
+     :recorder js2-imenu-record-react-class))
   "List of JavaScript class definition or extension styles.
 
 :framework is a valid value in `js2-imenu-enabled-frameworks'.
@@ -158,7 +162,7 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
             do (js2-record-object-literal
                 arg (funcall qname-fn subject) (js2-node-abs-pos arg))))))
 
-(defun js2-imenu-record-backbone-extend ()
+(defun js2-imenu-record-backbone-or-react ()
   (let* ((node (js2-node-at-point (1- (point))))
          (args (js2-call-node-args node))
          (methods (first args))
@@ -172,6 +176,10 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
           (js2-record-object-literal methods
                                      (js2-compute-nested-prop-get subject)
                                      (js2-node-abs-pos methods)))))))
+
+(defalias 'js2-imenu-record-backbone-extend 'js2-imenu-record-backbone-or-react)
+
+(defalias 'js2-imenu-record-react-class 'js2-imenu-record-backbone-or-react)
 
 (defun js2-imenu-record-enyo-kind ()
   (let* ((node (js2-node-at-point (1- (point))))
