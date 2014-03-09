@@ -24,8 +24,10 @@ check out the branch
 Bugs
 ====
 
-See broken syntax highlighting and timer errors? Recently upgraded
-Emacs from version 24.2 or earlier? Try
+* See broken syntax highlighting and timer errors? Recently upgraded
+Emacs from version 24.2 or earlier?
+
+* Try
 [reinstalling or byte-recompiling](https://github.com/mooz/js2-mode/issues/72)
 the package.
 
