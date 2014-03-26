@@ -10371,8 +10371,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (put 'js2-mode 'find-tag-default-function #'js2-mode-find-tag)
 
   (set (make-local-variable 'electric-indent-chars)
-       (append '("{" "}" "(" ")" "[" "]" ":" ";" "," "*")
-               electric-indent-chars))
+       (append "{}()[]:;,*" electric-indent-chars))
   (set (make-local-variable 'electric-layout-rules)
        '((?\; . after) (?\{ . after) (?\} . before)))
 
