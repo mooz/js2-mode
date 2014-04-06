@@ -96,6 +96,9 @@ the test."
 (js2-deftest-parse function-statement
   "function foo() {\n}")
 
+(js2-deftest-parse function-statement-inside-block
+  "if (true) {\n  function foo() {\n  }\n}")
+
 (js2-deftest-parse function-expression-statements-are-verboten
   "function() {}" :syntax-error "(")
 

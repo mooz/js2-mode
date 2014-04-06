@@ -7240,10 +7240,6 @@ Scanner should be initialized."
       (js2-highlight-undeclared-vars))
     root))
 
-(defun js2-function-parser ()
-  (js2-get-token)
-  (js2-parse-function-stmt))
-
 (defun js2-parse-function-closure-body (fn-node)
   "Parse a JavaScript 1.8 function closure body."
   (let ((js2-nesting-of-function (1+ js2-nesting-of-function)))
@@ -7540,7 +7536,7 @@ node are given relative start positions and correct lengths."
     (aset parsers js2-DEFAULT   #'js2-parse-default-xml-namespace)
     (aset parsers js2-DO        #'js2-parse-do)
     (aset parsers js2-FOR       #'js2-parse-for)
-    (aset parsers js2-FUNCTION  #'js2-function-parser)
+    (aset parsers js2-FUNCTION  #'js2-parse-function-stmt)
     (aset parsers js2-IF        #'js2-parse-if)
     (aset parsers js2-LC        #'js2-parse-block)
     (aset parsers js2-LET       #'js2-parse-let-stmt)
