@@ -97,7 +97,7 @@ the test."
   "function foo() {\n}")
 
 (js2-deftest-parse function-expression-statements-are-verboten
-  "function() {}" :syntax-error "function")
+  "function() {}" :syntax-error "(")
 
 (js2-deftest-parse member-expr-as-function-name
   "function a.b.c[2](x, y) {\n}"
@@ -199,10 +199,10 @@ the test."
   "(a, b = 1, ...c) => {  c;\n};")
 
 (js2-deftest-parse parenless-arrow-function-prohibits-rest
-  "...b => {b + 1;};" :syntax-error "b" :errors-count 2)
+  "...b => {b + 1;};" :syntax-error "=>" :errors-count 2)
 
 (js2-deftest-parse parenless-arrow-function-prohibits-destructuring
-  "[a, b] => {a + b;};" :syntax-error "]" :errors-count 5)
+  "[a, b] => {a + b;};" :syntax-error "=>" :errors-count 5)
 
 ;;; Automatic semicolon insertion
 
