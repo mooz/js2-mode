@@ -14,6 +14,12 @@ The stable versions are hosted at [GNU ELPA](http://elpa.gnu.org/)
 You can also install the latest development version from
 [Melpa](http://melpa.milkbox.net/#installing).
 
+#### Setting js2-mode as the default major mode for javascript files
+
+After installing, you may neet to configure Emacs in order to use `js2-mode` as the default major mode for javascript files. You can do that by adding the following line to your `.emacs` file:
+
+    (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+
 Emacs 22 and 23
 ===============
 
