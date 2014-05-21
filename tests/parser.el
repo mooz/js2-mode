@@ -87,6 +87,9 @@ the test."
 (js2-deftest-parse empty-array-literal
   "c = [];")
 
+(js2-deftest-parse array-with-missing-elements
+  "var a = [1, 2, ,];")
+
 (js2-deftest-parse comma-after-regexp
   "d = /eee/, 42;")
 

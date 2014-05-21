@@ -3477,7 +3477,10 @@ You can tell the quote type by looking at the first character."
 
 (defun js2-print-array-node (n i)
   (insert (js2-make-pad i) "[")
-  (js2-print-list (js2-array-node-elems n))
+  (let ((elems (js2-array-node-elems n)))
+    (js2-print-list elems)
+    (when (and elems (null (car (last elems))))
+      (insert ",")))
   (insert "]"))
 
 (defstruct (js2-object-node
@@ -9257,14 +9260,14 @@ array-literals, array comprehensions and regular expressions."
             (= tt js2-EOF))  ; prevent infinite loop
         (if (= tt js2-EOF)
             (js2-report-error "msg.no.bracket.arg" nil pos))
+        (when (and after-comma (< js2-language-version 170))
+          (js2-parse-warn-trailing-comma "msg.array.trailing.comma"
+                                         pos (remove nil elems) after-comma))
         (setq continue nil
               pn (make-js2-array-node :pos pos
                                       :len (- js2-ts-cursor pos)
                                       :elems (nreverse elems)))
-        (apply #'js2-node-add-children pn (js2-array-node-elems pn))
-        (when (and after-comma (not js2-is-in-destructuring))
-          (js2-parse-warn-trailing-comma "msg.array.trailing.comma"
-                                         pos elems after-comma)))
+        (apply #'js2-node-add-children pn (js2-array-node-elems pn)))
        ;; destructuring binding
        (js2-is-in-destructuring
         (push (if (or (= tt js2-LC)
