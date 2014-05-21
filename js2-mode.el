@@ -10188,7 +10188,7 @@ If so, we don't ever want to use bounce-indent."
 (define-minor-mode js2-minor-mode
   "Minor mode for running js2 as a background linter.
 This allows you to use a different major mode for JavaScript editing,
-such as `espresso-mode', while retaining the asynchronous error/warning
+such as `js-mode', while retaining the asynchronous error/warning
 highlighting features of `js2-mode'."
   :group 'js2-mode
   :lighter " js-lint"
