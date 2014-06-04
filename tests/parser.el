@@ -248,6 +248,8 @@ the test."
 
 (js2-deftest-parse harmony-generator "function* bar() {\n  yield 2;\n  return 3;\n}")
 
+(js2-deftest-parse harmony-generator-yield-star "(function*(a) {  yield* a;\n});")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"
