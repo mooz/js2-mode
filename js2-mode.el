@@ -10348,6 +10348,61 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (goto-char pos)
         (message msg))))))
 
+(defun js2--setup-paragraph-filling (&optional separator)
+  "Configures `js2-mode' so that \\[fill-paragraph] will
+correctly work within comments and javadocs. SEPARATOR defaults
+to `js2-paragraph-start'."
+  ;; Some variables needed by cc-engine for paragraph-fill, etc.
+  (setq c-comment-prefix-regexp js2-comment-prefix-regexp
+        c-comment-start-regexp "/[*/]\\|\\s|"
+        c-line-comment-starter "//"
+        c-paragraph-start (or separator js2-paragraph-start)
+        c-paragraph-separate "$"
+        c-syntactic-ws-start js2-syntactic-ws-start
+        c-syntactic-ws-end js2-syntactic-ws-end
+        c-syntactic-eol js2-syntactic-eol)
+  (let ((c-buffer-is-cc-mode t))
+    ;; Copied from `js-mode'.  Also see Bug#6071.
+    (make-local-variable 'paragraph-start)
+    (make-local-variable 'paragraph-separate)
+    (make-local-variable 'paragraph-ignore-fill-prefix)
+    (make-local-variable 'adaptive-fill-mode)
+    (make-local-variable 'adaptive-fill-regexp)
+    (c-setup-paragraph-variables)))
+
+(defvar js2--fill-mode nil
+  "Global state variable for `js2--setup-paragraph-hopping'.")
+
+(defun js2--setup-paragraph-hopping ()
+  "Restores the normal behavior \\[forward-paragraph] and
+\\[backward-paragraph] by defining advice that alternates
+`paragraph-start' between `js2-paragraph-start' and \"\\n\\n\".
+This is necessary because `js2--setup-paragraph-filling'
+redefines the definition of a paragraph so that certain bodies of
+text (e.g. javadoc @sections) can be filled correctly."
+  (defadvice forward-paragraph (before js2--forward-paragraph-before activate)
+    (when (and (eq major-mode 'js2-mode)
+               (not js2--fill-mode))
+      (js2--setup-paragraph-filling "\n\n")))
+  (defadvice forward-paragraph (after js2--forward-paragraph-after activate)
+    (when (and (eq major-mode 'js2-mode)
+               (not js2--fill-mode))
+      (js2--setup-paragraph-filling)))
+  (defadvice backward-paragraph (before js2--backward-paragraph-before activate)
+    (when (and (eq major-mode 'js2-mode)
+               (not js2--fill-mode))
+      (js2--setup-paragraph-filling "\n\n")))
+  (defadvice backward-paragraph (after js2--backward-paragraph-after activate)
+    (when (and (eq major-mode 'js2-mode)
+               (not js2--fill-mode))
+      (js2--setup-paragraph-filling)))
+  (defadvice fill-paragraph (before js2--fill-paragraph-before activate)
+    (when (eq major-mode 'js2-mode)
+      (setq js2--fill-mode t)))
+  (defadvice fill-paragraph (after js2--fill-paragraph-after activate)
+    (when (eq major-mode 'js2-mode)
+      (setq js2--fill-mode nil))))
+
 ;;;###autoload
 (define-derived-mode js2-mode prog-mode "Javascript-IDE"
   ;; FIXME: Should derive from js-mode.
@@ -10377,24 +10432,8 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (set (make-local-variable 'electric-layout-rules)
        '((?\; . after) (?\{ . after) (?\} . before)))
 
-  ;; some variables needed by cc-engine for paragraph-fill, etc.
-  (setq c-comment-prefix-regexp js2-comment-prefix-regexp
-        c-comment-start-regexp "/[*/]\\|\\s|"
-        c-line-comment-starter "//"
-        c-paragraph-start js2-paragraph-start
-        c-paragraph-separate "$"
-        c-syntactic-ws-start js2-syntactic-ws-start
-        c-syntactic-ws-end js2-syntactic-ws-end
-        c-syntactic-eol js2-syntactic-eol)
-
-  (let ((c-buffer-is-cc-mode t))
-    ;; Copied from `js-mode'.  Also see Bug#6071.
-    (make-local-variable 'paragraph-start)
-    (make-local-variable 'paragraph-separate)
-    (make-local-variable 'paragraph-ignore-fill-prefix)
-    (make-local-variable 'adaptive-fill-mode)
-    (make-local-variable 'adaptive-fill-regexp)
-    (c-setup-paragraph-variables))
+  (js2--setup-paragraph-filling)
+  (js2--setup-paragraph-hopping)
 
   (setq font-lock-defaults '(nil t))
 
