@@ -135,8 +135,11 @@ the test."
 
 ;;; 'of' contextual keyword
 
-(js2-deftest-parse parse-array-comp-loop-with-of
+(js2-deftest-parse parse-legacy-array-comp-loop-with-of
   "[a for (a of [])];")
+
+(js2-deftest-parse parse-array-comp-loop
+  "[for (a of []) a];")
 
 (js2-deftest-parse parse-for-of
   "for (var a of []) {\n}")
@@ -249,6 +252,14 @@ the test."
 (js2-deftest-parse harmony-generator "function* bar() {\n  yield 2;\n  return 3;\n}")
 
 (js2-deftest-parse harmony-generator-yield-star "(function*(a) {  yield* a;\n});")
+
+;;; Comprehensions
+
+(js2-deftest-parse parse-legacy-array-comp-loop-with-filter
+  "[a for (a in b) if (a == 2)];")
+
+(js2-deftest-parse parse-array-comp-loop-with-filters
+  "[for (a in b) if (a == 2) if (b != 10) a];")
 
 ;;; Scopes
 
