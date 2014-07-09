@@ -5162,8 +5162,8 @@ Returns nil and consumes nothing if TEST is not the next character."
     (js2-unget-char)))
 
 (defun js2-identifier-start-p (c)
-  "Is C a valid start to an ES5 Identifier
-   http://es5.github.io/#x7.6"
+  "Is C a valid start to an ES5 Identifier?
+See http://es5.github.io/#x7.6"
   (or
    (memq c '(?$ ?_))
    (memq (get-char-code-property c 'general-category)
@@ -5171,8 +5171,8 @@ Returns nil and consumes nothing if TEST is not the next character."
          '(Lu Ll Lt Lm Lo Nl))))
 
 (defun js2-identifier-part-p (c)
-  "Is C a valid part of an ES5 Identifier
-   http://es5.github.io/#x7.6"
+  "Is C a valid part of an ES5 Identifier?
+See http://es5.github.io/#x7.6"
   (or
    (memq c '(?$ ?_ ?\u200c  ?\u200d))
    (memq (get-char-code-property c 'general-category)
