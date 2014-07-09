@@ -5515,6 +5515,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
           (js2-unget-char)
           (setf str (js2-collect-string js2-ts-string-buffer)
                 (js2-token-end token) js2-ts-cursor)
+          ;; FIXME: Invalid in ES5 and ES6, see
+          ;; https://bugzilla.mozilla.org/show_bug.cgi?id=694360
+          ;; Probably should just drop this conditional.
           (unless contains-escape
             ;; OPT we shouldn't have to make a string (object!) to
             ;; check if it's a keyword.
