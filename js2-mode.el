@@ -2104,16 +2104,6 @@ Returns nil if element is not found in the list."
            ,@body)
        (modify-syntax-entry ?_ ,old-syntax js2-mode-syntax-table)))))
 
-(defsubst js2-char-uppercase-p (c)
-  "Return t if C is an uppercase character.
-Handles unicode and latin chars properly."
-  (/= c (downcase c)))
-
-(defsubst js2-char-lowercase-p (c)
-  "Return t if C is an uppercase character.
-Handles unicode and latin chars properly."
-  (/= c (upcase c)))
-
 ;;; AST struct and function definitions
 
 ;; flags for ast node property 'member-type (used for e4x operators)
@@ -5171,20 +5161,29 @@ Returns nil and consumes nothing if TEST is not the next character."
       (js2-get-char)
     (js2-unget-char)))
 
-(defun js2-java-identifier-start-p (c)
+(defun js2-identifier-start-p (c)
+  "Is C a valid start to an ES5 Identifier
+   http://es5.github.io/#x7.6"
   (or
    (memq c '(?$ ?_))
-   (js2-char-uppercase-p c)
-   (js2-char-lowercase-p c)))
+   (memq (get-char-code-property c 'general-category)
+         ;; Letters
+         '(Lu Ll Lt Lm Lo Nl))))
 
-(defun js2-java-identifier-part-p (c)
-  "Implementation of java.lang.Character.isJavaIdentifierPart()."
-  ;; TODO:  make me Unicode-friendly.  See comments above.
+(defun js2-identifier-part-p (c)
+  "Is C a valid part of an ES5 Identifier
+   http://es5.github.io/#x7.6"
   (or
-   (memq c '(?$ ?_))
-   (js2-char-uppercase-p c)
-   (js2-char-lowercase-p c)
-   (and (>= c ?0) (<= c ?9))))
+   (memq c '(?$ ?_ ?\u200c  ?\u200d))
+   (memq (get-char-code-property c 'general-category)
+         '(;; Letters
+           Lu Ll Lt Lm Lo Nl
+           ;; Combining Marks
+           Mn Mc
+           ;; Digits
+           Nd
+           ;; Connector Punctuation
+           Pc))))
 
 (defun js2-alpha-p (c)
   (cond ((and (<= ?A c) (<= c ?Z)) t)
@@ -5474,7 +5473,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
             (js2-unget-char)
             (setq c ?\\)))
          (t
-          (when (setq identifier-start (js2-java-identifier-start-p c))
+          (when (setq identifier-start (js2-identifier-start-p c))
             (setq js2-ts-string-buffer nil)
             (js2-add-to-string c))))
         (when identifier-start
@@ -5510,7 +5509,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
                     (js2-report-scan-error "msg.illegal.character" t)))
                  (t
                   (if (or (eq c js2-EOF_CHAR)
-                          (not (js2-java-identifier-part-p c)))
+                          (not (js2-identifier-part-p c)))
                       (throw 'break nil))
                   (js2-add-to-string c))))))
           (js2-unget-char)
