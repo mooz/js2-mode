@@ -112,6 +112,9 @@ the test."
 (js2-deftest-parse named-function-expression
   "a = function b() {};")
 
+(js2-deftest-parse parenthesized-expression
+  "(1 + 2);")
+
 ;;; Callers of `js2-valid-prop-name-token'
 
 (js2-deftest-parse parse-property-access-when-not-keyword
@@ -260,6 +263,19 @@ the test."
 
 (js2-deftest-parse parse-array-comp-loop-with-filters
   "[for (a in b) if (a == 2) if (b != 10) a];")
+
+(js2-deftest-parse parse-generator-comp-loop-with-filters
+  "(for (x of y) if (x != 4) x);")
+
+(js2-deftest-parse parse-array-comp-with-yield-is-ok
+  "(function() {  return [for (x of []) yield x];\n});")
+
+(js2-deftest-parse parse-generator-comp-with-yield-is-not-ok
+  "(function() {  return (for (x of []) yield x);\n});"
+  :syntax-error "yield")
+
+(js2-deftest-parse parse-generator-comp-with-yield-inside-function-is-ok
+  "(for (x of []) function*() {  yield x;\n});")
 
 ;;; Scopes
 
