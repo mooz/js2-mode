@@ -5144,7 +5144,7 @@ Doesn't change the values of any scanner variables."
   (ignore-errors
     (let ((s (buffer-substring-no-properties js2-ts-cursor
                                              (+ 4 js2-ts-cursor))))
-      (if (string-match "[[:alnum:]]\\{4\\}" s)
+      (if (string-match "[0-9a-fA-F]\\{4\\}" s)
           (read (concat "?\\u" s))))))
 
 (defun js2-match-char (test)
