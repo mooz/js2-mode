@@ -10522,13 +10522,14 @@ Selecting an error will jump it to the corresponding source-buffer error.
 (defun js2-mode-idle-reparse (buffer)
   "Run `js2-reparse' if BUFFER is the current buffer, or schedule
 it to be reparsed when the buffer is selected."
-  (if (eq buffer (current-buffer))
-      (js2-reparse)
-    ;; reparse when the buffer is selected again
-    (with-current-buffer buffer
-      (add-hook 'window-configuration-change-hook
-                #'js2-mode-idle-reparse-inner
-                nil t))))
+  (cond ((eq buffer (current-buffer))
+         (js2-reparse))
+        ((buffer-live-p buffer)
+         ;; reparse when the buffer is selected again
+         (with-current-buffer buffer
+           (add-hook 'window-configuration-change-hook
+                     #'js2-mode-idle-reparse-inner
+                     nil t)))))
 
 (defun js2-mode-idle-reparse-inner ()
   (remove-hook 'window-configuration-change-hook
