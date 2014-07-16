@@ -5596,7 +5596,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
                 (setq base 10))
               (js2-add-to-string c)
               (setq c (js2-get-char)))
-            (unless (eq base 10)
+            (when (eq base 'maybe-8)
               (setq base 8))))
           (setq is-integer t)
           (when (and (eq base 10) (memq c '(?. ?e ?E)))
