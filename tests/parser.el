@@ -277,6 +277,27 @@ the test."
 (js2-deftest-parse parse-generator-comp-with-yield-inside-function-is-ok
   "(for (x of []) function*() {  yield x;\n});")
 
+;;; Numbers
+
+(js2-deftest-parse decimal-starting-with-zero "081;" :reference "81;")
+
+(js2-deftest-parse octal-without-o "071;" :reference "57;")
+
+(js2-deftest-parse hex-number-okay "0x123;" :reference "291;")
+
+(js2-deftest-parse hex-number-broken "0xz23;"
+  :syntax-error "0xz" :errors-count 2)
+
+(js2-deftest-parse binary-number-okay "0b101;" :reference "5;")
+
+(js2-deftest-parse binary-number-broken "0b210;"
+  :syntax-error "0b2" :errors-count 2)
+
+(js2-deftest-parse octal-number-okay "0o765;" :reference "501;")
+
+(js2-deftest-parse octal-number-broken "0o812;"
+  :syntax-error "0o8" :errors-count 2)
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"

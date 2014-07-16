@@ -1907,6 +1907,15 @@ the correct number of ARGS must be provided."
          "illegal octal literal digit %s; "
          "interpreting it as a decimal digit")
 
+(js2-msg "msg.missing.hex.digits"
+         "missing hexadecimal digits after '0x'")
+
+(js2-msg "msg.missing.binary.digits"
+         "missing binary digits after '0b'")
+
+(js2-msg "msg.missing.octal.digits"
+         "missing octal digits after '0o'")
+
 (js2-msg "msg.script.is.not.constructor"
          "Script objects are not constructors.")
 
@@ -5544,25 +5553,49 @@ its relevant fields and puts it into `js2-ti-tokens'."
              ((or (eq c ?x) (eq c ?X))
               (setq base 16)
               (setq c (js2-get-char)))
+             ((or (eq c ?b) (eq c ?B))
+              (setq base 2)
+              (setq c (js2-get-char)))
+             ((or (eq c ?o) (eq c ?O))
+              (setq base 8)
+              (setq c (js2-get-char)))
              ((js2-digit-p c)
-              (setq base 8))
+              (setq base 'maybe-8))
              (t
               (js2-add-to-string ?0))))
-          (if (eq base 16)
+          (cond
+           ((eq base 16)
+            (if (> 0 (js2-x-digit-to-int c 0))
+                (js2-report-scan-error "msg.missing.hex.digits")
               (while (<= 0 (js2-x-digit-to-int c 0))
                 (js2-add-to-string c)
-                (setq c (js2-get-char)))
+                (setq c (js2-get-char)))))
+           ((eq base 2)
+            (if (not (memq c '(?0 ?1)))
+                (js2-report-scan-error "msg.missing.binary.digits")
+              (while (memq c '(?0 ?1))
+                (js2-add-to-string c)
+                (setq c (js2-get-char)))))
+           ((eq base 8)
+            (if (or (> ?0 c) (< ?7 c))
+                (js2-report-scan-error "msg.missing.octal.digits")
+              (while (and (<= ?0 c) (>= ?7 c))
+                (js2-add-to-string c)
+                (setq c (js2-get-char)))))
+           (t
             (while (and (<= ?0 c) (<= c ?9))
               ;; We permit 08 and 09 as decimal numbers, which
               ;; makes our behavior a superset of the ECMA
               ;; numeric grammar.  We might not always be so
               ;; permissive, so we warn about it.
-              (when (and (eq base 8) (>= c ?8))
+              (when (and (eq base 'maybe-8) (>= c ?8))
                 (js2-report-warning "msg.bad.octal.literal"
                                     (if (eq c ?8) "8" "9"))
                 (setq base 10))
               (js2-add-to-string c)
-              (setq c (js2-get-char))))
+              (setq c (js2-get-char)))
+            (unless (eq base 10)
+              (setq base 8))))
           (setq is-integer t)
           (when (and (eq base 10) (memq c '(?. ?e ?E)))
             (setq is-integer nil)
@@ -5588,9 +5621,8 @@ its relevant fields and puts it into `js2-ti-tokens'."
             (setf (js2-token-number token)
                   (if (and (eq base 10) (not is-integer))
                       (string-to-number str)
-                    ;; TODO:  call runtime number-parser.  Some of it is in
-                    ;; js2-util.el, but I need to port ScriptRuntime.stringToNumber.
-                    (string-to-number str))))
+                    ;; TODO:  Maybe port ScriptRuntime.stringToNumber.
+                    (string-to-number str base))))
           (throw 'return js2-NUMBER))
         ;; is it a string?
         (when (memq c '(?\" ?\'))
