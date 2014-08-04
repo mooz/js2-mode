@@ -281,6 +281,8 @@ the test."
 
 (js2-deftest-parse decimal-starting-with-zero "081;" :reference "81;")
 
+(js2-deftest-parse huge-hex "0x0123456789abcdefABCDEF;" :reference "-1;")
+
 (js2-deftest-parse octal-without-o "071;" :reference "57;")
 
 (js2-deftest-parse hex-number-okay "0x123;" :reference "291;")

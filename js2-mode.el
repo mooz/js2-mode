@@ -5442,7 +5442,7 @@ During operation, creates an instance of `js2-token' struct, sets
 its relevant fields and puts it into `js2-ti-tokens'."
   (let (c c1 identifier-start is-unicode-escape-start
         contains-escape escape-val str result base
-        is-integer quote-char val look-for-slash continue tt
+        quote-char val look-for-slash continue tt
         (token (js2-new-token 0)))
    (setq
     tt
@@ -5598,9 +5598,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
               (setq c (js2-get-char)))
             (when (eq base 'maybe-8)
               (setq base 8))))
-          (setq is-integer t)
           (when (and (eq base 10) (memq c '(?. ?e ?E)))
-            (setq is-integer nil)
             (when (eq c ?.)
               (loop do
                     (js2-add-to-string c)
@@ -5621,10 +5619,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
           (js2-unget-char)
           (let ((str (js2-set-string-from-buffer token)))
             (setf (js2-token-number token)
-                  (if (and (eq base 10) (not is-integer))
-                      (string-to-number str)
-                    ;; TODO:  Maybe port ScriptRuntime.stringToNumber.
-                    (string-to-number str base))))
+                  (js2-string-to-number str base)))
           (throw 'return js2-NUMBER))
         ;; is it a string?
         (when (memq c '(?\" ?\'))
@@ -5895,6 +5890,12 @@ its relevant fields and puts it into `js2-ti-tokens'."
            (js2-report-scan-error "msg.illegal.character")))))))
    (setf (js2-token-type token) tt)
    token))
+
+(defsubst js2-string-to-number (str base)
+  ;; TODO:  Maybe port ScriptRuntime.stringToNumber.
+  (condition-case nil
+      (string-to-number str base)
+    (overflow-error -1)))
 
 (defun js2-read-regexp (start-tt)
   "Called by parser when it gets / or /= in literal context."
