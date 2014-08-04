@@ -115,6 +115,12 @@ the test."
 (js2-deftest-parse parenthesized-expression
   "(1 + 2);")
 
+(js2-deftest-parse for-with-in-operator-in-parens
+  "for (var y = (0 in []) in {}) {\n}")
+
+(js2-deftest-parse for-with-in-operator-in-cond
+  "for (var y = 1 ? 0 in [] : false in {}) {\n}")
+
 ;;; Callers of `js2-valid-prop-name-token'
 
 (js2-deftest-parse parse-property-access-when-not-keyword

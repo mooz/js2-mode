@@ -8535,7 +8535,8 @@ If NODE is non-nil, it is the AST node associated with the symbol."
     (if (and (>= js2-language-version 200)
              (js2-match-token js2-FOR))
         (js2-parse-generator-comp px-pos)
-      (let* ((expr (js2-parse-expr))
+      (let* ((js2-in-for-init nil)
+             (expr (js2-parse-expr))
              (pn (make-js2-paren-node :pos px-pos
                                       :expr expr
                                       :len (- (js2-current-token-end)
@@ -8617,7 +8618,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
         c-pos)
     (when (js2-match-token js2-HOOK)
       (setq q-pos (- (js2-current-token-beg) pos)
-            if-true (js2-parse-assign-expr))
+            if-true (let (js2-in-for-init) (js2-parse-assign-expr)))
       (js2-must-match js2-COLON "msg.no.colon.cond")
       (setq c-pos (- (js2-current-token-beg) pos)
             if-false (js2-parse-assign-expr)
