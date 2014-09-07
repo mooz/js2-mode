@@ -1115,6 +1115,7 @@ information."
     (define-key map (kbd "C-c C-o") #'js2-mode-toggle-element)
     (define-key map (kbd "C-c C-w") #'js2-mode-toggle-warnings-and-errors)
     (define-key map [down-mouse-3] #'js2-down-mouse-3)
+    (define-key map (kbd "M-.") #'js2-jump-to-definition)
 
     (define-key map [menu-bar javascript]
       (cons "JavaScript" (make-sparse-keymap "JavaScript")))
@@ -12296,6 +12297,124 @@ it marks the next defun after the ones already marked."
          (beg (js2-node-abs-pos fn)))
     (unless (js2-ast-root-p fn)
       (narrow-to-region beg (+ beg (js2-node-len fn))))))
+
+(defun js2-jump-to-definition ()
+  "Jump to the definition of an object's property, variable or function."
+  (interactive)
+  (ring-insert find-tag-marker-ring (point-marker))
+  (let* ((node (js2-node-at-point))
+         (parent (js2-node-parent node))
+         (prop-names (if (js2-prop-get-node-p parent)
+                         (js2-prop-names-left node)))
+         (name (if (and (js2-name-node-p node)
+		      (not (js2-object-prop-node-p parent)))
+                   (js2-name-node-name node)
+                 (error "Node is not a supported jump node")))
+         (node-init (if (and prop-names (listp prop-names))
+                        (js2-find-property prop-names)
+                      (js2-name-declaration name))))
+    (unless node-init
+      (pop-tag-mark)
+      (error "No jump location found"))
+    (goto-char (js2-node-abs-pos node-init))))
+
+(defun js2-prop-names-left (name-node)
+  "Create a list of all of the names in the property NAME-NODE.
+NAME-NODE must have a js2-prop-get-node as parent.  Only adds
+properties to the left of point.  This is so individual jump
+points can be found for each property in the chain."
+  (let* (name
+         (parent (js2-node-parent name-node))
+         left
+         names)
+    (unless (or (js2-prop-get-node-p parent) (js2-name-node-p name-node))
+      (error "Not a name node or doesn't have a prop-get-node as parent"))
+    (setq name (js2-name-node-name name-node)
+          left (js2-prop-get-node-left parent))
+    (if (and (js2-name-node-p left)
+	   (string= name (js2-name-node-name left)))
+        (setq names name)
+      (js2-visit-ast
+       parent
+       (lambda (node endp)
+         (unless endp
+           (if (js2-name-node-p node)
+               (push (js2-name-node-name node) names)
+             t))))
+      names)))
+
+(defun js2-find-property (list-names)
+  "Find the property definition that consists of LIST-NAMES.
+Supports navigation to 'foo.bar = 3' and 'foo = {bar: 3}'."
+  (catch 'prop-found
+    (js2-visit-ast-root
+     js2-mode-ast
+     (lambda (node endp)
+       (let ((parent (js2-node-parent node)))
+         (unless endp
+           (if (or (and (js2-prop-get-node-p node)
+		     (not (or (js2-elem-get-node-p parent) (js2-call-node-p parent)))
+		     (equal list-names (js2-build-prop-name-list node)))
+		  (and (js2-name-node-p node)
+		     (js2-object-prop-node-p parent)
+		     (string= (js2-name-node-name node)
+			      (first list-names))))
+               (throw 'prop-found node))
+           t))))))
+
+(defun js2-name-declaration (name)
+  "Return the declaration node for node named NAME."
+  (let* ((node (js2-root-or-node))
+         (scope-def (js2-get-defining-scope node name))
+         (scope (if scope-def (js2-scope-get-symbol scope-def name) nil))
+         (symbol (if scope (js2-symbol-ast-node scope) nil)))
+    (if (not symbol)
+        (js2-get-function-node name scope-def)
+      symbol)))
+
+(defun js2-get-function-name (fn-node)
+  "Return the name of the function FN-NODE.
+Value may be either function name or the variable name that holds
+the function."
+  (let ((parent (js2-node-parent fn-node)))
+    (if (js2-function-node-p fn-node)
+        (or (js2-function-name fn-node)
+	   (if (js2-var-init-node-p parent)
+	       (js2-name-node-name (js2-var-init-node-target parent)))))))
+
+(defun js2-root-or-node ()
+  "Return the current node or js2-ast-root node."
+  (let ((node (js2-node-at-point)))
+    (if (js2-ast-root-p node)
+        node
+      (js2-node-get-enclosing-scope node))))
+
+(defun js2-build-prop-name-list (prop-node)
+  "Build a list of names from a PROP-NODE."
+  (let* (names
+         left
+         left-node)
+    (unless (js2-prop-get-node-p prop-node)
+      (error "Node is not a property prop-node"))
+    (while (js2-prop-get-node-p prop-node)
+      (push (js2-name-node-name (js2-prop-get-node-right prop-node)) names)
+      (setq left-node (js2-prop-get-node-left prop-node))
+      (when (js2-name-node-p left-node)
+        (setq left (js2-name-node-name left-node)))
+      (setq prop-node (js2-node-parent prop-node)))
+    (append names `(,left))))
+
+(defun js2-get-function-node (name scope)
+  "Return node of function named NAME in SCOPE."
+  (catch 'function-found
+    (js2-visit-ast
+     scope
+     (lambda (node end-p)
+       (when (and (not end-p)
+		(string= name (js2-get-function-name node)))
+         (throw 'function-found node))
+       t))
+    nil))
 
 (provide 'js2-mode)
 
