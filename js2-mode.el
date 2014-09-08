@@ -8462,7 +8462,7 @@ by `js2-parse-variables'."
           (setq vars (js2-parse-variables js2-LET (js2-current-token-beg)))
           (if (js2-must-match js2-RP "msg.no.paren.let")
               (setf (js2-let-node-rp pn) (- (js2-current-token-beg) pos)))
-          (if (and stmt-p (eq (js2-get-token) js2-LC))
+          (if (and stmt-p (js2-match-token js2-LC))
               ;; let statement
               (progn
                 (setf beg (js2-current-token-beg)  ; position stmt at LC
@@ -8473,7 +8473,6 @@ by `js2-parse-variables'."
                       (js2-let-node-body pn) body
                       (js2-node-type pn) js2-LET))
             ;; let expression
-            (when stmt-p (js2-unget-token))
             (setf body (js2-parse-expr)
                   (js2-node-len pn) (- (js2-node-end body) pos)
                   (js2-let-node-body pn) body))

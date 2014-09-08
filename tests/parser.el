@@ -124,6 +124,9 @@ the test."
 (js2-deftest-parse let-expression
   "(let (x = 42) x);")
 
+(js2-deftest-parse let-expression-statement
+  "let (x = 42) x;")
+
 ;;; Callers of `js2-valid-prop-name-token'
 
 (js2-deftest-parse parse-property-access-when-not-keyword
