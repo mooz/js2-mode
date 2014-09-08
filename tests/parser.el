@@ -121,6 +121,9 @@ the test."
 (js2-deftest-parse for-with-in-operator-in-cond
   "for (var y = 1 ? 0 in [] : false in {}) {\n}")
 
+(js2-deftest-parse let-expression
+  "(let (x = 42) x);")
+
 ;;; Callers of `js2-valid-prop-name-token'
 
 (js2-deftest-parse parse-property-access-when-not-keyword
