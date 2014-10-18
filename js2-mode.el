@@ -5305,6 +5305,7 @@ into temp buffers."
     (aset table js2-NULL 'font-lock-constant-face)
     (aset table js2-TRUE 'font-lock-constant-face)
     (aset table js2-FALSE 'font-lock-constant-face)
+    (aset table js2-NOT 'font-lock-negation-char-face)
     table)
   "Vector whose values are non-nil for tokens that are keywords.
 The values are default faces to use for highlighting the keywords.")
