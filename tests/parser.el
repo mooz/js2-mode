@@ -312,6 +312,111 @@ the test."
 (js2-deftest-parse octal-number-broken "0o812;"
   :syntax-error "0o8" :errors-count 2)
 
+;;; Modules
+
+(js2-deftest parse-import-named-exports "{ one, two as dos } from 'foo/bar';"
+  (js2-init-scanner)
+  (let ((node (make-js2-import-node :pos 1)))
+    (js2-parse-import-named-exports node)
+    (should (= 2 (length (js2-import-node-bindings node))))))
+
+(js2-deftest parse-import-module-id "from 'foo/bar';"
+  (js2-init-scanner)
+  (let ((node (make-js2-import-node :pos 1)))
+    (js2-parse-import-module-id node)
+    (should (equal "foo/bar" (js2-import-node-module-id node)))
+    (should (equal 14 (js2-import-node-len node)))))
+
+(js2-deftest parse-import-module-id "from 'foo/bar';"
+  (js2-init-scanner)
+  (let ((import-node (make-js2-import-node :pos 1)))
+    (js2-parse-import-module-id import-node)
+    (should (string= "foo/bar" (js2-import-node-module-id import-node)))
+    (should (= 14 (js2-node-len import-node)))))
+
+(js2-deftest match-import-binding "one;"
+  (js2-init-scanner)
+  (let ((binding (js2-match-import-binding)))
+    (should (not (equal nil binding)))
+    (should (equal "one" (js2-import-binding-node-export-name binding)))
+    (should (equal "one" (js2-import-binding-node-name binding))))
+  (should (eq js2-SEMI (js2-next-token))))
+
+(js2-deftest match-renamed-export "one as uno;"
+  (js2-init-scanner)
+  (let ((binding (js2-match-import-binding)))
+    (should (not (equal nil binding)))
+    (should (equal "one" (js2-import-binding-node-export-name binding)))
+    (should (equal "uno" (js2-import-binding-node-name binding))))
+  (should (eq js2-SEMI (js2-next-token))))
+
+(js2-deftest match-import-binding-before-module-id "beer from 'tap'"
+  (js2-init-scanner)
+  (let ((binding (js2-match-import-binding)))
+    (should (not (equal nil binding)))
+    (should (equal "beer" (js2-import-binding-node-export-name binding)))
+    (should (equal "beer" (js2-import-binding-node-name binding)))
+    (should (js2-match-token js2-NAME))
+    (should (equal "from" (js2-current-token-string)))))
+
+(js2-deftest match-renamed-import-of-all-exports "* as lib"
+  (js2-init-scanner)
+  (let ((binding (js2-match-import-binding)))
+    (should (not (equal nil binding)))
+    (should (equal "lib" (js2-import-binding-node-name binding)))
+    (should (equal "*" (js2-import-binding-node-export-name binding)))))
+
+(js2-deftest parse-non-matching-renamed-import "one, two"
+  (js2-init-scanner)
+  (let ((binding (js2-match-import-binding)))
+    (should (not (equal nil binding)))
+    (should (equal "one" (js2-import-binding-node-name binding))))
+  (should (eq js2-COMMA (js2-next-token))))
+
+(js2-deftest default-import "import theDefault from 'src/lib';"
+  (js2-init-scanner)
+  (should (eq js2-IMPORT (js2-next-token)))
+  (let* ((node (js2-parse-import))
+         (module-id (js2-import-node-module-id node)))
+    (should (not (eq nil node)))
+    (should (equal "src/lib" module-id))))
+
+(js2-deftest complex-import "import * as lib, {one as uno, two as dos} from 'src/lib';"
+  (js2-init-scanner)
+  (should (eq js2-IMPORT (js2-next-token)))
+  (let ((node (js2-parse-import)))
+    (should (= 56 (js2-import-node-len node)))
+    (should (equal "src/lib" (js2-import-node-module-id node)))
+    (let ((default (js2-import-node-default node)))
+      (should (not (equal nil default)))
+      (should (equal "lib" (js2-import-binding-node-name default))))
+    (let ((bindings (js2-import-node-bindings node)))
+      (should (= 2 (length bindings)))
+      (let ((first (nth 0 bindings))
+            (second (nth 1 bindings)))
+        (should (equal "uno" (js2-import-binding-node-name first)))
+        (should (equal "dos" (js2-import-binding-node-name second)))))))
+(js2-deftest import-that-renames-default "import * as lib from 'src/mylib'"
+  (js2-init-scanner)
+  (should (eq js2-IMPORT (js2-next-token)))
+  (let ((import (js2-parse-import)))
+    (should (not (equal nil import)))
+    (pp import)
+    (should (equal "lib" (js2-import-binding-node-name (js2-import-node-default import))))
+    (should (equal "src/mylib" (js2-import-node-module-id import)))))
+
+
+(js2-deftest-parse import-default-only "import theDefault from 'src/lib';"
+  :reference "import theDefault from 'src/lib'")
+(js2-deftest-parse import-named-only "import {one, two} from 'src/lib';")
+(js2-deftest-parse import-default-and-named
+  "import theDefault, {one, two} from 'src/lib';"
+  :reference "import theDefault, {one, two} from 'src/lib'")
+(js2-deftest-parse import-renaming-default "import * as lib from 'src/mylib';"
+  :reference "import * as lib from 'src/mylib'")
+(js2-deftest-parse import-renaming-named "import {one as uno, two as dos} from 'src/lib';")
+;;(js2-deftest-parse import-module-metadata "import {url} from this module;")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"

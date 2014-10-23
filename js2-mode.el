@@ -2623,6 +2623,99 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
       (js2-print-body else-part (1+ i))
       (insert pad "}\n")))))
 
+(defstruct (js2-import-node
+            (:include js2-node)
+            (:constructor nil)
+            (:constructor make-js2-import-node (&key (type js2-IMPORT)
+                                                     (pos (js2-current-token-beg))
+                                                     len
+                                                     default
+                                                     bindings
+                                                     module-id)))
+  default
+  bindings
+  module-id)
+(put 'cl-struct-js2-import-node 'js2-printer 'js2-print-import)
+(put 'cl-struct-js2-import-node 'js2-visitor 'js2-visit-import)
+
+(defun js2-visit-import (n v)
+  (let ((default (js2-import-node-default n))
+        (bindings (js2-import-node-bindings n)))
+    (when default
+      (js2-visit-ast default v))
+    (dolist (binding bindings)
+      (js2-visit-ast binding v))))
+
+(defun js2-print-import (n i)
+  "Prints a representation of the import node"
+  (let ((pad (js2-make-pad i))
+        (default (js2-import-node-default n))
+        (bindings (js2-import-node-bindings n))
+        (module-id (js2-import-node-module-id n)))
+    (insert pad "import ")
+    (cond ((and default (nth 0 bindings))
+           (js2-print-import-binding default 0)
+           (insert ", {")
+           (let ((len (length bindings))
+                 (n 0))
+             (while (< n len)
+               (js2-print-import-binding (nth n bindings) 0)
+               (unless (= n (- len 1))
+                 (insert ", "))
+               (setq n (+ 1 n))))
+           (insert "} ")
+           (insert "from '")
+           (insert module-id)
+           (insert "'"))
+          (default
+            (js2-print-ast default 0)
+            (insert " from '")
+            (insert module-id)
+            (insert "'"))
+          ((nth 0 bindings)
+           (insert "{")
+           (let ((len (length bindings))
+                 (n 0))
+             (while (< n len)
+               (js2-print-ast (nth n bindings))
+               (unless (= n (- len 1))
+                 (insert ", "))
+               (setq n (+ 1 n))))
+           (insert "}")
+           (insert " from '")
+           (insert module-id)
+           (insert "';"))
+          (t
+           (insert "'")
+           (insert module-id)
+           (insert "'")))))
+
+(defstruct (js2-import-binding-node
+            (:include js2-node)
+            (:constructor nil)
+            (:constructor make-js2-import-binding-node (&key (type -1)
+                                                             pos
+                                                             len
+                                                             name
+                                                             export-name)))
+  name
+  export-name)
+(put 'cl-struct-js2-import-binding-node 'js2-printer 'js2-print-import-binding)
+(put 'cl-struct-js2-import-binding-node 'js2-visitor 'js2-visit-import-binding)
+
+(defun js2-visit-import-binding (n v)
+  "visits an import binding node")
+
+(defun js2-print-import-binding (n i)
+  "prints a representation of a single import binding"
+  (let ((name (js2-import-binding-node-name n))
+        (export-name (js2-import-binding-node-export-name n)))
+    (if (equal name export-name)
+        (insert name)
+      (insert export-name)
+      (insert " as ")
+      (insert name))))
+
 (defstruct (js2-try-node
             (:include js2-node)
             (:constructor nil)
@@ -7594,6 +7687,7 @@ node are given relative start positions and correct lengths."
     (aset parsers js2-FOR       #'js2-parse-for)
     (aset parsers js2-FUNCTION  #'js2-parse-function-stmt)
     (aset parsers js2-IF        #'js2-parse-if)
+    (aset parsers js2-IMPORT    #'js2-parse-import)
     (aset parsers js2-LC        #'js2-parse-block)
     (aset parsers js2-LET       #'js2-parse-let-stmt)
     (aset parsers js2-NAME      #'js2-parse-name-or-label)
@@ -7716,6 +7810,82 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
                                :rp (js2-relpos (third cond) pos)))
     (js2-node-add-children pn (car cond) if-true if-false)
     pn))
+
+(defun js2-parse-import ()
+  "Parser import statement. The current token bmust be js2-IMPORT"
+  (let* ((beg (js2-current-token-beg))
+         (node (make-js2-import-node :pos beg)))
+    (if (js2-match-token js2-STRING)
+        (progn
+          (setf (js2-import-node-len node) (- (js2-current-token-end) beg))
+          (setf (js2-import-node-module-id node) (js2-current-token-string))
+          (node))
+      (let ((default (js2-match-import-binding)))
+        (if default (progn
+                      (js2-node-add-children node default)
+                      (setf (js2-import-node-default node) default)
+                      (if (js2-match-token js2-COMMA)
+                          (js2-parse-import-named-exports node)
+                        (js2-parse-import-module-id node)))
+          (js2-parse-import-named-exports node))))))
+
+(defun js2-match-import-binding ()
+  "Attempts to match a binding expression found inside an import statement.
+This can take the form of either as single js2-NAME token as in 'foo' or as in a
+rebinding expression 'bar as foo'. If it matches, it will return an instance of
+js2-import-binding-node and consume all the tokens. If it does not match, it
+consumes no tokens"
+
+  (let ((export-name (cond ((js2-match-prop-name) (js2-current-token-string))
+                           ((js2-match-token js2-MUL) "*")
+                           (t nil))))
+    (if export-name
+        (let ((as (and (js2-match-token js2-NAME) (js2-current-token-string))))
+          (if (and as (equal "as" (js2-current-token-string)))
+              (let ((name (and (js2-match-token js2-NAME) (js2-current-token-string))))
+                (if name
+                    (make-js2-import-binding-node :name name :export-name export-name)
+                  (js2-unget-token)
+                  nil))
+            (when as (js2-unget-token))
+            (make-js2-import-binding-node :name export-name :export-name export-name)))
+      nil)))
+
+(defun js2-parse-import-named-exports (pn)
+  "Parse a set of named exports {foo, bar as bang}. The next token should be '{'
+It assumes that we're in the middle of the import statement, and if we
+so will pass control on a successful match to the module id"
+  (unless (js2-match-token js2-LC)
+    (js2-report-error "msg.syntax"))
+  (let ((bindings (list))
+        (beg (js2-import-node-pos pn)))
+    (while (progn
+             (let ((binding (js2-match-import-binding)))
+               (if binding
+                   (setq bindings (append  bindings (list binding)))
+                 (js2-report-error "msg.syntax")))
+             (js2-match-token js2-COMMA)))
+    (apply 'js2-node-add-children (append (list pn) bindings))
+    (setf (js2-import-node-bindings pn) bindings)
+    (if (js2-match-token js2-RC)
+        (js2-parse-import-module-id pn)
+      (js2-report-error "msg.syntax"))
+    (setf (js2-import-node-len pn) (- (js2-current-token-end) beg))
+    pn))
+
+
+(defun js2-parse-import-module-id (pn)
+  "This parses the module id declaration that determines where the names are
+being imported from to be the "
+  (let ((beg (js2-import-node-len pn)))
+    (if (and (js2-match-token js2-NAME) (equal "from" (js2-current-token-string)))
+        (if (js2-match-token js2-STRING)
+            (progn
+              (setf (js2-import-node-module-id pn) (js2-current-token-string))
+              (setf (js2-import-node-len pn) (- (js2-current-token-end) beg))
+              pn)
+          (js2-report-error "msg.syntax"))
+      (js2-report-error "msg.syntax"))))
 
 (defun js2-parse-switch ()
   "Parser for switch-statement.  Last matched token must be js2-SWITCH."
