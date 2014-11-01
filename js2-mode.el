@@ -5946,10 +5946,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
       (if (js2-alpha-p (js2-peek-char))
           (js2-report-scan-error "msg.invalid.re.flag" t
                                  js2-ts-cursor 1))
-      (js2-set-string-from-buffer token)
-      ;; tell `parse-partial-sexp' to ignore this range of chars
-      (js2-record-text-property (js2-current-token-beg)
-                                (js2-current-token-end) 'syntax-class '(2)))
+      (js2-set-string-from-buffer token))
     (js2-collect-string flags)))
 
 (defun js2-get-first-xml-token ()
@@ -9211,7 +9208,6 @@ array-literals, array comprehensions and regular expressions."
         tt
         px-pos  ; paren-expr pos
         len
-        flags   ; regexp flags
         expr)
     (setq tt (js2-current-token-type))
     (cond
@@ -9239,14 +9235,15 @@ array-literals, array comprehensions and regular expressions."
      ((or (= tt js2-DIV) (= tt js2-ASSIGN_DIV))
       ;; Got / or /= which in this context means a regexp literal
       (setq px-pos (js2-current-token-beg))
-      (setq flags (js2-read-regexp tt))
-      (prog1
-          (make-js2-regexp-node :pos px-pos
-                                :len (- js2-ts-cursor px-pos)
-                                :value (js2-current-token-string)
-                                :flags flags)
-        (js2-set-face px-pos js2-ts-cursor 'font-lock-string-face 'record)
-        (js2-record-text-property px-pos js2-ts-cursor 'syntax-table '(2))))
+      (let ((flags (js2-read-regexp tt))
+            (end (js2-current-token-end)))
+        (prog1
+            (make-js2-regexp-node :pos px-pos
+                                  :len (- end px-pos)
+                                  :value (js2-current-token-string)
+                                  :flags flags)
+          (js2-set-face px-pos end 'font-lock-string-face 'record)
+          (js2-record-text-property px-pos end 'syntax-table '(2)))))
      ((or (= tt js2-NULL)
           (= tt js2-THIS)
           (= tt js2-FALSE)
