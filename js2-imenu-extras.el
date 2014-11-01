@@ -60,7 +60,11 @@
 
     (:framework react
      :call-re "\\_<React\\.createClass\\s-*("
-     :recorder js2-imenu-record-react-class))
+     :recorder js2-imenu-record-react-class)
+
+    (:framework sencha
+     :call-re "^\\s-*Ext\\.define\\s-*("
+     :recorder js2-imenu-record-sencha-class))
   "List of JavaScript class definition or extension styles.
 
 :framework is a valid value in `js2-imenu-enabled-frameworks'.
@@ -205,6 +209,19 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
                                          (split-string name-value "\\.")
                                        (list name-value))
                                      (js2-node-abs-pos options)))))))
+
+(defun js2-imenu-record-sencha-class ()
+  (let* ((node (js2-node-at-point (1- (point))))
+         (args (js2-call-node-args node))
+         (name (first args))
+         (methods (second args)))
+    (when (and (js2-string-node-p name) (js2-object-node-p methods))
+      (let ((name-value (js2-string-node-value name)))
+        (js2-record-object-literal methods
+                                   (if js2-imenu-split-string-identifiers
+                                       (split-string name-value "\\." t)
+                                     (list name-value))
+                                   (js2-node-abs-pos methods))))))
 
 (defun js2-imenu-walk-ast ()
   (js2-visit-ast
