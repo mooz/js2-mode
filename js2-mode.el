@@ -2451,6 +2451,31 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
     (js2-print-ast (js2-do-node-condition n) 0)
     (insert ");\n")))
 
+(defstruct (js2-export-node
+            (:include js2-node)
+            (:constructor nil)
+            (:constructor make-js2-export-node (&key (type js2-EXPORT)
+                                                     (pos) (js2-current-token-beg)
+                                                     name
+                                                     expr)))
+  name
+  expr)
+(put 'cl-struct-js2-export-node 'js2-visitor 'js2-visit-export-node)
+(put 'cl-struct-js2-export-node 'js2-printer 'js2-print-export-node)
+
+(defun js2-visit-export-node (n v)
+  (js2-visit-ast (js2-export-node-expr n) v))
+
+(defun js2-print-export-node (n i)
+  (let ((pad (js2-make-pad i))
+        (name (js2-export-node-name n))
+        (expr (js2-export-node-expr n)))
+    (insert pad "export ")
+    (insert name)
+    (insert " ")
+    (js2-print-ast expr i)
+    (insert ";")))
+
 (defstruct (js2-while-node
             (:include js2-loop-node)
             (:constructor nil)
@@ -5357,7 +5382,7 @@ into temp buffers."
   '(break
     case catch const continue
     debugger default delete do
-    else enum
+    else enum export
     false finally for function
     if in instanceof import
     let
@@ -5377,7 +5402,7 @@ into temp buffers."
          (list js2-BREAK
                js2-CASE js2-CATCH js2-CONST js2-CONTINUE
                js2-DEBUGGER js2-DEFAULT js2-DELPROP js2-DO
-               js2-ELSE
+               js2-ELSE js2-EXPORT
                js2-FALSE js2-FINALLY js2-FOR js2-FUNCTION
                js2-IF js2-IN js2-INSTANCEOF js2-IMPORT
                js2-LET
@@ -7684,6 +7709,7 @@ node are given relative start positions and correct lengths."
     (aset parsers js2-DEBUGGER  #'js2-parse-debugger)
     (aset parsers js2-DEFAULT   #'js2-parse-default-xml-namespace)
     (aset parsers js2-DO        #'js2-parse-do)
+    (aset parsers js2-EXPORT    #'js2-parse-export)
     (aset parsers js2-FOR       #'js2-parse-for)
     (aset parsers js2-FUNCTION  #'js2-parse-function-stmt)
     (aset parsers js2-IF        #'js2-parse-if)
@@ -7989,6 +8015,22 @@ being imported from to be the "
         (setq end js2-ts-cursor))
     (setf (js2-node-len pn) (- end pos))
     pn))
+
+(defun js2-parse-export ()
+  "Parser for export statement. Last matched token must be js2-EXPORT"
+  (let* ((pos (js2-current-token-beg))
+         (name-token (and (or (js2-match-token js2-NAME) (js2-match-token js2-DEFAULT)) (js2-current-token)))
+         (expr (and name-token (js2-parse-expr)))
+         (node (make-js2-export-node :pos pos :name (js2-token-string name-token) :expr expr)))
+    (if (and name-token expr)
+        (progn
+          (setf (js2-export-node-len node) (- (js2-current-token-beg) pos))
+          (js2-node-add-children node expr)
+          (when (= (js2-token-type name-token) js2-DEFAULT)
+            (setf (js2-export-node-name node) "default"))
+          node)
+      (js2-report-error "msg.syntax")
+      node)))
 
 (defun js2-parse-for ()
   "Parser for for-statement.  Last matched token must be js2-FOR.

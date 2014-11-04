@@ -417,6 +417,14 @@ the test."
 (js2-deftest-parse import-renaming-named "import {one as uno, two as dos} from 'src/lib';")
 ;;(js2-deftest-parse import-module-metadata "import {url} from this module;")
 
+(js2-deftest export-tokens "export default"
+  (js2-init-scanner)
+  (should (eq js2-EXPORT (js2-next-token)))
+  (should (eq js2-DEFAULT (js2-next-token))))
+
+(js2-deftest-parse export-default "export default new Object();")
+(js2-deftest-parse named-export "export bob new Object();")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"
