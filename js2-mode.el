@@ -9814,7 +9814,7 @@ and comments have been removed."
           (backward-char)
           (when (js2-looking-at-operator-p)
             (backward-char)
-            (not (looking-at "\\*\\|++\\|--\\|/[/*]")))))))
+            (not (looking-at "\\*\\|\\+\\+\\|--\\|/[/*]")))))))
 
 (defun js2-end-of-do-while-loop-p ()
   "Return non-nil if word after point is `while' of a do-while
