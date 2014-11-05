@@ -222,11 +222,14 @@ the test."
 (js2-deftest-parse arrow-function-with-args-and-curlies
   "(a, b = 1, ...c) => {  c;\n};")
 
+(js2-deftest-parse arrow-function-with-destructuring
+  "([{a}, b]) => {  a + b;\n};")
+
 (js2-deftest-parse parenless-arrow-function-prohibits-rest
-  "...b => {b + 1;};" :syntax-error "=>" :errors-count 2)
+  "...b => {b + 1;};" :syntax-error "=>" :errors-count 1)
 
 (js2-deftest-parse parenless-arrow-function-prohibits-destructuring
-  "[a, b] => {a + b;};" :syntax-error "=>" :errors-count 5)
+  "[a, b] => {a + b;};" :syntax-error "=>" :errors-count 4)
 
 ;;; Automatic semicolon insertion
 

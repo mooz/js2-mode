@@ -8571,13 +8571,14 @@ If NODE is non-nil, it is the AST node associated with the symbol."
   (let ((tt (js2-get-token))
         (pos (js2-current-token-beg))
         pn left right op-pos
-        ts-state recorded-identifiers)
+        ts-state recorded-identifiers parsed-errors)
     (if (= tt js2-YIELD)
         (js2-parse-return-or-yield tt t)
       ;; Save the tokenizer state in case we find an arrow function
       ;; and have to rewind.
       (setq ts-state (make-js2-ts-state)
-            recorded-identifiers js2-recorded-identifiers)
+            recorded-identifiers js2-recorded-identifiers
+            parsed-errors js2-parsed-errors)
       ;; not yield - parse assignment expression
       (setq pn (js2-parse-cond-expr)
             tt (js2-get-token))
@@ -8602,7 +8603,8 @@ If NODE is non-nil, it is the AST node associated with the symbol."
        ((and (= tt js2-ARROW)
              (>= js2-language-version 200))
         (js2-ts-seek ts-state)
-        (setq js2-recorded-identifiers recorded-identifiers)
+        (setq js2-recorded-identifiers recorded-identifiers
+              js2-parsed-errors parsed-errors)
         (setq pn (js2-parse-function 'FUNCTION_ARROW (js2-current-token-beg) nil)))
        (t
         (js2-unget-token)))
@@ -9600,21 +9602,23 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
 (defun js2-parse-plain-property (prop)
   "Parse a non-getter/setter property in an object literal.
 PROP is the node representing the property:  a number, name or string."
-  (js2-must-match js2-COLON "msg.no.colon.prop")
-  (let* ((pos (js2-node-pos prop))
-        (colon (- (js2-current-token-beg) pos))
-        (expr (js2-parse-assign-expr))
-        (result (make-js2-object-prop-node
-                 :pos pos
-                 ;; don't include last consumed token in length
-                 :len (- (+ (js2-node-pos expr)
-                            (js2-node-len expr))
-                         pos)
-                 :left prop
-                 :right expr
-                 :op-pos colon)))
-    (js2-node-add-children result prop expr)
-    result))
+  (let ((pos (js2-node-pos prop))
+        colon expr)
+    (if (js2-must-match js2-COLON "msg.no.colon.prop")
+        (setq colon (- (js2-current-token-beg) pos)
+              expr (js2-parse-assign-expr))
+      (setq expr (make-js2-error-node)))
+    (let ((result (make-js2-object-prop-node
+                   :pos pos
+                   ;; don't include last consumed token in length
+                   :len (- (+ (js2-node-pos expr)
+                              (js2-node-len expr))
+                           pos)
+                   :left prop
+                   :right expr
+                   :op-pos colon)))
+      (js2-node-add-children result prop expr)
+      result)))
 
 (defun js2-parse-getter-setter-prop (pos prop get-p)
   "Parse getter or setter property in an object literal.
