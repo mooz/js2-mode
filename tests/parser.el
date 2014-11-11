@@ -367,6 +367,9 @@ the test."
   "class Foo {\n  get bar() {  return 42;\n}"
   :syntax-error "}")
 
+(js2-deftest-parse parse-super-keyword
+  "class Foo {\n  constructor() {  super(42);\n}\n  foo() {  super.foo();\n}\n}")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"
