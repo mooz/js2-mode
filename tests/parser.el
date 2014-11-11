@@ -179,6 +179,11 @@ the test."
 (js2-deftest-parse destruct-in-catch-clause
   "try {\n} catch ({a, b}) {\n  a + b;\n}")
 
+;;; Object literals
+
+(js2-deftest-parse abbreviated-object
+  "var x = {a: 1, b, c: 1, d};")
+
 ;;; Function parameters
 
 (js2-deftest-parse function-with-default-parameters

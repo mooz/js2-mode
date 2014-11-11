@@ -3523,10 +3523,20 @@ The `right' field is a `js2-node' representing the initializer value.")
 (put 'cl-struct-js2-object-prop-node 'js2-printer 'js2-print-object-prop-node)
 
 (defun js2-print-object-prop-node (n i)
-  (insert (js2-make-pad i))
-  (js2-print-ast (js2-object-prop-node-left n) 0)
-  (insert ": ")
-  (js2-print-ast (js2-object-prop-node-right n) 0))
+  (let* ((left (js2-object-prop-node-left n))
+         (computed (not (or (js2-string-node-p left)
+                            (js2-number-node-p left)
+                            (js2-name-node-p left)))))
+    (insert (js2-make-pad i))
+    (if computed
+        (insert "["))
+    (js2-print-ast left 0)
+    (if computed
+        (insert "]"))
+    (if (not (js2-node-get-prop n 'SHORTHAND))
+        (progn
+          (insert ": ")
+          (js2-print-ast (js2-object-prop-node-right n) 0)))))
 
 (defstruct (js2-getter-setter-node
             (:include js2-infix-node)
@@ -9602,13 +9612,31 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
 (defun js2-parse-plain-property (prop)
   "Parse a non-getter/setter property in an object literal.
 PROP is the node representing the property:  a number, name or string."
-  (let ((pos (js2-node-pos prop))
-        colon expr)
-    (if (js2-must-match js2-COLON "msg.no.colon.prop")
-        (setq colon (- (js2-current-token-beg) pos)
-              expr (js2-parse-assign-expr))
-      (setq expr (make-js2-error-node)))
-    (let ((result (make-js2-object-prop-node
+  (let* ((tt (js2-get-token))
+         (pos (js2-node-pos prop))
+         colon expr result)
+    (cond
+     ;; Abbreviated property, as in {foo, bar}
+     ((and (>= js2-language-version 200)
+           (or (= tt js2-COMMA)
+               (= tt js2-RC)))
+      (js2-unget-token)
+      (setq result (make-js2-object-prop-node
+                    :pos pos
+                    :left prop
+                    :right prop
+                    :op-pos (js2-current-token-len)))
+      (js2-node-add-children result prop)
+      (js2-node-set-prop result 'SHORTHAND t)
+      result)
+     ;; Normal property
+     (t
+      (if (= tt js2-COLON)
+          (setq colon (- (js2-current-token-beg) pos)
+                expr (js2-parse-assign-expr))
+        (js2-report-error "msg.no.colon.prop")
+        (setq expr (make-js2-error-node)))
+      (setq result (make-js2-object-prop-node
                    :pos pos
                    ;; don't include last consumed token in length
                    :len (- (+ (js2-node-pos expr)
@@ -9616,9 +9644,9 @@ PROP is the node representing the property:  a number, name or string."
                            pos)
                    :left prop
                    :right expr
-                   :op-pos colon)))
+                   :op-pos colon))
       (js2-node-add-children result prop expr)
-      result)))
+      result))))
 
 (defun js2-parse-getter-setter-prop (pos prop get-p)
   "Parse getter or setter property in an object literal.
