@@ -203,6 +203,12 @@ Set `js2-include-node-externs' to t to include them.")
 in node.js >= 0.6. If `js2-include-node-externs' or `js2-include-browser-externs'
 are enabled, these will also be included.")
 
+(defvar js2-harmony-externs
+  (mapcar 'symbol-name
+          '(Map Promise Proxy Reflect Set Symbol WeakMap WeakSet))
+  "ES6 externs.  If `js2-include-browser-externs' is enabled and
+`js2-language-version' is sufficiently high, these will be included.")
+
 ;;; Variables
 
 (defun js2-mark-safe-local (name pred)
@@ -6608,6 +6614,8 @@ it is considered declared."
   (setq js2-default-externs
         (append js2-ecma-262-externs
                 (if js2-include-browser-externs js2-browser-externs)
+                (if (and js2-include-browser-externs
+                         (>= js2-language-version 200)) js2-harmony-externs)
                 (if js2-include-rhino-externs js2-rhino-externs)
                 (if js2-include-node-externs js2-node-externs)
                 (if (or js2-include-browser-externs js2-include-node-externs)
