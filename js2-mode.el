@@ -663,8 +663,9 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-ARROW 163)         ; function arrow (=>)
 (defvar js2-CLASS 164)
 (defvar js2-EXTENDS 165)
+(defvar js2-STATIC 166)
 
-(defconst js2-num-tokens (1+ js2-EXTENDS))
+(defconst js2-num-tokens (1+ js2-STATIC))
 
 (defconst js2-debug-print-trees nil)
 
@@ -1963,6 +1964,9 @@ the correct number of ARGS must be provided."
 
 (js2-msg "msg.class.unexpected.comma" ; added by js2-mode
          "unexpected ',' between class properties")
+
+(js2-msg "msg.unexpected.static" ; added by js2-mode
+         "unexpected 'static'")
 
 (js2-msg "msg.missing.extends" ; added by js2-mode
          "name is required after extends")
@@ -3548,7 +3552,10 @@ optional `js2-expr-node'"
     (insert " {")
     (dolist (elem elems)
       (insert "\n")
-      (js2-print-ast elem (1+ i)))
+      (if (js2-node-get-prop elem 'STATIC)
+          (progn (insert (js2-make-pad (1+ i)) "static ")
+                 (js2-print-ast elem 0)) ;; TODO(sdh): indentation isn't quite right
+        (js2-print-ast elem (1+ i))))
     (insert "\n" pad "}")))
 
 (defstruct (js2-object-node
@@ -5349,7 +5356,7 @@ into temp buffers."
     let
     new null
     return
-    switch
+    static switch
     this throw true try typeof
     var void
     while with
@@ -5369,7 +5376,7 @@ into temp buffers."
                js2-LET
                js2-NEW js2-NULL
                js2-RETURN
-               js2-SWITCH
+               js2-STATIC js2-SWITCH
                js2-THIS js2-THROW js2-TRUE js2-TRY js2-TYPEOF
                js2-VAR
                js2-WHILE js2-WITH
@@ -9650,10 +9657,13 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
 
 (defun js2-parse-object-literal-elems (&optional class-p)
   (let ((pos (js2-current-token-beg))
-        tt elems result after-comma
-        (continue t))
+        (static nil)
+        (continue t)
+        tt elems elem after-comma)
     (while continue
-      (setq tt (js2-get-token))
+      (setq static (and class-p (js2-match-token js2-STATIC))
+            tt (js2-get-token)
+            elem nil)
       (cond
        ;; {foo: ...}, {'foo': ...}, {foo, bar, ...},
        ;; {get foo() {...}}, {set foo(x) {...}}, or {foo(x) {...}}
@@ -9661,23 +9671,22 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
        ((or (js2-valid-prop-name-token tt)
             (= tt js2-STRING))
         (setq after-comma nil
-              result (js2-parse-named-prop tt))
-        (if (and (null result)
+              elem (js2-parse-named-prop tt))
+        (if (and (null elem)
                  (not js2-recover-from-parse-errors))
-            (setq continue nil)
-          (push result elems)))
+            (setq continue nil)))
        ;; {[Symbol.iterator]: ...}
        ((and (= tt js2-LB)
              (>= js2-language-version 200))
         (let ((expr (js2-parse-expr)))
           (js2-must-match js2-RB "msg.missing.computed.rb")
-          (setq after-comma nil)
-          (push (js2-parse-plain-property expr) elems)))
+          (setq after-comma nil
+                elem (js2-parse-plain-property expr))))
        ;; {12: x} or {10.7: x}
        ((= tt js2-NUMBER)
-        (setq after-comma nil)
-        (push (js2-parse-plain-property (make-js2-number-node)) elems))
-       ;; break out of loop, trailing comma
+        (setq after-comma nil
+              elem (js2-parse-plain-property (make-js2-number-node))))
+       ;; Break out of loop, and handle trailing commas.
        ((or (= tt js2-RC)
             (= tt js2-EOF))
         (js2-unget-token)
@@ -9689,14 +9698,20 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
         (js2-report-error "msg.bad.prop")
         (unless js2-recover-from-parse-errors
           (setq continue nil))))         ; end switch
-      ;; handle commas, depending on class-p
+      ;; Handle static for classes' codegen.
+      (if static
+          (if elem (js2-node-set-prop elem 'STATIC t)
+            (js2-report-error "msg.unexpected.static")))
+      ;; Handle commas, depending on class-p.
       (let ((comma (js2-match-token js2-COMMA)))
         (if class-p
             (if comma
                 (js2-report-error "msg.class.unexpected.comma"))
           (if comma
               (setq after-comma (js2-current-token-end))
-            (setq continue nil)))))      ; end loop
+            (setq continue nil))))
+      ;; Append any parsed element.
+      (if elem (push elem elems)))       ; end loop
     (js2-must-match js2-RC "msg.no.brace.prop")
     (nreverse elems)))
 

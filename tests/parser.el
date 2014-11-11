@@ -360,6 +360,9 @@ the test."
   "class Foo extends {\n}"
   :syntax-error "extends")
 
+(js2-deftest-parse parse-harmony-class-static-method
+  "class Foo extends Bar {\n  static bar() {  return 42;\n}\n}")
+
 (js2-deftest-parse parse-unterminated-class-is-not-okay
   "class Foo {\n  get bar() {  return 42;\n}"
   :syntax-error "}")
