@@ -181,7 +181,7 @@ the test."
 
 ;;; Object literals
 
-(js2-deftest-parse abbreviated-object
+(js2-deftest-parse object-literal-shorthand
   "var x = {a: 1, b, c: 1, d};")
 
 (js2-deftest-parse object-literal-method
@@ -192,6 +192,9 @@ the test."
 
 (js2-deftest-parse object-literal-setter-method
   "var x = {set f(y) {  x = y;\n}};")
+
+(js2-deftest-parse object-literal-computed-keys
+  "var x = {[Symbol.iterator]: function() {}};")
 
 ;;; Function parameters
 

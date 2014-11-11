@@ -1955,6 +1955,10 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.yield.closing"
          "Yield from closing generator")
 
+;; Classes
+(js2-msg "msg.missing.computed.rb" ; added by js2-mode
+         "missing ']' after computed property expression")
+
 ;;; Tokens Buffer
 
 (defconst js2-ti-max-lookahead 2)
@@ -9554,6 +9558,13 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
                  (not js2-recover-from-parse-errors))
             (setq continue nil)
           (push result elems)))
+       ;; {[Symbol.iterator]: ...}
+       ((and (= tt js2-LB)
+             (>= js2-language-version 200))
+        (let ((expr (js2-parse-expr)))
+          (js2-must-match js2-RB "msg.missing.computed.rb")
+          (setq after-comma nil)
+          (push (js2-parse-plain-property expr) elems)))
        ;; {12: x} or {10.7: x}
        ((= tt js2-NUMBER)
         (setq after-comma nil)
