@@ -332,6 +332,38 @@ the test."
 (js2-deftest-parse octal-number-broken "0o812;"
   :syntax-error "0o8" :errors-count 2)
 
+;;; Classes
+
+(js2-deftest-parse parse-harmony-class-statement
+  "class Foo {\n  get bar() {  return 42;\n}\n  set bar(x) {  y = x;\n}\n}")
+
+(js2-deftest-parse parse-harmony-class-statement-without-name-is-not-ok
+  "class {\n  get bar() {  return 42;\n}\n}"
+  :syntax-error "{")
+
+(js2-deftest-parse parse-harmony-class-expression
+  "var Foo1 = class Foo {\n  bar() {  return 42;\n}\n};")
+
+(js2-deftest-parse parse-harmony-anonymous-class-expression
+  "var Foo = class {\n  set bar(x) {  bar = x;\n}\n};")
+
+(js2-deftest-parse parse-harmony-class-with-extends
+  "class Foo extends Bar {\n}")
+
+(js2-deftest-parse parse-harmony-anonymous-class-with-extends
+  "foo.Foo = class extends Bar {\n  set bar(x) {  bar = x;\n}\n};")
+
+(js2-deftest-parse parse-harmony-class-with-complex-extends
+  "class Foo extends foo[BAR][2].Baz {\n}")
+
+(js2-deftest-parse parse-harmony-class-missing-extended-class-is-not-ok
+  "class Foo extends {\n}"
+  :syntax-error "extends")
+
+(js2-deftest-parse parse-unterminated-class-is-not-okay
+  "class Foo {\n  get bar() {  return 42;\n}"
+  :syntax-error "}")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"
