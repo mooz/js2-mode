@@ -5958,6 +5958,12 @@ its relevant fields and puts it into `js2-ti-tokens'."
           (push ?i flags))
          ((js2-match-char ?m)
           (push ?m flags))
+         ((and (js2-match-char ?u)
+               (>= js2-language-version 200))
+          (push ?u flags))
+         ((and (js2-match-char ?y)
+               (>= js2-language-version 200))
+          (push ?y flags))
          (t
           (setq continue nil))))
       (if (js2-alpha-p (js2-peek-char))
