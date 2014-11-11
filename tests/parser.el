@@ -36,28 +36,28 @@
 (put 'js2-deftest 'lisp-indent-function 'defun)
 
 (defun js2-test-string-to-ast (s)
-  (ert-with-test-buffer (:name 'origin)
-    (insert s)
-    (js2-mode)
-    (should (null js2-mode-buffer-dirty-p))
-    js2-mode-ast))
+  (insert s)
+  (js2-mode)
+  (should (null js2-mode-buffer-dirty-p))
+  js2-mode-ast)
 
 (defun* js2-test-parse-string (code-string &key syntax-error errors-count
                                                 reference)
-  (let ((ast (js2-test-string-to-ast code-string)))
-    (if syntax-error
-        (let ((errors (js2-ast-root-errors ast)))
-          (should (= (or errors-count 1) (length errors)))
-          (destructuring-bind (_ pos len) (first errors)
-            (should (string= syntax-error (substring code-string
-                                                     (1- pos) (+ pos len -1))))))
-      (should (= 0 (length (js2-ast-root-errors ast))))
-      (ert-with-test-buffer (:name 'copy)
-        (js2-print-tree ast)
-        (skip-chars-backward " \t\n")
-        (should (string= (or reference code-string)
-                         (buffer-substring-no-properties
-                          (point-min) (point))))))))
+  (ert-with-test-buffer (:name 'origin)
+    (let ((ast (js2-test-string-to-ast code-string)))
+      (if syntax-error
+          (let ((errors (js2-ast-root-errors ast)))
+            (should (= (or errors-count 1) (length errors)))
+            (destructuring-bind (_ pos len) (first errors)
+              (should (string= syntax-error (substring code-string
+                                                       (1- pos) (+ pos len -1))))))
+        (should (= 0 (length (js2-ast-root-errors ast))))
+        (ert-with-test-buffer (:name 'copy)
+          (js2-print-tree ast)
+          (skip-chars-backward " \t\n")
+          (should (string= (or reference code-string)
+                           (buffer-substring-no-properties
+                            (point-min) (point)))))))))
 
 (defmacro* js2-deftest-parse (name code-string &key bind syntax-error errors-count
                                                     reference)
@@ -331,6 +331,14 @@ the test."
 
 (js2-deftest-parse octal-number-broken "0o812;"
   :syntax-error "0o8" :errors-count 2)
+
+;;; Strings
+
+(js2-deftest-parse string-literal
+  "var x = 'y';")
+
+(js2-deftest-parse object-get-string-literal
+  "var x = {y: 5};\nvar z = x[\"y\"];")
 
 ;;; Classes
 
