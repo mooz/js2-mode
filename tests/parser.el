@@ -184,6 +184,15 @@ the test."
 (js2-deftest-parse abbreviated-object
   "var x = {a: 1, b, c: 1, d};")
 
+(js2-deftest-parse object-literal-method
+  "var x = {f(y) {  return y;\n}};")
+
+(js2-deftest-parse object-literal-getter-method
+  "var x = {get f() {  return 42;\n}};")
+
+(js2-deftest-parse object-literal-setter-method
+  "var x = {set f(y) {  x = y;\n}};")
+
 ;;; Function parameters
 
 (js2-deftest-parse function-with-default-parameters

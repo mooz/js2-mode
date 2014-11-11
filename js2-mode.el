@@ -3547,13 +3547,13 @@ The `right' field is a `js2-node' representing the initializer value.")
 (defstruct (js2-getter-setter-node
             (:include js2-infix-node)
             (:constructor nil)
-            (:constructor make-js2-getter-setter-node (&key type ; GET or SET
+            (:constructor make-js2-getter-setter-node (&key type ; GET, SET, or FUNCTION
                                                             (pos js2-ts-cursor)
                                                             len left right)))
   "AST node for a getter/setter property in an object literal.
 The `left' field is the `js2-name-node' naming the getter/setter prop.
 The `right' field is always an anonymous `js2-function-node' with a node
-property `GETTER_SETTER' set to js2-GET or js2-SET. ")
+property `GETTER_SETTER' set to js2-GET, js2-SET, or js2-FUNCTION. ")
 
 (put 'cl-struct-js2-getter-setter-node 'js2-visitor 'js2-visit-infix-node)
 (put 'cl-struct-js2-getter-setter-node 'js2-printer 'js2-print-getter-setter)
@@ -3563,7 +3563,8 @@ property `GETTER_SETTER' set to js2-GET or js2-SET. ")
         (left (js2-getter-setter-node-left n))
         (right (js2-getter-setter-node-right n)))
     (insert pad)
-    (insert (if (= (js2-node-type n) js2-GET) "get " "set "))
+    (if (/= (js2-node-type n) js2-FUNCTION)
+        (insert (if (= (js2-node-type n) js2-GET) "get " "set ")))
     (js2-print-ast left 0)
     (js2-print-ast right 0)))
 
@@ -9537,7 +9538,8 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
       (setq tt (js2-get-token))
       (cond
        ;; {foo: ...}, {'foo': ...}, {foo, bar, ...},
-       ;; {get foo() {...}}, or {set foo(x) {...}}
+       ;; {get foo() {...}}, {set foo(x) {...}}, or {foo(x) {...}}
+       ;; TODO(sdh): support *foo() {...}
        ((or (js2-valid-prop-name-token tt)
             (= tt js2-STRING))
         (setq after-comma nil
@@ -9591,7 +9593,12 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
       (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; get/set
       (js2-record-face 'font-lock-function-name-face)      ; for peeked name
       (setq name (js2-create-name-node)) ; discard get/set & use peeked name
-      (js2-parse-getter-setter-prop ppos name (string= prop "get")))
+      (js2-parse-getter-setter-prop ppos name prop))
+     ;; method definition: {f() {...}}
+     ((and (= (js2-peek-token) js2-LP)
+           (>= js2-language-version 200))
+      (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; name
+      (js2-parse-getter-setter-prop ppos name ""))
      ;; Abbreviated destructuring binding, e.g. {a, b} = c;
      ;; XXX: To be honest, the value of `js2-is-in-destructuring' becomes t only
      ;; when patterns are used in variable declarations, function parameters,
@@ -9656,7 +9663,7 @@ PROP is the node representing the property:  a number, name or string."
       (js2-node-add-children result prop expr)
       result))))
 
-(defun js2-parse-getter-setter-prop (pos prop get-p)
+(defun js2-parse-getter-setter-prop (pos prop type-string)
   "Parse getter or setter property in an object literal.
 JavaScript syntax is:
 
@@ -9669,7 +9676,10 @@ and expression closure style is also supported
 POS is the start position of the `get' or `set' keyword.
 PROP is the `js2-name-node' representing the property name.
 GET-P is non-nil if the keyword was `get'."
-  (let ((type (if get-p js2-GET js2-SET))
+  (let ((type (cond
+               ((string= "get" type-string) js2-GET)
+               ((string= "set" type-string) js2-SET)
+               (t js2-FUNCTION)))
         result end
         (fn (js2-parse-function-expr)))
     ;; it has to be an anonymous function, as we already parsed the name
