@@ -415,7 +415,9 @@ the test."
 (js2-deftest-parse import-renaming-default "import * as lib from 'src/mylib';"
   :reference "import * as lib from 'src/mylib'")
 (js2-deftest-parse import-renaming-named "import {one as uno, two as dos} from 'src/lib';")
-;;(js2-deftest-parse import-module-metadata "import {url} from this module;")
+
+;; TODO
+;; (js2-deftest-parse import-module-metadata "import {url} from this module;")
 
 (js2-deftest export-tokens "export default"
   (js2-init-scanner)
@@ -423,7 +425,16 @@ the test."
   (should (eq js2-DEFAULT (js2-next-token))))
 
 (js2-deftest-parse export-default "export default new Object();")
-(js2-deftest-parse named-export "export bob new Object();")
+(js2-deftest-parse named-export-function-expression "export function hereIsANamedFunction() {};")
+(js2-deftest-parse export-variable "export foo;")
+
+;; TODO
+;; (js2-deftest-parse export-const "export const PI = Math.PI;")
+;; (js2-deftest-parse export-let "export let foo = 'bar'")
+
+;; (js2-deftest-parse re-export-all  "export * from 'src/other_module';")
+;; (js2-deftest-parse rexport-some "export {foo, bar as bang} from 'src/other_module';")
+
 
 ;;; Scopes
 

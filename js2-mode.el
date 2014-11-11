@@ -2456,9 +2456,11 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
             (:constructor nil)
             (:constructor make-js2-export-node (&key (type js2-EXPORT)
                                                      (pos) (js2-current-token-beg)
-                                                     name
+                                                     len
+                                                     default-p
                                                      expr)))
   name
+  default-p
   expr)
 (put 'cl-struct-js2-export-node 'js2-visitor 'js2-visit-export-node)
 (put 'cl-struct-js2-export-node 'js2-printer 'js2-print-export-node)
@@ -2471,8 +2473,8 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
         (name (js2-export-node-name n))
         (expr (js2-export-node-expr n)))
     (insert pad "export ")
-    (insert name)
-    (insert " ")
+    (when (js2-export-node-default-p n)
+      (insert "default "))
     (js2-print-ast expr i)
     (insert ";")))
 
@@ -8019,18 +8021,15 @@ being imported from to be the "
 (defun js2-parse-export ()
   "Parser for export statement. Last matched token must be js2-EXPORT"
   (let* ((pos (js2-current-token-beg))
-         (name-token (and (or (js2-match-token js2-NAME) (js2-match-token js2-DEFAULT)) (js2-current-token)))
-         (expr (and name-token (js2-parse-expr)))
-         (node (make-js2-export-node :pos pos :name (js2-token-string name-token) :expr expr)))
-    (if (and name-token expr)
-        (progn
-          (setf (js2-export-node-len node) (- (js2-current-token-beg) pos))
-          (js2-node-add-children node expr)
-          (when (= (js2-token-type name-token) js2-DEFAULT)
-            (setf (js2-export-node-name node) "default"))
-          node)
-      (js2-report-error "msg.syntax")
-      node)))
+         (default-p (js2-match-token js2-DEFAULT))
+         (expr (js2-parse-expr)))
+    (if expr
+        (make-js2-export-node
+         :pos pos
+         :expr expr
+         :len (- (js2-current-token-beg) pos)
+         :default-p default-p)
+      (js2-report-error "msg.syntax"))))
 
 (defun js2-parse-for ()
   "Parser for for-statement.  Last matched token must be js2-FOR.
