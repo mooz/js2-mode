@@ -238,8 +238,18 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
                 (js2-function-node-p
                  (js2-assign-node-right node)))
            (js2-imenu-record-orphan-assign-node-function node))
-          (js2-imenu-show-module-pattern
-           (js2-imenu-record-module-pattern node)))))
+          ((and js2-imenu-show-module-pattern
+                (js2-call-node-p
+                 (js2-assign-node-right node)))
+           (js2-imenu-record-module-pattern
+            (js2-assign-node-left node)
+            (js2-assign-node-right node)))))
+        ((and (js2-var-init-node-p node)
+              (js2-call-node-p
+               (js2-var-init-node-initializer node)))
+         (js2-imenu-record-module-pattern
+          (js2-var-init-node-target node)
+          (js2-var-init-node-initializer node))))
        t))))
 
 (defun js2-imenu-parent-key-names (node)
@@ -300,29 +310,26 @@ NODE must be `js2-assign-node'."
           (push js2-imenu-other-functions-ns chain)
           (js2-record-imenu-entry fn-node chain (js2-node-abs-pos fn-node)))))))
 
-(defun js2-imenu-record-module-pattern (node)
+(defun js2-imenu-record-module-pattern (target init)
   "Recognize and record module pattern use instance.
-NODE must be `js2-assign-node'."
-  (let ((init (js2-assign-node-right node)))
-    (when (js2-call-node-p init)
-      (let ((target (js2-assign-node-left node))
-            (callt (js2-call-node-target init)))
-        ;; Just basic call form: (function() {...})();
-        ;; TODO: Handle variations without duplicating `js2-wrapper-function-p'?
-        (when (and (js2-paren-node-p callt)
-                   (js2-function-node-p (js2-paren-node-expr callt)))
-          (let* ((fn (js2-paren-node-expr callt))
-                 (blk (js2-function-node-body fn))
-                 (ret (car (last (js2-block-node-kids blk)))))
-            (when (and (js2-return-node-p ret)
-                       (js2-object-node-p (js2-return-node-retval ret)))
-              ;; TODO: Map function names when revealing module pattern is used.
-              (let ((retval (js2-return-node-retval ret))
-                    (target-qname (js2-compute-nested-prop-get target)))
-                (js2-record-object-literal retval target-qname
-                                           (js2-node-abs-pos retval))
-                (js2-record-imenu-entry fn target-qname
-                                        (js2-node-abs-pos target))))))))))
+INIT must be `js2-call-node'."
+  (let ((callt (js2-call-node-target init)))
+    ;; Just basic call form: (function() {...})();
+    ;; TODO: Handle variations without duplicating `js2-wrapper-function-p'?
+    (when (and (js2-paren-node-p callt)
+               (js2-function-node-p (js2-paren-node-expr callt)))
+      (let* ((fn (js2-paren-node-expr callt))
+             (blk (js2-function-node-body fn))
+             (ret (car (last (js2-block-node-kids blk)))))
+        (when (and (js2-return-node-p ret)
+                   (js2-object-node-p (js2-return-node-retval ret)))
+          ;; TODO: Map function names when revealing module pattern is used.
+          (let ((retval (js2-return-node-retval ret))
+                (target-qname (js2-compute-nested-prop-get target)))
+            (js2-record-object-literal retval target-qname
+                                       (js2-node-abs-pos retval))
+            (js2-record-imenu-entry fn target-qname
+                                    (js2-node-abs-pos target))))))))
 
 ;;;###autoload
 (define-minor-mode js2-imenu-extras-mode
