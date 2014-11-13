@@ -1112,6 +1112,13 @@ declarations to `js2-recorded-identifiers', which see."
   :type 'hook
   :group 'js2-mode)
 
+(defcustom js2-build-imenu-callbacks nil
+  "List of functions called during Imenu index generation.
+It's a good place to add additional entries to it, using
+`js2-record-imenu-entry'."
+  :type 'hook
+  :group 'js2-mode)
+
 (defcustom js2-highlight-external-variables t
   "Non-nil to highlight undeclared variable identifiers.
 An undeclared variable is any variable not declared with var or let
@@ -6842,7 +6849,8 @@ NODE must be `js2-function-node'."
   (let ((parent (js2-node-parent node)))
     (or
      ;; function(){...}();
-     (js2-call-node-p parent)
+     (and (js2-call-node-p parent)
+          (eq node (js2-call-node-target parent)))
      (and (js2-paren-node-p parent)
           ;; (function(){...})();
           (or (js2-call-node-p (setq parent (js2-node-parent parent)))
@@ -6852,12 +6860,12 @@ NODE must be `js2-function-node'."
                            '("call" "apply"))
                    (js2-call-node-p (js2-node-parent parent))))))))
 
-(defun js2-browse-postprocess-chains (entries)
+(defun js2-browse-postprocess-chains ()
   "Modify function-declaration name chains after parsing finishes.
 Some of the information is only available after the parse tree is complete.
 For instance, processing a nested scope requires a parent function node."
   (let (result fn parent-qname p elem)
-    (dolist (entry entries)
+    (dolist (entry js2-imenu-recorder)
       ;; function node goes first
       (destructuring-bind (current-fn &rest (&whole chain head &rest)) entry
         ;; Examine head's defining scope:
@@ -6879,12 +6887,19 @@ For instance, processing a nested scope requires a parent function node."
                             (gethash grandparent js2-imenu-function-map 'skip)))
                       'skip))
               (puthash fn parent-qname js2-imenu-function-map))
-            (unless (eq parent-qname 'skip)
-              ;; prefix parent fn qname to this chain.
+            (if (eq parent-qname 'skip)
+                ;; We don't show it, let's record that fact.
+                (remhash current-fn js2-imenu-function-map)
+              ;; Prepend parent fn qname to this chain.
               (let ((qname (append parent-qname chain)))
                 (puthash current-fn (butlast qname) js2-imenu-function-map)
                 (push qname result)))))))
-    ;; finally replace each node in each chain with its name.
+    ;; Collect chains obtained by third-party code.
+    (let (js2-imenu-recorder)
+      (run-hooks 'js2-build-imenu-callbacks)
+      (dolist (entry js2-imenu-recorder)
+        (push (cdr entry) result)))
+    ;; Finally replace each node in each chain with its name.
     (dolist (chain result)
       (setq p chain)
       (while p
@@ -6996,10 +7011,11 @@ e.g. key 'c' in the example above."
 
 (defun js2-build-imenu-index ()
   "Turn `js2-imenu-recorder' into an imenu data structure."
-  (unless (eq js2-imenu-recorder 'empty)
-    (let* ((chains (js2-browse-postprocess-chains js2-imenu-recorder))
-           (result (js2-build-alist-trie chains nil)))
-      (js2-flatten-trie result))))
+  (when (eq js2-imenu-recorder 'empty)
+    (setq js2-imenu-recorder nil))
+  (let* ((chains (js2-browse-postprocess-chains))
+         (result (js2-build-alist-trie chains nil)))
+    (js2-flatten-trie result)))
 
 (defun js2-test-print-chains (chains)
   "Print a list of qname chains.
