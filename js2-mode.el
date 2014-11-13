@@ -102,8 +102,8 @@
 (defvar js2-ecma-262-externs
   (mapcar 'symbol-name
           '(Array Boolean Date Error EvalError Function Infinity JSON
-          Math NaN Number Object RangeError ReferenceError RegExp
-          String SyntaxError TypeError URIError arguments
+          Math Map NaN Number Object RangeError ReferenceError RegExp
+          Set String SyntaxError TypeError URIError WeakMap WeakSet arguments
           decodeURI decodeURIComponent encodeURI
           encodeURIComponent escape eval isFinite isNaN
           parseFloat parseInt undefined unescape))
