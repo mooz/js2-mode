@@ -244,7 +244,8 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
            (js2-imenu-record-module-pattern
             (js2-assign-node-left node)
             (js2-assign-node-right node)))))
-        ((and (js2-var-init-node-p node)
+        ((and js2-imenu-show-module-pattern
+              (js2-var-init-node-p node)
               (js2-call-node-p
                (js2-var-init-node-initializer node)))
          (js2-imenu-record-module-pattern
