@@ -424,7 +424,15 @@ the test."
   (should (eq js2-EXPORT (js2-next-token)))
   (should (eq js2-DEFAULT (js2-next-token))))
 
-(js2-deftest-parse export-default "export default new Object();")
+(js2-deftest export-default "export default new Object();"
+  (js2-init-scanner)
+  (should (eq js2-EXPORT (js2-next-token)))
+  (let* ((node (js2-parse-export))
+         (expr (js2-export-node-expr node)))
+    (should (js2-export-node-default-p node))
+    (should (eq node (js2-node-parent expr)))))
+
+
 (js2-deftest-parse named-export-function-expression "export function hereIsANamedFunction() {};")
 (js2-deftest-parse export-variable "export foo;")
 

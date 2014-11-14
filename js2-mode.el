@@ -8024,11 +8024,13 @@ being imported from to be the "
          (default-p (js2-match-token js2-DEFAULT))
          (expr (js2-parse-expr)))
     (if expr
-        (make-js2-export-node
-         :pos pos
-         :expr expr
-         :len (- (js2-current-token-beg) pos)
-         :default-p default-p)
+        (let ((node (make-js2-export-node
+                    :pos pos
+                    :expr expr
+                    :len (- (js2-current-token-beg) pos)
+                    :default-p default-p)))
+          (js2-node-add-children node expr)
+          node)
       (js2-report-error "msg.syntax"))))
 
 (defun js2-parse-for ()
