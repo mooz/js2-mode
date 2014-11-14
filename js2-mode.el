@@ -7902,14 +7902,14 @@ id"
     (while (progn
              (let ((binding (js2-match-import-binding)))
                (if binding
-                   (setq bindings (append  bindings (list binding)))
+                   (push binding bindings)
                  (js2-report-error "msg.syntax")))
              (js2-match-token js2-COMMA)))
-    (apply 'js2-node-add-children (append (list pn) bindings))
+    (setq bindings (nreverse bindings))
+    (apply #'js2-node-add-children pn bindings)
     (setf (js2-import-node-bindings pn) bindings)
-    (if (js2-match-token js2-RC)
-        (js2-parse-import-module-id pn)
-      (js2-report-error "msg.syntax"))
+    (if (js2-must-match js2-RC "msg.syntax")
+        (js2-parse-import-module-id pn))
     (setf (js2-import-node-len pn) (- (js2-current-token-end) beg))
     pn))
 
@@ -7919,12 +7919,10 @@ id"
 being imported from to be the "
   (let ((beg (js2-import-node-len pn)))
     (if (and (js2-match-token js2-NAME) (equal "from" (js2-current-token-string)))
-        (if (js2-match-token js2-STRING)
-            (progn
-              (setf (js2-import-node-module-id pn) (js2-current-token-string))
-              (setf (js2-import-node-len pn) (- (js2-current-token-end) beg))
-              pn)
-          (js2-report-error "msg.syntax"))
+        (when (js2-match-token js2-STRING "msg.syntax")
+          (setf (js2-import-node-module-id pn) (js2-current-token-string))
+          (setf (js2-import-node-len pn) (- (js2-current-token-end) beg))
+          pn)
       (js2-report-error "msg.syntax"))))
 
 (defun js2-parse-switch ()
