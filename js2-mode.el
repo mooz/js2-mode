@@ -7893,8 +7893,7 @@ consumes no tokens"
   "Parse a set of named exports {foo, bar as bang}.
 The next token should be '{' It assumes that we're in the middle of the import
 statement, and if we so will pass control on a successful match to the module
-id"
-
+id."
   (unless (js2-match-token js2-LC)
     (js2-report-error "msg.syntax"))
   (let ((bindings (list))
@@ -7916,8 +7915,7 @@ id"
 
 (defun js2-parse-import-module-id (pn)
   "Parse the module specifier. E.g.
-     from 'my/module'
-"
+     from 'my/module'."
   (let ((beg (js2-import-node-len pn)))
     (when (js2-must-match js2-NAME "msg.syntax")
       (if (equal "from" (js2-current-token-string))
