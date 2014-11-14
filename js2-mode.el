@@ -2713,11 +2713,12 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
            (insert "}")
            (insert " from '")
            (insert module-id)
-           (insert "';"))
+           (insert "'"))
           (t
            (insert "'")
            (insert module-id)
-           (insert "'")))))
+           (insert "'")))
+    (insert ";")))
 
 (defstruct (js2-import-binding-node
             (:include js2-node)
@@ -7856,7 +7857,7 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
         (progn
           (setf (js2-import-node-len node) (- (js2-current-token-end) beg))
           (setf (js2-import-node-module-id node) (js2-current-token-string))
-          (node))
+          node)
       (let ((default (js2-match-import-binding)))
         (if default (progn
                       (js2-node-add-children node default)

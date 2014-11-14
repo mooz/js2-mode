@@ -406,14 +406,11 @@ the test."
     (should (equal "src/mylib" (js2-import-node-module-id import)))))
 
 
-(js2-deftest-parse import-default-only "import theDefault from 'src/lib';"
-  :reference "import theDefault from 'src/lib'")
+(js2-deftest-parse import-only-for-side-effects "import 'src/lib';")
+(js2-deftest-parse import-default-only "import theDefault from 'src/lib';")
 (js2-deftest-parse import-named-only "import {one, two} from 'src/lib';")
-(js2-deftest-parse import-default-and-named
-  "import theDefault, {one, two} from 'src/lib';"
-  :reference "import theDefault, {one, two} from 'src/lib'")
-(js2-deftest-parse import-renaming-default "import * as lib from 'src/mylib';"
-  :reference "import * as lib from 'src/mylib'")
+(js2-deftest-parse import-default-and-named "import theDefault, {one, two} from 'src/lib';")
+(js2-deftest-parse import-renaming-default "import * as lib from 'src/mylib';")
 (js2-deftest-parse import-renaming-named "import {one as uno, two as dos} from 'src/lib';")
 
 ;; TODO
