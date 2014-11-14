@@ -2659,9 +2659,11 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                      default
                                                      bindings
                                                      module-id)))
-  default
-  bindings
-  module-id)
+  "AST node for an import statement."
+  default     ; the name bound to the module's default import
+  bindings    ; LISP list of js2-binding-node structs that
+  module-id)  ; module identifier for this import. e.g. 'math/fractal'
+
 (put 'cl-struct-js2-import-node 'js2-printer 'js2-print-import)
 (put 'cl-struct-js2-import-node 'js2-visitor 'js2-visit-import)
 
@@ -2725,16 +2727,23 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                              len
                                                              name
                                                              export-name)))
-  name
-  export-name)
+  "AST node for an imported symbol binding. It contains both the external name
+of the exported item, as well as the name to which it will be bound in this file
+context. By default these are the same, but if the name is aliased as in
+import {foo as bar}, it would have an export-name of 'foo' and a name of 'bar'
+"
+  name           ; the name bound in this file
+  export-name)   ; the name of the export in the source module
+
 (put 'cl-struct-js2-import-binding-node 'js2-printer 'js2-print-import-binding)
 (put 'cl-struct-js2-import-binding-node 'js2-visitor 'js2-visit-import-binding)
 
 (defun js2-visit-import-binding (n v)
-  "visits an import binding node")
+  "Visit an import binding node. It is a no-op."
+  )
 
 (defun js2-print-import-binding (n i)
-  "prints a representation of a single import binding"
+  "Print a representation of a single import binding."
   (let ((name (js2-import-binding-node-name n))
         (export-name (js2-import-binding-node-export-name n)))
     (if (equal name export-name)
