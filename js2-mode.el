@@ -7868,7 +7868,7 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
           (js2-parse-import-named-exports node))))))
 
 (defun js2-match-import-binding ()
-  "Attempts to match a binding expression found inside an import statement.
+  "Attempt to match a binding expression found inside an import statement.
 This can take the form of either as single js2-NAME token as in 'foo' or as in a
 rebinding expression 'bar as foo'. If it matches, it will return an instance of
 js2-import-binding-node and consume all the tokens. If it does not match, it
@@ -7890,9 +7890,11 @@ consumes no tokens"
       nil)))
 
 (defun js2-parse-import-named-exports (pn)
-  "Parse a set of named exports {foo, bar as bang}. The next token should be '{'
-It assumes that we're in the middle of the import statement, and if we
-so will pass control on a successful match to the module id"
+  "Parse a set of named exports {foo, bar as bang}.
+The next token should be '{' It assumes that we're in the middle of the import
+statement, and if we so will pass control on a successful match to the module
+id"
+
   (unless (js2-match-token js2-LC)
     (js2-report-error "msg.syntax"))
   (let ((bindings (list))
