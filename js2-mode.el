@@ -7915,14 +7915,19 @@ id"
 
 
 (defun js2-parse-import-module-id (pn)
-  "This parses the module id declaration that determines where the names are
-being imported from to be the "
+  "Parse the module specifier. E.g.
+     from 'my/module'
+"
   (let ((beg (js2-import-node-len pn)))
-    (when (and (js2-must-match js2-NAME "msg.syntax") (equal "from" (js2-current-token-string)))
-        (when (js2-must-match js2-STRING "msg.syntax")
-          (setf (js2-import-node-module-id pn) (js2-current-token-string))
-          (setf (js2-import-node-len pn) (- (js2-current-token-end) beg))
-          pn))))
+    (when (js2-must-match js2-NAME "msg.syntax")
+      (if (equal "from" (js2-current-token-string))
+          (when (js2-must-match js2-STRING "msg.syntax")
+            (setf (js2-import-node-module-id pn) (js2-current-token-string))
+            (setf (js2-import-node-len pn) (- (js2-current-token-end) beg))
+            pn)
+        (progn
+          (js2-report-error "msg.syntax")
+          (js2-unget-token))))))
 
 (defun js2-parse-switch ()
   "Parser for switch-statement.  Last matched token must be js2-SWITCH."
