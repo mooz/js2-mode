@@ -11129,8 +11129,8 @@ If there is no such matching line, returns current end of line."
       (while (and (zerop (forward-line direction))
                   (looking-at js2-mode-//-comment-re)
                   (eq indent (length (match-string 1))))
-        (setq pos (point-at-eol))
-      pos))))
+        (setq pos (point-at-eol)))
+      pos)))
 
 (defun js2-mode-hide-//-comments ()
   "Fold adjacent 1-line comments, showing only snippet of first one."
