@@ -237,20 +237,29 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
           ((and js2-imenu-show-other-functions
                 (js2-function-node-p
                  (js2-assign-node-right node)))
-           (js2-imenu-record-orphan-assign-node-function node))
+           (js2-imenu-record-orphan-assign-node-function
+            (js2-assign-node-left node)
+            (js2-assign-node-right node)))
           ((and js2-imenu-show-module-pattern
                 (js2-call-node-p
                  (js2-assign-node-right node)))
            (js2-imenu-record-module-pattern
             (js2-assign-node-left node)
             (js2-assign-node-right node)))))
-        ((and js2-imenu-show-module-pattern
-              (js2-var-init-node-p node)
-              (js2-call-node-p
-               (js2-var-init-node-initializer node)))
-         (js2-imenu-record-module-pattern
-          (js2-var-init-node-target node)
-          (js2-var-init-node-initializer node))))
+        ((js2-var-init-node-p node)
+         (cond
+          ((and js2-imenu-show-other-functions
+                (js2-function-node-p
+                 (js2-var-init-node-initializer node)))
+           (js2-imenu-record-orphan-assign-node-function
+            (js2-var-init-node-target node)
+            (js2-var-init-node-initializer node)))
+          ((and js2-imenu-show-module-pattern
+                (js2-call-node-p
+                 (js2-var-init-node-initializer node)))
+           (js2-imenu-record-module-pattern
+            (js2-var-init-node-target node)
+            (js2-var-init-node-initializer node))))))
        t))))
 
 (defun js2-imenu-parent-key-names (node)
@@ -298,18 +307,15 @@ NODE must be `js2-object-prop-node'."
           (js2-record-imenu-entry fn-node chain
                                   (js2-node-abs-pos key-node)))))))
 
-(defun js2-imenu-record-orphan-assign-node-function (node)
-  "Return orphan function entry when it's the right hand of NODE.
-NODE must be `js2-assign-node'."
-  (let ((fn-node (js2-assign-node-right node)))
-    (when (or (not js2-imenu-function-map)
-              (eq 'skip
-                  (gethash fn-node js2-imenu-function-map 'skip)))
-      (let* ((target-node (js2-assign-node-left node))
-             (chain (js2-compute-nested-prop-get target-node)))
-        (when chain
-          (push js2-imenu-other-functions-ns chain)
-          (js2-record-imenu-entry fn-node chain (js2-node-abs-pos fn-node)))))))
+(defun js2-imenu-record-orphan-assign-node-function (target-node fn-node)
+  "Record orphan function FN-NODE assigned to node TARGET."
+  (when (or (not js2-imenu-function-map)
+            (eq 'skip
+                (gethash fn-node js2-imenu-function-map 'skip)))
+    (let ((chain (js2-compute-nested-prop-get target-node)))
+      (when chain
+        (push js2-imenu-other-functions-ns chain)
+        (js2-record-imenu-entry fn-node chain (js2-node-abs-pos fn-node))))))
 
 (defun js2-imenu-record-module-pattern (target init)
   "Recognize and record module pattern use instance.
