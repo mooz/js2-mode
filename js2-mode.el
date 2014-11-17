@@ -2476,7 +2476,7 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
     (when (js2-export-node-default-p n)
       (insert "default "))
     (js2-print-ast expr i)
-    (insert ";")))
+    (insert ";\n")))
 
 (defstruct (js2-while-node
             (:include js2-loop-node)
@@ -2718,7 +2718,7 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
            (insert "'")
            (insert module-id)
            (insert "'")))
-    (insert ";")))
+    (insert ";\n")))
 
 (defstruct (js2-import-binding-node
             (:include js2-node)
