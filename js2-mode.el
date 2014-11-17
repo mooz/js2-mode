@@ -4861,10 +4861,12 @@ You should use `js2-print-tree' instead of this function."
         js2-CONTINUE
         js2-DEFAULT  ; e4x "default xml namespace" statement
         js2-DO
+        js2-EXPORT
         js2-EXPR_RESULT
         js2-EXPR_VOID
         js2-FOR
         js2-IF
+        js2-IMPORT
         js2-RETURN
         js2-SWITCH
         js2-THROW
