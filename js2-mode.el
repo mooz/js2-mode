@@ -528,7 +528,7 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-GETVAR 55)
 (defvar js2-SETVAR 56)
 (defvar js2-CATCH_SCOPE 57)
-(defvar js2-ENUM_INIT_KEYS 58)
+(defvar js2-ENUM_INIT_KEYS 58) ; FIXME: what are these?
 (defvar js2-ENUM_INIT_VALUES 59)
 (defvar js2-ENUM_INIT_ARRAY 60)
 (defvar js2-ENUM_NEXT 61)
@@ -652,9 +652,8 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-DEBUGGER 159)
 
 (defvar js2-COMMENT 160)
-(defvar js2-ENUM 161)          ; for "enum" reserved word
-(defvar js2-TRIPLEDOT 162)     ; for rest parameter
-(defvar js2-ARROW 163)         ; function arrow (=>)
+(defvar js2-TRIPLEDOT 161)     ; for rest parameter
+(defvar js2-ARROW 162)         ; function arrow (=>)
 
 (defconst js2-num-tokens (1+ js2-ARROW))
 
@@ -5271,7 +5270,7 @@ into temp buffers."
   '(break
     case catch const continue
     debugger default delete do
-    else enum
+    else
     false finally for function
     if in instanceof import
     let
@@ -5284,7 +5283,7 @@ into temp buffers."
     yield))
 
 ;; Token names aren't exactly the same as the keywords, unfortunately.
-;; E.g. enum isn't in the tokens, and delete is js2-DELPROP.
+;; E.g. delete is js2-DELPROP.
 (defconst js2-kwd-tokens
   (let ((table (make-vector js2-num-tokens nil))
         (tokens
@@ -5319,8 +5318,8 @@ The values are default faces to use for highlighting the keywords.")
 
 ;; FIXME: Support strict mode-only future reserved words, after we know
 ;; which parts scopes are in strict mode, and which are not.
-(defconst js2-reserved-words '(class export extends import super)
-  "Future reserved keywords in ECMAScript 5.")
+(defconst js2-reserved-words '(class enum export extends import super)
+  "Future reserved keywords in ECMAScript 5.1.")
 
 (defconst js2-keyword-names
   (let ((table (make-hash-table :test 'equal)))
