@@ -2656,102 +2656,123 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
             (:constructor make-js2-import-node (&key (type js2-IMPORT)
                                                      (pos (js2-current-token-beg))
                                                      len
-                                                     default
-                                                     bindings
+                                                     import
+                                                     from
                                                      module-id)))
-  "AST node for an import statement."
-  default     ; the name bound to the module's default import
-  bindings    ; LISP list of js2-binding-node structs that
-  module-id)  ; module identifier for this import. e.g. 'math/fractal'
+  "AST node for an import statement. It follows the form
+
+import ModuleSpecifier;
+import ImportClause FromClause;"
+  import     ; js2-import-clause-node specifying which names are to imported.
+  from       ; js2-from-clause-node indicating the module from which to import.
+  module-id) ; module-id of the import. E.g. 'src/mylib'.
 
 (put 'cl-struct-js2-import-node 'js2-printer 'js2-print-import)
 (put 'cl-struct-js2-import-node 'js2-visitor 'js2-visit-import)
 
 (defun js2-visit-import (n v)
-  (let ((default (js2-import-node-default n))
-        (bindings (js2-import-node-bindings n)))
-    (when default
-      (js2-visit-ast default v))
-    (dolist (binding bindings)
-      (js2-visit-ast binding v))))
+  (let ((import-clause (js2-import-node-import n))
+        (from-clause (js2-import-node-from n)))
+    (when import-clause
+      (js2-visit-ast import-clause v))
+    (when from-clause
+      (js2-visit-ast from-clause v))))
 
 (defun js2-print-import (n i)
   "Prints a representation of the import node"
   (let ((pad (js2-make-pad i))
-        (default (js2-import-node-default n))
-        (bindings (js2-import-node-bindings n))
+        (import-clause (js2-import-node-default n))
+        (from-clause (js2-import-node-bindings n))
         (module-id (js2-import-node-module-id n)))
     (insert pad "import ")
-    (cond ((and default (nth 0 bindings))
-           (js2-print-import-binding default 0)
-           (insert ", {")
-           (let ((len (length bindings))
-                 (n 0))
-             (while (< n len)
-               (js2-print-import-binding (nth n bindings) 0)
-               (unless (= n (- len 1))
-                 (insert ", "))
-               (setq n (+ 1 n))))
-           (insert "} ")
-           (insert "from '")
-           (insert module-id)
-           (insert "'"))
-          (default
-            (js2-print-ast default 0)
-            (insert " from '")
-            (insert module-id)
-            (insert "'"))
-          ((nth 0 bindings)
-           (insert "{")
-           (let ((len (length bindings))
-                 (n 0))
-             (while (< n len)
-               (js2-print-ast (nth n bindings))
-               (unless (= n (- len 1))
-                 (insert ", "))
-               (setq n (+ 1 n))))
-           (insert "}")
-           (insert " from '")
-           (insert module-id)
-           (insert "'"))
-          (t
-           (insert "'")
-           (insert module-id)
-           (insert "'")))
+    (if (import-clause)
+        (progn
+          (js2-print-import-clause import-clause)
+          (insert " ")
+          (js2-print-from-clause from-clause))
+      (insert "'")
+      (insert module-id)
+      (insert "'"))
     (insert ";\n")))
 
-(defstruct (js2-import-binding-node
+(defstruct (js2-import-clause-node
             (:include js2-node)
             (:constructor nil)
-            (:constructor make-js2-import-binding-node (&key (type -1)
-                                                             pos
-                                                             len
-                                                             name
-                                                             export-name)))
-  "AST node for an imported symbol binding. It contains both the external name
-of the exported item, as well as the name to which it will be bound in this file
-context. By default these are the same, but if the name is aliased as in
-import {foo as bar}, it would have an export-name of 'foo' and a name of 'bar'
-"
-  name           ; the name bound in this file
-  export-name)   ; the name of the export in the source module
+            (:constructor make-js2-import-clause-node (&key (type -1)
+                                                            pos
+                                                            len
+                                                            namespace-import
+                                                            named-imports
+                                                            default-binding)))
+  namespace-import
+  named-imports
+  default-binding)
 
-(put 'cl-struct-js2-import-binding-node 'js2-printer 'js2-print-import-binding)
-(put 'cl-struct-js2-import-binding-node 'js2-visitor 'js2-visit-import-binding)
+(put 'cl-struct-js2-import-clause-node 'js2-visitor 'js2-visit-import-clause)
+(put 'cl-struct-js2-import-clause-node 'js2-printer 'js2-print-import-clause)
 
-(defun js2-visit-import-binding (n v)
-  "Visit an import binding node. It is a no-op."
-  )
+(defun js2-visit-import-clause (n v)
+  (let ((ns-import (js2-import-clause-node-namespace-import n))
+        (named-imports (js2-import-clause-node-named-imports n))
+        (default (js2-import-clause-node-default-binding n)))
+    (when ns-import
+      (js2-visit-ast ns-import v))
+    (when named-imports
+      (dolist (import named-imports)
+        (js2-visit-ast import v)))
+    (when default
+      (js2-visit-ast default v))))
 
-(defun js2-print-import-binding (n i)
-  "Print a representation of a single import binding."
-  (let ((name (js2-import-binding-node-name n))
-        (export-name (js2-import-binding-node-export-name n)))
-    (if (equal name export-name)
-        (insert name)
-      (insert export-name)
-      (insert " as ")
-      (insert name))))
+(defun js2-print-import-clause (n)
+  (let ((ns-import (js2-import-clause-node-namespace-import n))
+        (named-imports (js2-import-clause-node-named-imports n))
+        (default (js2-import-clause-node-default-binding n)))
+    (cond
+     ((and default ns-import)
+      (js2-print-ast default)
+      (insert ", ")
+      (js2-print-namespace-import ns-import))
+     ((and default named-imports)
+      (js2-print-ast default)
+      (insert ", ")
+      (js2-print-namespace-import named-imports))
+     (default
+      (js2-print-ast default))
+     (ns-import
+      (js2-print-namespace-import ns-import))
+     (named-imports
+      (js2-print-named-imports named-imports)))))
+
+(defun js2-print-namespace-import (node)
+  (insert "* as ")
+  (insert (js2-name-node-name node)))
+
+(defun js2-print-named-imports (imports)
+  (insert "{")
+  (let ((len (length imports))
+        (n 0))
+    (while (< n len)
+      (js2-print-import-binding (nth n imports))
+      (unless (= n (- len 1))
+        (insert ", "))
+      (setq n (+ n 1))))
+  (insert "}"))
+
+(defstruct (js2-from-clause-node
+            (:include js2-node)
+            (:constructor nil)
+            (:constructor make-js2-from-clause-node (&key (type js2-NAME)
+                                                         pos
+                                                         len
+                                                         module-id)))
+  module-id)
+(put 'cl-struct-js2-from-clause-node 'js2-visitor 'js2-visit-from-clause)
+(put 'cl-struct-js2-from-clause-node 'js2-printer 'js2-print-from-clause)
+
+(defun js2-visit-from-clause ())
+(defun js2-print-from-clause (n i)
+  (insert "from ")
+  (insert (js2-from-clause-module-id n)))
 
 (defstruct (js2-try-node
             (:include js2-node)
@@ -3525,6 +3546,38 @@ Returns 0 if NODE is nil or its identifier field is nil."
   (if node
       (length (js2-name-node-name node))
     0))
+
+(defstruct (js2-import-binding-node
+            (:include js2-name-node)
+            (:constructor nil)
+            (:constructor make-js2-import-binding-node (&key (type -1)
+                                                             pos
+                                                             len
+                                                             name
+                                                             export-name)))
+  "AST node for an imported symbol binding. It contains both the external name
+of the exported item, as well as the name to which it will be bound in this file
+context. By default these are the same, but if the name is aliased as in
+import {foo as bar}, it would have an export-name of 'foo' and a name of 'bar'
+"
+  export-name)   ; the name of the export in the source module
+
+(put 'cl-struct-js2-import-binding-node 'js2-printer 'js2-print-import-binding)
+(put 'cl-struct-js2-import-binding-node 'js2-visitor 'js2-visit-import-binding)
+
+(defun js2-visit-import-binding (n v)
+  "Visit an import binding node. It is a no-op."
+  )
+
+(defun js2-print-import-binding (n)
+  "Print a representation of a single import binding."
+  (let ((name (js2-import-binding-node-name n))
+        (export-name (js2-import-binding-node-export-name n)))
+    (if (equal name export-name)
+        (insert name)
+      (insert export-name)
+      (insert " as ")
+      (insert name))))
 
 (defstruct (js2-number-node
             (:include js2-node)
@@ -7852,22 +7905,105 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
     pn))
 
 (defun js2-parse-import ()
-  "Parser import statement. The current token bmust be js2-IMPORT"
+  "Parser import statement. The current token must be js2-IMPORT."
+  (let ((beg (js2-current-token-beg)))
+    (cond ((js2-match-token js2-STRING)
+           (make-js2-import-node
+            :pos beg
+            :len (- (js2-current-token-end) beg)
+            :module-id (js2-current-token-string)))
+          (t
+           (let* ((import-clause (js2-parse-import-clause))
+                  (from-clause (and import-clause (js2-parse-from-clause)))
+                  (node (make-js2-import-node
+                         :pos beg
+                         :len (- (js2-current-token-end) beg)
+                         :import import-clause
+                         :from from-clause
+                         :module-id (js2-from-node-module-id from-clause))))
+             (when (and import-clause from-clause)
+               (js2-node-add-children node import-clause from-clause))
+             node)))))
+
+(defun js2-parse-import-clause ()
+  "Parse the bindings in an import statement."
   (let* ((beg (js2-current-token-beg))
-         (node (make-js2-import-node :pos beg)))
-    (if (js2-match-token js2-STRING)
-        (progn
-          (setf (js2-import-node-len node) (- (js2-current-token-end) beg))
-          (setf (js2-import-node-module-id node) (js2-current-token-string))
-          node)
-      (let ((default (js2-match-import-binding)))
-        (if default (progn
-                      (js2-node-add-children node default)
-                      (setf (js2-import-node-default node) default)
-                      (if (js2-match-token js2-COMMA)
-                          (js2-parse-import-named-exports node)
-                        (js2-parse-import-module-id node)))
-          (js2-parse-import-named-exports node))))))
+         (namespace-import (js2-match-namespace-import))
+         (named-imports (when (not namespace-import)
+                          (js2-match-named-imports)))
+         (default-binding (when (not (or namespace-import named-imports))
+                            (js2-match-import-binding)))
+         (clause (make-js2-import-clause-node :pos beg))
+         (children (list))
+         (valid-p (cond
+                   (namespace-import
+                    (push namespace-import children)
+                    t)
+                   (named-imports
+                    (setq children (append named-imports children))
+                    t)
+                   (default-binding
+                     (push default-binding children)
+                     (if (js2-match-token js2-COMMA)
+                         (let ((namespace-import) (js2-match-namespace-import)
+                               (named-imports (when (not namespace-import)
+                                                (js2-match-named-imports))))
+                           (cond (namespace-import (push namespace-import children) t)
+                                 (named-imports (setq children (append named-imports children)) t)
+                                 (t (js2-report-error "msg.syntax") nil)))
+                       t))
+                   t nil)))
+    (when valid-p
+      (setf (js2-node-len clause) (- (js2-current-token-end) beg))
+      (apply #'js2-node-add-children clause children)
+      clause)))
+
+(defun js2-match-namespace-import ()
+  "Match * as bar."
+  (let ((beg (js2-current-token-end)))
+    (when (js2-match-token js2-MUL)
+      (if (js2-match-token js2-NAME)
+          (if (equal "as" (js2-current-token-string))
+              (if (js2-match-token js2-NAME)
+                  (make-js2-name-node
+                   :pos beg
+                   :len (- (js2-current-token-end) beg)
+                   :name (js2-current-token-string))
+                (js2-unget-token)
+                (js2-unget-token)
+                (js2-unget-token))
+            (js2-unget-token)
+            (js2-unget-token))
+        (js2-unget-token)))))
+
+
+(defun js2-parse-from-clause ()
+  "from 'src/lib'"
+  (let (beg (js2-current-token-end))
+    (when (js2-must-match js2-NAME "msg.syntax")
+      (if (equal "from" (js2-current-token-string))
+          (when (js2-must-match js2-STRING "msg.syntax")
+            (make-js2-from-clause-node
+             :pos beg
+             :len (- (js2-current-token-end) beg)
+             :module-id (js2-current-token-string)))
+        (js2-unget-token)
+        (js2-report-error "msg.syntax")))))
+
+(defun js2-match-named-imports ()
+  "Match {}, {foo, bar} {foo as bar, baz as bang}."
+  (let ((bindings (list)))
+    (when (js2-match js2-LC)
+      (while
+          (let ((binding (js2-match-import-binding)))
+            (when binding
+              (push binding bindings))
+            (js2-match-token js2-COMMA)))
+      (when (js2-must-match js2-RC "msg.syntax")
+        bindings))))
+
+
+
 
 (defun js2-match-import-binding ()
   "Attempt to match a binding expression found inside an import statement.
