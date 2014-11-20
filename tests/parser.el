@@ -338,8 +338,12 @@ the test."
   (should (js2-match-token js2-MUL))
   (let ((namespace-import (js2-parse-namespace-import)))
     (should (not (equal nil namespace-import)))
-    (should (equal "lib" (js2-name-node-name namespace-import)))
-    (should (equal 8 (js2-node-len namespace-import)))))
+    (should (js2-namespace-import-node-p namespace-import))
+    (should (= 1 (js2-node-pos namespace-import)))
+    (should (equal 8 (js2-node-len namespace-import)))
+    (let ((name-node (js2-namespace-import-node-name namespace-import)))
+      (should (equal "lib" (js2-name-node-name name-node)))
+      (should (= 5 (js2-node-pos name-node))))))
 
 
 (js2-deftest parse-from-clause "from 'foo/bar';"
@@ -375,6 +379,39 @@ the test."
         (should (js2-extern-binding-node-p default))
         (should (equal "theDefault" (js2-extern-binding-node-extern-name default)))))))
 
+(js2-deftest parse-import-namespace-binding "import * as lib from 'src/lib'"
+  (js2-init-scanner)
+  (should (js2-match-token js2-IMPORT))
+  (let ((import-node (js2-parse-import)))
+    (should (not (equal nil import-node)))
+    (should (equal "src/lib" (js2-import-node-module-id import-node)))
+    (let ((import (js2-import-node-import import-node)))
+      (should (not (equal nil import)))
+      (should (equal nil (js2-import-clause-node-default-binding import)))
+      (should (equal nil (js2-import-clause-node-named-imports import)))
+      (let ((ns-import (js2-import-clause-node-namespace-import import)))
+        (should (not (equal nil ns-import)))
+        (should (js2-namespace-import-node-p ns-import))
+        (should (equal "lib" (js2-name-node-name (js2-namespace-import-node-name ns-import))))))))
+
+(js2-deftest parse-import-named-imports "import {foo as bar, baz} from 'src/lib'"
+  (js2-init-scanner)
+  (should (js2-match-token js2-IMPORT))
+  (let ((import-node (js2-parse-import)))
+    (should (not (equal nil import-node)))
+    (should (equal "src/lib" (js2-import-node-module-id import-node)))
+    (let ((import (js2-import-node-import import-node)))
+      (should (not (equal nil import)))
+      (should (equal nil (js2-import-clause-node-default-binding import)))
+      (should (equal nil (js2-import-clause-node-namespace-import import)))
+      (let ((named-imports (js2-import-clause-node-named-imports import)))
+        (should (not (equal nil named-imports)))
+        (should (listp named-imports))
+        (should (= 2 (length named-imports)))
+        (let ((first (nth 0 named-imports))
+              (second (nth 1 named-imports)))
+          (should (equal "bar" (js2-name-node-name (js2-extern-binding-node-name first))))
+          (should (equal "baz" (js2-name-node-name (js2-extern-binding-node-name second)))))))))
 
 (js2-deftest complex-import "import * as lib, {one as uno, two as dos} from 'src/lib';"
   (js2-init-scanner)

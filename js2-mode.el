@@ -2745,7 +2745,7 @@ import ImportClause FromClause;"
 
 (defun js2-print-namespace-import (node)
   (insert "* as ")
-  (insert (js2-name-node-name node)))
+  (insert (js2-name-node-name (js2-namespace-import-node-name node))))
 
 (defun js2-print-named-imports (imports)
   (insert "{")
@@ -2757,6 +2757,15 @@ import ImportClause FromClause;"
         (insert ", "))
       (setq n (+ n 1))))
   (insert "}"))
+
+(defstruct (js2-namespace-import-node
+            (:include js2-node)
+            (:constructor nil)
+            (:constructor make-js2-namespace-import-node (&key (type -1)
+                                                               pos
+                                                               len
+                                                               name)))
+  name) ; js2-name-node
 
 (defstruct (js2-from-clause-node
             (:include js2-node)
@@ -2770,7 +2779,7 @@ import ImportClause FromClause;"
 (put 'cl-struct-js2-from-clause-node 'js2-printer 'js2-print-from-clause)
 
 (defun js2-visit-from-clause ())
-(defun js2-print-from-clause (n i)
+(defun js2-print-from-clause (n)
   (insert "from ")
   (insert (js2-from-clause-module-id n)))
 
@@ -7978,10 +7987,15 @@ imports or a namespace import that follows it.
     (when (js2-must-match js2-NAME "msg.syntax")
         (if (equal "as" (js2-current-token-string))
             (when (js2-must-match-prop-name "msg.syntax")
-                (make-js2-name-node
-                 :pos beg
-                 :len (- (js2-current-token-end) beg)
-                 :name (js2-current-token-string)))
+              (let ((node (make-js2-namespace-import-node
+                           :pos beg
+                           :len (- (js2-current-token-end) beg)
+                           :name (make-js2-name-node
+                                  :pos (js2-current-token-beg)
+                                  :len (js2-current-token-end)
+                                  :name (js2-current-token-string)))))
+                (js2-node-add-children node (js2-namespace-import-node-name node))
+                node))
           (js2-unget-token)
           (js2-report-error "msg.syntax")))))
 
