@@ -2767,6 +2767,12 @@ import ImportClause FromClause;"
                                                                name)))
   name) ; js2-name-node
 
+(defun js2-visit-namespace-import (n v)
+  (js2-visit-ast (js2-namespace-import-node-name n) v))
+
+(put 'cl-struct-js2-namespace-import-node 'js2-visitor 'js2-visit-namespace-import)
+(put 'cl-struct-js2-namespace-import-node 'js2-printer 'js2-print-namespace-import)
+
 (defstruct (js2-from-clause-node
             (:include js2-node)
             (:constructor nil)
@@ -2778,7 +2784,8 @@ import ImportClause FromClause;"
 (put 'cl-struct-js2-from-clause-node 'js2-visitor 'js2-visit-from-clause)
 (put 'cl-struct-js2-from-clause-node 'js2-printer 'js2-print-from-clause)
 
-(defun js2-visit-from-clause ())
+(defun js2-visit-from-clause (n v)
+  )
 (defun js2-print-from-clause (n)
   (insert "from '")
   (insert (js2-from-clause-node-module-id n))
