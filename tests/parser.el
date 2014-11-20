@@ -413,29 +413,40 @@ the test."
           (should (equal "bar" (js2-name-node-name (js2-extern-binding-node-name first))))
           (should (equal "baz" (js2-name-node-name (js2-extern-binding-node-name second)))))))))
 
-(js2-deftest complex-import "import * as lib, {one as uno, two as dos} from 'src/lib';"
+(js2-deftest parse-import-default-and-namespace "import stuff, * as lib from 'src/lib'"
   (js2-init-scanner)
-  (should (eq js2-IMPORT (js2-next-token)))
-  (let ((node (js2-parse-import)))
-    (should (= 56 (js2-import-node-len node)))
-    (should (equal "src/lib" (js2-import-node-module-id node)))
-    (let ((default (js2-import-node-default node)))
-      (should (not (equal nil default)))
-      (should (equal "lib" (js2-import-binding-node-name default))))
-    (let ((bindings (js2-import-node-bindings node)))
-      (should (= 2 (length bindings)))
-      (let ((first (nth 0 bindings))
-            (second (nth 1 bindings)))
-        (should (equal "uno" (js2-import-binding-node-name first)))
-        (should (equal "dos" (js2-import-binding-node-name second)))))))
-(js2-deftest import-that-renames-default "import * as lib from 'src/mylib'"
+  (should (js2-match-token js2-IMPORT))
+  (let ((import-node (js2-parse-import)))
+    (should (not (equal nil import-node)))
+    (should (equal "src/lib" (js2-import-node-module-id import-node)))
+    (let ((import (js2-import-node-import import-node)))
+      (should (not (equal nil import)))
+      (should (equal nil (js2-import-clause-node-named-imports import)))
+      (let ((default (js2-import-clause-node-default-binding import))
+            (ns-import (js2-import-clause-node-namespace-import import)))
+        (should (not (equal nil default)))
+        (should (equal "stuff" (js2-name-node-name (js2-extern-binding-node-name default))))
+        (should (not (equal nil ns-import)))
+        (should (js2-namespace-import-node-p ns-import))
+        (should (equal "lib" (js2-name-node-name (js2-namespace-import-node-name ns-import))))))))
+
+
+(js2-deftest parse-import-default-and-named-imports
+  "import robert as bob, {cookies, pi as PIE} from 'src/lib'"
   (js2-init-scanner)
-  (should (eq js2-IMPORT (js2-next-token)))
-  (let ((import (js2-parse-import)))
-    (should (not (equal nil import)))
-    (pp import)
-    (should (equal "lib" (js2-import-binding-node-name (js2-import-node-default import))))
-    (should (equal "src/mylib" (js2-import-node-module-id import)))))
+  (should (js2-match-token js2-IMPORT))
+  (let ((import-node (js2-parse-import)))
+    (should (not (equal nil import-node)))
+    (should (equal "src/lib" (js2-import-node-module-id import-node)))
+    (let ((import (js2-import-node-import import-node)))
+      (should (not (equal nil import)))
+      (should (not (equal nil (js2-import-clause-node-named-imports import))))
+      (let ((default (js2-import-clause-node-default-binding import))
+            (named-imports (js2-import-clause-node-named-imports import)))
+        (should (not (equal nil default)))
+        (should (equal "bob" (js2-name-node-name (js2-extern-binding-node-name default))))
+        (should (not (equal nil named-imports)))
+        (should (= 2 (length named-imports)))))))
 
 
 (js2-deftest-parse import-only-for-side-effects "import 'src/lib';")
@@ -444,6 +455,7 @@ the test."
 (js2-deftest-parse import-default-and-named "import theDefault, {one, two} from 'src/lib';")
 (js2-deftest-parse import-renaming-default "import * as lib from 'src/mylib';")
 (js2-deftest-parse import-renaming-named "import {one as uno, two as dos} from 'src/lib';")
+(js2-deftest-parse import-default-and-namespace "import robert as bob, * as lib from 'src/lib';")
 
 ;; TODO
 ;; (js2-deftest-parse import-module-metadata "import {url} from this module;")

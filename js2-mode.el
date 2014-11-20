@@ -2681,11 +2681,11 @@ import ImportClause FromClause;"
 (defun js2-print-import (n i)
   "Prints a representation of the import node"
   (let ((pad (js2-make-pad i))
-        (import-clause (js2-import-node-default n))
-        (from-clause (js2-import-node-bindings n))
+        (import-clause (js2-import-node-import n))
+        (from-clause (js2-import-node-from n))
         (module-id (js2-import-node-module-id n)))
     (insert pad "import ")
-    (if (import-clause)
+    (if import-clause
         (progn
           (js2-print-import-clause import-clause)
           (insert " ")
@@ -2735,7 +2735,7 @@ import ImportClause FromClause;"
      ((and default named-imports)
       (js2-print-ast default)
       (insert ", ")
-      (js2-print-namespace-import named-imports))
+      (js2-print-named-imports named-imports))
      (default
       (js2-print-ast default))
      (ns-import
@@ -2752,7 +2752,7 @@ import ImportClause FromClause;"
   (let ((len (length imports))
         (n 0))
     (while (< n len)
-      (js2-print-import-binding (nth n imports))
+      (js2-print-extern-binding (nth n imports) 0)
       (unless (= n (- len 1))
         (insert ", "))
       (setq n (+ n 1))))
@@ -2780,8 +2780,9 @@ import ImportClause FromClause;"
 
 (defun js2-visit-from-clause ())
 (defun js2-print-from-clause (n)
-  (insert "from ")
-  (insert (js2-from-clause-module-id n)))
+  (insert "from '")
+  (insert (js2-from-clause-node-module-id n))
+  (insert "'"))
 
 (defstruct (js2-try-node
             (:include js2-node)
@@ -3572,22 +3573,24 @@ import {foo as bar}, it would have an extern-name of 'foo' and a name of 'bar'
   name ; js2-name-node containing the variable name in this scope
   extern-name)   ; the name of the export in the source module
 
-(put 'cl-struct-js2-extern-binding-node 'js2-printer 'js2-print-import-binding)
-(put 'cl-struct-js2-extern-binding-node 'js2-visitor 'js2-visit-import-binding)
+(put 'cl-struct-js2-extern-binding-node 'js2-printer 'js2-print-extern-binding)
+(put 'cl-struct-js2-extern-binding-node 'js2-visitor 'js2-visit-extern-binding)
 
-(defun js2-visit-import-binding (n v)
-  "Visit an import binding node. It is a no-op."
-  )
-
-(defun js2-print-import-binding (n)
-  "Print a representation of a single import binding."
-  (let ((name (js2-extern-binding-node-name n))
+(defun js2-visit-extern-binding (n v)
+  "Visit an extern binding node."
+  (let ((local-name (js2-extern-binding-node-name n))
         (extern-name (js2-extern-binding-node-extern-name n)))
-    (if (equal name extern-name)
-        (insert name)
-      (insert extern-name)
+    (when (not (equal local-name extern-name))
+      (js2-visit-ast local-name v))))
+
+(defun js2-print-extern-binding (n i)
+  "Print a representation of a single extern binding."
+  (let ((local-name (js2-extern-binding-node-name n))
+        (extern-name (js2-extern-binding-node-extern-name n)))
+    (insert extern-name)
+    (when (not (equal (js2-name-node-name local-name) extern-name))
       (insert " as ")
-      (insert name))))
+      (insert (js2-name-node-name local-name)))))
 
 (defstruct (js2-number-node
             (:include js2-node)
