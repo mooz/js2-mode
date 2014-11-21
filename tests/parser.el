@@ -557,6 +557,19 @@ the test."
     (should (not (null export-node)))
     (should (not (null (js2-export-node-default export-node))))))
 
+
+(js2-deftest-parse parse-export-rexport "export * from 'other/lib';")
+(js2-deftest-parse parse-export-export-named-list "export {foo, bar as bang};")
+(js2-deftest-parse parse-re-export-named-list "export {foo, bar as bang} from 'other/lib';")
+(js2-deftest-parse parse-export-variable-statement "export var foo = 'bar', baz = 'bang';")
+(js2-deftest-pares parse-export-const-declaration "export const PI = Math.PI;")
+(js2-deftest-parse parse-export-let-declaration "export let foo = [1];")
+(js2-deftest-parse parse-export-function-declaration "export default function doStuff() {};")
+(js2-deftest-parse parse-export-generator-declaration "export default function* one() {};")
+(js2-deftest-parse parse-export-assignment-expression "export default a = b;")
+
+
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"

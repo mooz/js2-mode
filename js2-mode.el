@@ -2472,16 +2472,48 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
 (put 'cl-struct-js2-export-node 'js2-printer 'js2-print-export-node)
 
 (defun js2-visit-export-node (n v)
-  (js2-visit-ast (js2-export-node-expr n) v))
+  (let ((exports-list (js2-export-node-exports-list n))
+        (from (js2-export-node-from-clause n))
+        (var-stmt (js2-export-node-var-stmt n))
+        (declaration (js2-export-node-declaration n))
+        (default (js2-export-node-default n)))
+    (when exports-list
+      (dolist (export exports-list)
+        (js2-visit-ast export v)))
+    (when from
+      (js2-visit-ast from v))
+    (when var-stmt
+      (js2-visit-ast var-stmt v))
+    (when declaration
+      (js2-visit-ast declaration v))
+    (when default
+      (js2-visit-ast default v))))
 
 (defun js2-print-export-node (n i)
   (let ((pad (js2-make-pad i))
-        (name (js2-export-node-name n))
-        (expr (js2-export-node-expr n)))
+        (exports-list (js2-export-node-exports-list n))
+        (from (js2-export-node-from-clause n))
+        (var-stmt (js2-export-node-var-stmt n))
+        (declaration (js2-export-node-declaration n))
+        (default (js2-export-node-default n)))
     (insert pad "export ")
-    (when (js2-export-node-default-p n)
-      (insert "default "))
-    (js2-print-ast expr i)
+    (cond
+     (default
+       (insert "default ")
+       (js2-print-ast default i))
+     (var-stmt
+      (js2-print-ast var-stmt i))
+     (declaration
+       (js2-print-ast declaration i))
+     ((and exports-list from)
+      (js2-print-named-imports exports-list)
+      (insert " ")
+      (js2-print-from-clause from))
+     (from
+      (insert "* ")
+      (js2-print-from-clause from))
+     (exports-list
+      (js2-print-named-imports exports-list)))
     (insert ";\n")))
 
 (defstruct (js2-while-node
@@ -8250,7 +8282,8 @@ consumes no tokens"
           ((js2-match-token js2-DEFAULT)
             (setq default (js2-parse-expr))
             (when default
-              (push default children))))
+              (push default children)))
+          (t (j)))
     (let ((node (make-js2-export-node
                   :pos beg
                   :len (- (js2-current-token-end) beg)
