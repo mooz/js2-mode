@@ -3575,8 +3575,7 @@ optional `js2-expr-node'"
                                                      len
                                                      elems)))
   "AST node for an object literal expression.
-`elems' is a list of either `js2-object-prop-node' or `js2-name-node'.
-The latter represents abbreviation in destructuring expressions."
+`elems' is a list of `js2-object-prop-node'."
   elems)
 
 (put 'cl-struct-js2-object-node 'js2-visitor 'js2-visit-object-node)
@@ -3600,7 +3599,9 @@ The latter represents abbreviation in destructuring expressions."
                                                           right op-pos)))
   "AST node for an object literal prop:value entry.
 The `left' field is the property:  a name node, string node or number node.
-The `right' field is a `js2-node' representing the initializer value.")
+The `right' field is a `js2-node' representing the initializer value.
+If the property is abbreviated, the node's `SHORTHAND' property is non-nil
+and both fields have the same value.")
 
 (put 'cl-struct-js2-object-prop-node 'js2-visitor 'js2-visit-infix-node)
 (put 'cl-struct-js2-object-prop-node 'js2-printer 'js2-print-object-prop-node)
@@ -7465,10 +7466,8 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
    ((js2-object-node-p node)
     (dolist (elem (js2-object-node-elems node))
       (js2-define-destruct-symbols
-       (if (js2-object-prop-node-p elem)
-           (js2-object-prop-node-right elem)
-         ;; abbreviated destructuring {a, b}
-         elem)
+       ;; In abbreviated destructuring {a, b}, right == left.
+       (js2-object-prop-node-right elem)
        decl-type face ignore-not-in-block)))
    ((js2-array-node-p node)
     (dolist (elem (js2-array-node-elems node))
@@ -9763,20 +9762,6 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
            (>= js2-language-version 200))
       (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; name
       (js2-parse-getter-setter-prop ppos name ""))
-     ;; Abbreviated destructuring binding, e.g. {a, b} = c;
-     ;; XXX: To be honest, the value of `js2-is-in-destructuring' becomes t only
-     ;; when patterns are used in variable declarations, function parameters,
-     ;; catch-clause, and iterators.
-     ;; We have to set `js2-is-in-destructuring' to t when the current
-     ;; expressions are on the left side of any assignment, but it's difficult
-     ;; because it requires looking ahead of expression.
-     ((and js2-is-in-destructuring
-           (= tt js2-NAME)
-           (let ((ctk (js2-peek-token)))
-             (or (= ctk js2-COMMA)
-                 (= ctk js2-RC)
-                 (js2-valid-prop-name-token ctk))))
-      name)
      ;; regular prop
      (t
       (prog1
