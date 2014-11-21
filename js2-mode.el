@@ -8019,7 +8019,7 @@ imports or a namespace import that follows it.
              (setf (js2-import-clause-node-namespace-import clause) ns-import)
              (push ns-import children)))
           ((js2-match-token js2-LC)
-           (let ((imports (js2-parse-named-imports)))
+           (let ((imports (js2-parse-extern-bindings)))
              (setf (js2-import-clause-node-named-imports clause) imports)
              (dolist (import imports)
                (push import children)
@@ -8027,7 +8027,7 @@ imports or a namespace import that follows it.
                  (when name-node
                    (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t))))))
           ((= (js2-peek-token) js2-NAME)
-           (let ((binding (js2-match-import-binding)))
+           (let ((binding (js2-match-extern-binding)))
              (let ((node-name (js2-extern-binding-node-name binding)))
                (js2-define-symbol js2-LET (js2-name-node-name node-name) node-name t))
              (setf (js2-import-clause-node-default-binding clause) binding)
@@ -8040,7 +8040,7 @@ imports or a namespace import that follows it.
                       (setf (js2-import-clause-node-namespace-import clause) ns-import)
                       (push ns-import children)))
                    ((js2-match-token js2-LC)
-                    (let ((imports (js2-parse-named-imports)))
+                    (let ((imports (js2-parse-extern-bindings)))
                       (setf (js2-import-clause-node-named-imports clause) imports)
                       (dolist (import imports)
                         (push import children)
@@ -8085,12 +8085,12 @@ imports or a namespace import that follows it.
         (js2-unget-token)
         (js2-report-error "msg.syntax")))))
 
-(defun js2-parse-named-imports ()
+(defun js2-parse-extern-bindings ()
   "Match {}, {foo, bar} {foo as bar, baz as bang}. The current token must be
 js2-LC."
   (let ((bindings (list)))
     (while
-        (let ((binding (js2-match-import-binding)))
+        (let ((binding (js2-match-extern-binding)))
           (when binding
             (push binding bindings))
           (js2-match-token js2-COMMA)))
@@ -8100,7 +8100,7 @@ js2-LC."
 
 
 
-(defun js2-match-import-binding ()
+(defun js2-match-extern-binding ()
   "Attempt to match a binding expression found inside an import statement.
 This can take the form of either as single js2-NAME token as in 'foo' or as in a
 rebinding expression 'bar as foo'. If it matches, it will return an instance of
@@ -8267,7 +8267,7 @@ consumes no tokens"
            (when from-clause
              (push from-clause children)))
           ((js2-match-token js2-LC)
-           (setq exports-list (js2-parse-named-imports))
+           (setq exports-list (js2-parse-extern-bindings))
            (when exports-list
              (dolist (export exports-list)
                (push export children)))
