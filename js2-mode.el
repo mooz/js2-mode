@@ -2704,10 +2704,10 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                              len
                                                              local-name
                                                              extern-name)))
-  "AST node for an imported symbol binding. It contains both the external name
+  "AST node for an external symbol binding. It
 of the exported item, as well as the name to which it will be bound in this file
 context. By default these are the same, but if the name is aliased as in
-import {foo as bar}, it would have an extern-name of 'foo' and a name of 'bar'
+{foo as bar}, it would have an extern-name of 'foo' and a name of 'bar'
 "
   local-name ; js2-name-node containing the variable name in this scope
   extern-name)   ; the name of the export in the source module
@@ -2726,8 +2726,8 @@ import {foo as bar}, it would have an extern-name of 'foo' and a name of 'bar'
   "Print a representation of a single extern binding."
   (let ((local-name (js2-extern-binding-node-local-name n))
         (extern-name (js2-extern-binding-node-extern-name n)))
-    (insert extern-name)
-    (when (not (equal (js2-name-node-name local-name) extern-name))
+    (insert (js2-name-node-name extern-name))
+    (when (not (equal local-name extern-name))
       (insert " as ")
       (insert (js2-name-node-name local-name)))))
 
@@ -8109,7 +8109,8 @@ js2-extern-binding-node and consume all the tokens. If it does not match, it
 consumes no tokens"
 
   (let ((extern-name (when (js2-match-prop-name) (js2-current-token-string)))
-        (beg (js2-current-token-beg)))
+        (beg (js2-current-token-beg))
+        (extern-name-len (js2-current-token-len)))
     (if extern-name
         (let ((as (and (js2-match-token js2-NAME) (js2-current-token-string))))
           (if (and as (equal "as" (js2-current-token-string)))
@@ -8119,24 +8120,29 @@ consumes no tokens"
                                  :pos beg
                                  :len (- (js2-current-token-end) beg)
                                  :local-name (make-js2-name-node
-                                        :name (js2-current-token-string)
-                                        :pos (js2-current-token-beg)
-                                        :len (js2-current-token-len))
-                                 :extern-name extern-name)))
+                                              :name (js2-current-token-string)
+                                              :pos (js2-current-token-beg)
+                                              :len (js2-current-token-len))
+                                 :extern-name (make-js2-name-node
+                                               :name extern-name
+                                               :pos beg
+                                               :len extern-name-len))))
                       (js2-node-add-children node (js2-extern-binding-node-local-name node))
+                      (js2-node-add-children node (js2-extern-binding-node-extern-name node))
                       node)
                   (js2-unget-token)
                   nil))
             (when as (js2-unget-token))
-            (let ((node (make-js2-extern-binding-node
+            (let* ((name-node (make-js2-name-node
+                              :name (js2-current-token-string)
+                              :pos (js2-current-token-beg)
+                              :len (js2-current-token-len)))
+                  (node (make-js2-extern-binding-node
                          :pos (js2-current-token-beg)
                          :len (js2-current-token-len)
-                         :local-name (make-js2-name-node
-                                :name (js2-current-token-string)
-                                :pos (js2-current-token-beg)
-                                :len (js2-current-token-len))
-                         :extern-name extern-name)))
-              (js2-node-add-children node (js2-extern-binding-node-local-name node))
+                         :local-name name-node
+                         :extern-name name-node)))
+              (js2-node-add-children node name-node)
               node)))
       nil)))
 

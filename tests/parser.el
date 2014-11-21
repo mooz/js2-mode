@@ -322,8 +322,8 @@ the test."
     (should (= 2 (length imports)))
     (let ((first (nth 0 imports))
           (second (nth 1 imports)))
-      (should (equal "one" (js2-extern-binding-node-extern-name first)))
-      (should (equal "two" (js2-extern-binding-node-extern-name second)))
+      (should (equal "one" (js2-name-node-name (js2-extern-binding-node-extern-name first))))
+      (should (equal "two" (js2-name-node-name (js2-extern-binding-node-extern-name second))))
       (let ((first-name (js2-extern-binding-node-local-name first))
             (second-name (js2-extern-binding-node-local-name second)))
         (should (equal first (js2-node-parent first-name)))
@@ -378,7 +378,7 @@ the test."
       (let ((default (js2-import-clause-node-default-binding import)))
         (should (not (equal nil default)))
         (should (js2-extern-binding-node-p default))
-        (should (equal "theDefault" (js2-extern-binding-node-extern-name default))))))
+        (should (equal "theDefault" (js2-name-node-name (js2-extern-binding-node-extern-name default)))))))
   (should (not (null (js2-scope-get-symbol js2-current-scope "theDefault")))))
 
 (js2-deftest parse-import-namespace-binding "import * as lib from 'src/lib'"
