@@ -9788,7 +9788,8 @@ PROP is the node representing the property:  a number, name or string."
      ;; Abbreviated property, as in {foo, bar}
      ((and (>= js2-language-version 200)
            (or (= tt js2-COMMA)
-               (= tt js2-RC)))
+               (= tt js2-RC))
+           (not (js2-number-node-p prop)))
       (js2-unget-token)
       (setq result (make-js2-object-prop-node
                     :pos pos

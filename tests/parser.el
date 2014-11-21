@@ -184,6 +184,9 @@ the test."
 (js2-deftest-parse object-literal-shorthand
   "var x = {a: 1, b, c: 1, d};")
 
+(js2-deftest-parse object-literal-shorthard-with-number
+  "var a = {1};" :syntax-error ";" :errors-count 2)
+
 (js2-deftest-parse object-literal-method
   "var x = {f(y) {  return y;\n}};")
 
