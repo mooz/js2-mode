@@ -117,13 +117,13 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
 ;;;###autoload
 (defun js2-imenu-extras-setup ()
   (when js2-imenu-enabled-frameworks
-    (add-hook 'js2-post-parse-callbacks 'js2-imenu-record-declarations t t))
+    (add-hook 'js2-build-imenu-callbacks 'js2-imenu-record-declarations t t))
   (when (or js2-imenu-show-other-functions js2-imenu-show-module-pattern)
-    (add-hook 'js2-post-parse-callbacks 'js2-imenu-walk-ast t t)))
+    (add-hook 'js2-build-imenu-callbacks 'js2-imenu-walk-ast t t)))
 
 (defun js2-imenu-extras-remove ()
-  (remove-hook 'js2-post-parse-callbacks 'js2-imenu-record-declarations t)
-  (remove-hook 'js2-post-parse-callbacks 'js2-imenu-walk-ast t))
+  (remove-hook 'js2-build-imenu-callbacks 'js2-imenu-record-declarations t)
+  (remove-hook 'js2-build-imenu-callbacks 'js2-imenu-walk-ast t))
 
 (defun js2-imenu-record-declarations ()
   (let* ((styles (loop for style in js2-imenu-extension-styles
@@ -231,10 +231,35 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
        (cond
         ((and js2-imenu-show-other-functions
               (js2-object-prop-node-p node))
-         (js2-imenu-record-orphan-function node))
-        ((and js2-imenu-show-module-pattern
-              (js2-assign-node-p node))
-         (js2-imenu-record-module-pattern node)))
+         (js2-imenu-record-orphan-prop-node-function node))
+        ((js2-assign-node-p node)
+         (cond
+          ((and js2-imenu-show-other-functions
+                (js2-function-node-p
+                 (js2-assign-node-right node)))
+           (js2-imenu-record-orphan-assign-node-function
+            (js2-assign-node-left node)
+            (js2-assign-node-right node)))
+          ((and js2-imenu-show-module-pattern
+                (js2-call-node-p
+                 (js2-assign-node-right node)))
+           (js2-imenu-record-module-pattern
+            (js2-assign-node-left node)
+            (js2-assign-node-right node)))))
+        ((js2-var-init-node-p node)
+         (cond
+          ((and js2-imenu-show-other-functions
+                (js2-function-node-p
+                 (js2-var-init-node-initializer node)))
+           (js2-imenu-record-orphan-assign-node-function
+            (js2-var-init-node-target node)
+            (js2-var-init-node-initializer node)))
+          ((and js2-imenu-show-module-pattern
+                (js2-call-node-p
+                 (js2-var-init-node-initializer node)))
+           (js2-imenu-record-module-pattern
+            (js2-var-init-node-target node)
+            (js2-var-init-node-initializer node))))))
        t))))
 
 (defun js2-imenu-parent-key-names (node)
@@ -266,7 +291,7 @@ return the grandparent."
       (setq p3 (js2-node-parent p2))
       (if (and p3 (js2-object-prop-node-p p3)) p3))))
 
-(defun js2-imenu-record-orphan-function (node)
+(defun js2-imenu-record-orphan-prop-node-function (node)
   "Record orphan function when it's the value of NODE.
 NODE must be `js2-object-prop-node'."
   (when (js2-function-node-p (js2-object-prop-node-right node))
@@ -282,29 +307,36 @@ NODE must be `js2-object-prop-node'."
           (js2-record-imenu-entry fn-node chain
                                   (js2-node-abs-pos key-node)))))))
 
-(defun js2-imenu-record-module-pattern (node)
+(defun js2-imenu-record-orphan-assign-node-function (target-node fn-node)
+  "Record orphan function FN-NODE assigned to node TARGET."
+  (when (or (not js2-imenu-function-map)
+            (eq 'skip
+                (gethash fn-node js2-imenu-function-map 'skip)))
+    (let ((chain (js2-compute-nested-prop-get target-node)))
+      (when chain
+        (push js2-imenu-other-functions-ns chain)
+        (js2-record-imenu-entry fn-node chain (js2-node-abs-pos fn-node))))))
+
+(defun js2-imenu-record-module-pattern (target init)
   "Recognize and record module pattern use instance.
-NODE must be `js2-assign-node'."
-  (let ((init (js2-assign-node-right node)))
-    (when (js2-call-node-p init)
-      (let ((target (js2-assign-node-left node))
-            (callt (js2-call-node-target init)))
-        ;; Just basic call form: (function() {...})();
-        ;; TODO: Handle variations without duplicating `js2-wrapper-function-p'?
-        (when (and (js2-paren-node-p callt)
-                   (js2-function-node-p (js2-paren-node-expr callt)))
-          (let* ((fn (js2-paren-node-expr callt))
-                 (blk (js2-function-node-body fn))
-                 (ret (car (last (js2-block-node-kids blk)))))
-            (when (and (js2-return-node-p ret)
-                       (js2-object-node-p (js2-return-node-retval ret)))
-              ;; TODO: Map function names when revealing module pattern is used.
-              (let ((retval (js2-return-node-retval ret))
-                    (target-qname (js2-compute-nested-prop-get target)))
-                (js2-record-object-literal retval target-qname
-                                           (js2-node-abs-pos retval))
-                (js2-record-imenu-entry fn target-qname
-                                        (js2-node-abs-pos target))))))))))
+INIT must be `js2-call-node'."
+  (let ((callt (js2-call-node-target init)))
+    ;; Just basic call form: (function() {...})();
+    ;; TODO: Handle variations without duplicating `js2-wrapper-function-p'?
+    (when (and (js2-paren-node-p callt)
+               (js2-function-node-p (js2-paren-node-expr callt)))
+      (let* ((fn (js2-paren-node-expr callt))
+             (blk (js2-function-node-body fn))
+             (ret (car (last (js2-block-node-kids blk)))))
+        (when (and (js2-return-node-p ret)
+                   (js2-object-node-p (js2-return-node-retval ret)))
+          ;; TODO: Map function names when revealing module pattern is used.
+          (let ((retval (js2-return-node-retval ret))
+                (target-qname (js2-compute-nested-prop-get target)))
+            (js2-record-object-literal retval target-qname
+                                       (js2-node-abs-pos retval))
+            (js2-record-imenu-entry fn target-qname
+                                    (js2-node-abs-pos target))))))))
 
 ;;;###autoload
 (define-minor-mode js2-imenu-extras-mode

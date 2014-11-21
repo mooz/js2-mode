@@ -36,28 +36,28 @@
 (put 'js2-deftest 'lisp-indent-function 'defun)
 
 (defun js2-test-string-to-ast (s)
-  (ert-with-test-buffer (:name 'origin)
-    (insert s)
-    (js2-mode)
-    (should (null js2-mode-buffer-dirty-p))
-    js2-mode-ast))
+  (insert s)
+  (js2-mode)
+  (should (null js2-mode-buffer-dirty-p))
+  js2-mode-ast)
 
 (defun* js2-test-parse-string (code-string &key syntax-error errors-count
                                                 reference)
-  (let ((ast (js2-test-string-to-ast code-string)))
-    (if syntax-error
-        (let ((errors (js2-ast-root-errors ast)))
-          (should (= (or errors-count 1) (length errors)))
-          (destructuring-bind (_ pos len) (first errors)
-            (should (string= syntax-error (substring code-string
-                                                     (1- pos) (+ pos len -1))))))
-      (should (= 0 (length (js2-ast-root-errors ast))))
-      (ert-with-test-buffer (:name 'copy)
-        (js2-print-tree ast)
-        (skip-chars-backward " \t\n")
-        (should (string= (or reference code-string)
-                         (buffer-substring-no-properties
-                          (point-min) (point))))))))
+  (ert-with-test-buffer (:name 'origin)
+    (let ((ast (js2-test-string-to-ast code-string)))
+      (if syntax-error
+          (let ((errors (js2-ast-root-errors ast)))
+            (should (= (or errors-count 1) (length errors)))
+            (destructuring-bind (_ pos len) (first errors)
+              (should (string= syntax-error (substring code-string
+                                                       (1- pos) (+ pos len -1))))))
+        (should (= 0 (length (js2-ast-root-errors ast))))
+        (ert-with-test-buffer (:name 'copy)
+          (js2-print-tree ast)
+          (skip-chars-backward " \t\n")
+          (should (string= (or reference code-string)
+                           (buffer-substring-no-properties
+                            (point-min) (point)))))))))
 
 (defmacro* js2-deftest-parse (name code-string &key bind syntax-error errors-count
                                                     reference)
@@ -179,6 +179,26 @@ the test."
 (js2-deftest-parse destruct-in-catch-clause
   "try {\n} catch ({a, b}) {\n  a + b;\n}")
 
+;;; Object literals
+
+(js2-deftest-parse object-literal-shorthand
+  "var x = {a: 1, b, c: 1, d};")
+
+(js2-deftest-parse object-literal-shorthard-with-number
+  "var a = {1};" :syntax-error ";" :errors-count 2)
+
+(js2-deftest-parse object-literal-method
+  "var x = {f(y) {  return y;\n}};")
+
+(js2-deftest-parse object-literal-getter-method
+  "var x = {get f() {  return 42;\n}};")
+
+(js2-deftest-parse object-literal-setter-method
+  "var x = {set f(y) {  x = y;\n}};")
+
+(js2-deftest-parse object-literal-computed-keys
+  "var x = {[Symbol.iterator]: function() {}};")
+
 ;;; Function parameters
 
 (js2-deftest-parse function-with-default-parameters
@@ -222,11 +242,14 @@ the test."
 (js2-deftest-parse arrow-function-with-args-and-curlies
   "(a, b = 1, ...c) => {  c;\n};")
 
+(js2-deftest-parse arrow-function-with-destructuring
+  "([{a}, b]) => {  a + b;\n};")
+
 (js2-deftest-parse parenless-arrow-function-prohibits-rest
-  "...b => {b + 1;};" :syntax-error "=>" :errors-count 2)
+  "...b => {b + 1;};" :syntax-error "=>" :errors-count 1)
 
 (js2-deftest-parse parenless-arrow-function-prohibits-destructuring
-  "[a, b] => {a + b;};" :syntax-error "=>" :errors-count 5)
+  "[a, b] => {a + b;};" :syntax-error "=>" :errors-count 4)
 
 ;;; Automatic semicolon insertion
 
@@ -567,7 +590,51 @@ the test."
 (js2-deftest-parse parse-export-generator-declaration "export default function* one() {};")
 (js2-deftest-parse parse-export-assignment-expression "export default a = b;")
 
+;;; Strings
 
+(js2-deftest-parse string-literal
+  "var x = 'y';")
+
+(js2-deftest-parse object-get-string-literal
+  "var x = {y: 5};\nvar z = x[\"y\"];")
+
+;;; Classes
+
+(js2-deftest-parse parse-harmony-class-statement
+  "class Foo {\n  get bar() {  return 42;\n}\n  set bar(x) {  y = x;\n}\n}")
+
+(js2-deftest-parse parse-harmony-class-statement-without-name-is-not-ok
+  "class {\n  get bar() {  return 42;\n}\n}"
+  :syntax-error "{")
+
+(js2-deftest-parse parse-harmony-class-expression
+  "var Foo1 = class Foo {\n  bar() {  return 42;\n}\n};")
+
+(js2-deftest-parse parse-harmony-anonymous-class-expression
+  "var Foo = class {\n  set bar(x) {  bar = x;\n}\n};")
+
+(js2-deftest-parse parse-harmony-class-with-extends
+  "class Foo extends Bar {\n}")
+
+(js2-deftest-parse parse-harmony-anonymous-class-with-extends
+  "foo.Foo = class extends Bar {\n  set bar(x) {  bar = x;\n}\n};")
+
+(js2-deftest-parse parse-harmony-class-with-complex-extends
+  "class Foo extends foo[BAR][2].Baz {\n}")
+
+(js2-deftest-parse parse-harmony-class-missing-extended-class-is-not-ok
+  "class Foo extends {\n}"
+  :syntax-error "extends")
+
+(js2-deftest-parse parse-harmony-class-static-method
+  "class Foo extends Bar {\n  static bar() {  return 42;\n}\n}")
+
+(js2-deftest-parse parse-unterminated-class-is-not-okay
+  "class Foo {\n  get bar() {  return 42;\n}"
+  :syntax-error "}")
+
+(js2-deftest-parse parse-super-keyword
+  "class Foo {\n  constructor() {  super(42);\n}\n  foo() {  super.foo();\n}\n}")
 
 ;;; Scopes
 
