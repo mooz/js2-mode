@@ -7935,12 +7935,13 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
           (t
            (let* ((import-clause (js2-parse-import-clause))
                   (from-clause (and import-clause (js2-parse-from-clause)))
+                  (module-id (when from-clause (js2-from-clause-node-module-id from-clause)))
                   (node (make-js2-import-node
                          :pos beg
                          :len (- (js2-current-token-end) beg)
                          :import import-clause
                          :from from-clause
-                         :module-id (js2-from-clause-node-module-id from-clause))))
+                         :module-id module-id)))
              (when import-clause
                (js2-node-add-children import-clause))
              (when from-clause
@@ -7966,25 +7967,40 @@ imports or a namespace import that follows it.
          (children (list)))
     (cond ((js2-match-token js2-MUL)
            (let ((ns-import (js2-parse-namespace-import)))
+             (when ns-import
+               (let ((name-node (js2-namespace-import-node-name ns-import)))
+                 (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t)))
              (setf (js2-import-clause-node-namespace-import clause) ns-import)
              (push ns-import children)))
           ((js2-match-token js2-LC)
            (let ((imports (js2-parse-named-imports)))
              (setf (js2-import-clause-node-named-imports clause) imports)
-             (setq children (append imports children))))
+             (dolist (import imports)
+               (push import children)
+               (let ((name-node (js2-extern-binding-node-name import)))
+                 (when name-node
+                   (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t))))))
           ((= (js2-peek-token) js2-NAME)
            (let ((binding (js2-match-import-binding)))
+             (let ((node-name (js2-extern-binding-node-name binding)))
+               (js2-define-symbol js2-LET (js2-name-node-name node-name) node-name t))
              (setf (js2-import-clause-node-default-binding clause) binding)
              (push binding children))
            (when (js2-match-token js2-COMMA)
              (cond ((js2-match-token js2-MUL)
                     (let ((ns-import (js2-parse-namespace-import)))
+                      (let ((name-node (js2-namespace-import-node-name ns-import)))
+                        (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t))
                       (setf (js2-import-clause-node-namespace-import clause) ns-import)
                       (push ns-import children)))
                    ((js2-match-token js2-LC)
                     (let ((imports (js2-parse-named-imports)))
                       (setf (js2-import-clause-node-named-imports clause) imports)
-                      (setq children (append imports children))))
+                      (dolist (import imports)
+                        (push import children)
+                        (let ((name-node (js2-extern-binding-node-name import)))
+                          (when name-node
+                            (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t))))))
                    (t (js2-report-error "msg.syntax")))))
           (t (js2-report-error "msg.syntax")))
     (setf (js2-node-len clause) (- (js2-current-token-end) beg))
