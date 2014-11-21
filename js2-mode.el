@@ -2696,6 +2696,42 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
       (js2-print-body else-part (1+ i))
       (insert pad "}\n")))))
 
+(defstruct (js2-extern-binding-node
+            (:include js2-node)
+            (:constructor nil)
+            (:constructor make-js2-extern-binding-node (&key (type -1)
+                                                             pos
+                                                             len
+                                                             local-name
+                                                             extern-name)))
+  "AST node for an imported symbol binding. It contains both the external name
+of the exported item, as well as the name to which it will be bound in this file
+context. By default these are the same, but if the name is aliased as in
+import {foo as bar}, it would have an extern-name of 'foo' and a name of 'bar'
+"
+  local-name ; js2-name-node containing the variable name in this scope
+  extern-name)   ; the name of the export in the source module
+
+(put 'cl-struct-js2-extern-binding-node 'js2-printer 'js2-print-extern-binding)
+(put 'cl-struct-js2-extern-binding-node 'js2-visitor 'js2-visit-extern-binding)
+
+(defun js2-visit-extern-binding (n v)
+  "Visit an extern binding node."
+  (let ((local-name (js2-extern-binding-node-local-name n))
+        (extern-name (js2-extern-binding-node-extern-name n)))
+    (when (not (equal local-name extern-name))
+      (js2-visit-ast local-name v))))
+
+(defun js2-print-extern-binding (n i)
+  "Print a representation of a single extern binding."
+  (let ((local-name (js2-extern-binding-node-local-name n))
+        (extern-name (js2-extern-binding-node-extern-name n)))
+    (insert extern-name)
+    (when (not (equal (js2-name-node-name local-name) extern-name))
+      (insert " as ")
+      (insert (js2-name-node-name local-name)))))
+
+
 (defstruct (js2-import-node
             (:include js2-node)
             (:constructor nil)
@@ -3609,41 +3645,6 @@ Returns 0 if NODE is nil or its identifier field is nil."
   (if node
       (length (js2-name-node-name node))
     0))
-
-(defstruct (js2-extern-binding-node
-            (:include js2-node)
-            (:constructor nil)
-            (:constructor make-js2-extern-binding-node (&key (type -1)
-                                                             pos
-                                                             len
-                                                             name
-                                                             extern-name)))
-  "AST node for an imported symbol binding. It contains both the external name
-of the exported item, as well as the name to which it will be bound in this file
-context. By default these are the same, but if the name is aliased as in
-import {foo as bar}, it would have an extern-name of 'foo' and a name of 'bar'
-"
-  name ; js2-name-node containing the variable name in this scope
-  extern-name)   ; the name of the export in the source module
-
-(put 'cl-struct-js2-extern-binding-node 'js2-printer 'js2-print-extern-binding)
-(put 'cl-struct-js2-extern-binding-node 'js2-visitor 'js2-visit-extern-binding)
-
-(defun js2-visit-extern-binding (n v)
-  "Visit an extern binding node."
-  (let ((local-name (js2-extern-binding-node-name n))
-        (extern-name (js2-extern-binding-node-extern-name n)))
-    (when (not (equal local-name extern-name))
-      (js2-visit-ast local-name v))))
-
-(defun js2-print-extern-binding (n i)
-  "Print a representation of a single extern binding."
-  (let ((local-name (js2-extern-binding-node-name n))
-        (extern-name (js2-extern-binding-node-extern-name n)))
-    (insert extern-name)
-    (when (not (equal (js2-name-node-name local-name) extern-name))
-      (insert " as ")
-      (insert (js2-name-node-name local-name)))))
 
 (defstruct (js2-number-node
             (:include js2-node)
@@ -8023,12 +8024,12 @@ imports or a namespace import that follows it.
              (setf (js2-import-clause-node-named-imports clause) imports)
              (dolist (import imports)
                (push import children)
-               (let ((name-node (js2-extern-binding-node-name import)))
+               (let ((name-node (js2-extern-binding-node-local-name import)))
                  (when name-node
                    (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t))))))
           ((= (js2-peek-token) js2-NAME)
            (let ((binding (js2-match-extern-binding)))
-             (let ((node-name (js2-extern-binding-node-name binding)))
+             (let ((node-name (js2-extern-binding-node-local-name binding)))
                (js2-define-symbol js2-LET (js2-name-node-name node-name) node-name t))
              (setf (js2-import-clause-node-default-binding clause) binding)
              (push binding children))
@@ -8044,7 +8045,7 @@ imports or a namespace import that follows it.
                       (setf (js2-import-clause-node-named-imports clause) imports)
                       (dolist (import imports)
                         (push import children)
-                        (let ((name-node (js2-extern-binding-node-name import)))
+                        (let ((name-node (js2-extern-binding-node-local-name import)))
                           (when name-node
                             (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t))))))
                    (t (js2-report-error "msg.syntax")))))
@@ -8117,12 +8118,12 @@ consumes no tokens"
                     (let ((node (make-js2-extern-binding-node
                                  :pos beg
                                  :len (- (js2-current-token-end) beg)
-                                 :name (make-js2-name-node
+                                 :local-name (make-js2-name-node
                                         :name (js2-current-token-string)
                                         :pos (js2-current-token-beg)
                                         :len (js2-current-token-len))
                                  :extern-name extern-name)))
-                      (js2-node-add-children node (js2-extern-binding-node-name node))
+                      (js2-node-add-children node (js2-extern-binding-node-local-name node))
                       node)
                   (js2-unget-token)
                   nil))
@@ -8130,12 +8131,12 @@ consumes no tokens"
             (let ((node (make-js2-extern-binding-node
                          :pos (js2-current-token-beg)
                          :len (js2-current-token-len)
-                         :name (make-js2-name-node
+                         :local-name (make-js2-name-node
                                 :name (js2-current-token-string)
                                 :pos (js2-current-token-beg)
                                 :len (js2-current-token-len))
                          :extern-name extern-name)))
-              (js2-node-add-children node (js2-extern-binding-node-name node))
+              (js2-node-add-children node (js2-extern-binding-node-local-name node))
               node)))
       nil)))
 
