@@ -2463,12 +2463,15 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                      declaration
                                                      default
                                                      expr)))
-  exports-list
-  from-clause
-  var-stmt
-  declaration
-  default
-  expr)
+  "AST node for an export statement. There are many things that can be exported,
+so many of its properties will be nil.
+"
+  exports-list ; lisp list of js2-extern-binding-node to export
+  from-clause ; js2-from-clause-node for re-exporting symbols from another module
+  var-stmt ; js2-var-decl-node when exporting a var statement
+  declaration ; js2-var-decl-node when export a let or const statement.
+  default ; js2-node containing the default export expression.
+  expr) ; Failing all other cases, any expression to be exported.
 
 (put 'cl-struct-js2-export-node 'js2-visitor 'js2-visit-export-node)
 (put 'cl-struct-js2-export-node 'js2-printer 'js2-print-export-node)
@@ -2704,10 +2707,11 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                              len
                                                              local-name
                                                              extern-name)))
-  "AST node for an external symbol binding. It
-of the exported item, as well as the name to which it will be bound in this file
-context. By default these are the same, but if the name is aliased as in
-{foo as bar}, it would have an extern-name of 'foo' and a name of 'bar'
+  "AST node for an external symbol binding. It contains a local-name node which
+is the name of the value in the current scope, and extern-name which is the name
+of the value in the imported or exported scope. By default these are the same,
+but if the name is aliased as in {foo as bar}, it would have an extern-name node
+containing 'foo' and a local-name node containing 'bar'.
 "
   local-name ; js2-name-node containing the variable name in this scope
   extern-name)   ; the name of the export in the source module
@@ -2716,14 +2720,18 @@ context. By default these are the same, but if the name is aliased as in
 (put 'cl-struct-js2-extern-binding-node 'js2-visitor 'js2-visit-extern-binding)
 
 (defun js2-visit-extern-binding (n v)
-  "Visit an extern binding node."
+  "Visit an extern binding node. First visit the local-name, and, if
+different, visit the extern-name."
   (let ((local-name (js2-extern-binding-node-local-name n))
         (extern-name (js2-extern-binding-node-extern-name n)))
+    (when local-name
+      (js2-visit-ast local-name v))
     (when (not (equal local-name extern-name))
-      (js2-visit-ast local-name v))))
+      (js2-visit-ast extern-name v))))
 
 (defun js2-print-extern-binding (n i)
-  "Print a representation of a single extern binding."
+  "Print a representation of a single extern binding. E.g. 'foo' or
+'foo as bar'."
   (let ((local-name (js2-extern-binding-node-local-name n))
         (extern-name (js2-extern-binding-node-extern-name n)))
     (insert (js2-name-node-name extern-name))
@@ -2786,9 +2794,12 @@ import ImportClause FromClause;"
                                                             namespace-import
                                                             named-imports
                                                             default-binding)))
-  namespace-import
-  named-imports
-  default-binding)
+  "AST node corresponding to the import clause of an import statement. This is
+the portion of the import that bindings names from the external context to the
+local context."
+  namespace-import ; js2-namespace-import-node. E.g. '* as lib'
+  named-imports    ; lisp list of js2-extern-binding-node for all named imports.
+  default-binding) ; js2-extern-binding-node for the default import binding
 
 (put 'cl-struct-js2-import-clause-node 'js2-visitor 'js2-visit-import-clause)
 (put 'cl-struct-js2-import-clause-node 'js2-printer 'js2-print-import-clause)
@@ -2847,7 +2858,12 @@ import ImportClause FromClause;"
                                                                pos
                                                                len
                                                                name)))
-  name) ; js2-name-node
+  "AST node for a complete namespace import. E.g. the '* as lib' expression in:
+
+import * as lib from 'src/lib'
+
+It contains a single name node referring to the bound name."
+  name) ; js2-name-node of the bound name.
 
 (defun js2-visit-namespace-import (n v)
   (js2-visit-ast (js2-namespace-import-node-name n) v))
@@ -2862,12 +2878,13 @@ import ImportClause FromClause;"
                                                          pos
                                                          len
                                                          module-id)))
-  module-id)
-(put 'cl-struct-js2-from-clause-node 'js2-visitor 'js2-visit-from-clause)
+  "AST node for the from clause in an import or export statement. E.g.
+from 'my/module'."
+  module-id) ; string containing the module specifier.
+
+(put 'cl-struct-js2-from-clause-node 'js2-visitor 'js2-visit-none)
 (put 'cl-struct-js2-from-clause-node 'js2-printer 'js2-print-from-clause)
 
-(defun js2-visit-from-clause (n v)
-  )
 (defun js2-print-from-clause (n)
   (insert "from '")
   (insert (js2-from-clause-node-module-id n))
@@ -8074,7 +8091,7 @@ imports or a namespace import that follows it.
 
 
 (defun js2-parse-from-clause ()
-  "from 'src/lib'"
+  "Parse the from clause in an import or export statement. E.g. from 'src/lib'"
   (when (js2-must-match-name "msg.syntax")
     (let ((beg (js2-current-token-beg)))
       (if (equal "from" (js2-current-token-string))
@@ -8088,7 +8105,7 @@ imports or a namespace import that follows it.
 
 (defun js2-parse-extern-bindings ()
   "Match {}, {foo, bar} {foo as bar, baz as bang}. The current token must be
-js2-LC."
+js2-LC. Return a lisp list of js2-extern-binding-node"
   (let ((bindings (list)))
     (while
         (let ((binding (js2-match-extern-binding)))
@@ -8102,7 +8119,7 @@ js2-LC."
 
 
 (defun js2-match-extern-binding ()
-  "Attempt to match a binding expression found inside an import statement.
+  "Attempt to match a binding expression found inside an import/export statement.
 This can take the form of either as single js2-NAME token as in 'foo' or as in a
 rebinding expression 'bar as foo'. If it matches, it will return an instance of
 js2-extern-binding-node and consume all the tokens. If it does not match, it
@@ -8145,20 +8162,6 @@ consumes no tokens"
               (js2-node-add-children node name-node)
               node)))
       nil)))
-
-
-(defun js2-parse-import-module-id (pn)
-  "Parse the module specifier. E.g.
-     from 'my/module'."
-  (let ((beg (js2-import-node-len pn)))
-    (when (js2-must-match js2-NAME "msg.syntax")
-      (if (equal "from" (js2-current-token-string))
-          (when (js2-must-match js2-STRING "msg.syntax")
-            (setf (js2-import-node-module-id pn) (js2-current-token-string))
-            (setf (js2-import-node-len pn) (- (js2-current-token-end) beg))
-            pn)
-        (js2-unget-token)
-        (js2-report-error "msg.syntax")))))
 
 (defun js2-parse-switch ()
   "Parser for switch-statement.  Last matched token must be js2-SWITCH."
@@ -8264,7 +8267,11 @@ consumes no tokens"
     pn))
 
 (defun js2-parse-export ()
-  "Parser for export statement. Last matched token must be js2-EXPORT"
+  "Parser for export statement. Last matched token must be js2-EXPORT.
+Currently, the 'default' and 'expr' expressions should only be either hoistable
+expressions (function or generator) or assignment expressions, but there is no
+checking to enforce that and so it will parse without error a small subset of
+invalid export statements."
   (let ((beg (js2-current-token-beg))
         (children (list))
         exports-list from-clause var-stmt declaration
