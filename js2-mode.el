@@ -9766,6 +9766,11 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
      (t
       (prog1
           (setq expr (js2-parse-plain-property (or string-prop name)))
+        (when (and (not string-prop)
+                   (not js2-is-in-destructuring)
+                   js2-highlight-external-variables
+                   (js2-node-get-prop expr 'SHORTHAND))
+          (js2-record-name-node name))
         (js2-set-face ppos pend
                       (if (js2-function-node-p
                            (js2-object-prop-node-right expr))
