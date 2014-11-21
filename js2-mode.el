@@ -2461,12 +2461,14 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                      from-clause
                                                      var-stmt
                                                      declaration
-                                                     default)))
+                                                     default
+                                                     expr)))
   exports-list
   from-clause
   var-stmt
   declaration
-  default)
+  default
+  expr)
 
 (put 'cl-struct-js2-export-node 'js2-visitor 'js2-visit-export-node)
 (put 'cl-struct-js2-export-node 'js2-printer 'js2-print-export-node)
@@ -2476,7 +2478,8 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
         (from (js2-export-node-from-clause n))
         (var-stmt (js2-export-node-var-stmt n))
         (declaration (js2-export-node-declaration n))
-        (default (js2-export-node-default n)))
+        (default (js2-export-node-default n))
+        (expr (js2-export-node-expr n)))
     (when exports-list
       (dolist (export exports-list)
         (js2-visit-ast export v)))
@@ -2487,7 +2490,9 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
     (when declaration
       (js2-visit-ast declaration v))
     (when default
-      (js2-visit-ast default v))))
+      (js2-visit-ast default v))
+    (when expr
+      (js2-visit-ast expr v))))
 
 (defun js2-print-export-node (n i)
   (let ((pad (js2-make-pad i))
@@ -2495,7 +2500,8 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
         (from (js2-export-node-from-clause n))
         (var-stmt (js2-export-node-var-stmt n))
         (declaration (js2-export-node-declaration n))
-        (default (js2-export-node-default n)))
+        (default (js2-export-node-default n))
+        (expr (js2-export-node-expr n)))
     (insert pad "export ")
     (cond
      (default
@@ -2513,7 +2519,9 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
       (insert "* ")
       (js2-print-from-clause from))
      (exports-list
-      (js2-print-named-imports exports-list)))
+      (js2-print-named-imports exports-list))
+     (expr
+      (js2-print-ast expr i)))
     (insert ";\n")))
 
 (defstruct (js2-while-node
@@ -8253,7 +8261,7 @@ consumes no tokens"
   (let ((beg (js2-current-token-beg))
         (children (list))
         exports-list from-clause var-stmt declaration
-        default)
+        default expr)
     (cond ((js2-match-token js2-MUL)
            (setq from-clause (js2-parse-from-clause))
            (when from-clause
@@ -8283,7 +8291,9 @@ consumes no tokens"
             (setq default (js2-parse-expr))
             (when default
               (push default children)))
-          (t (j)))
+          (t
+           (setq expr (js2-parse-expr))
+           (push expr children)))
     (let ((node (make-js2-export-node
                   :pos beg
                   :len (- (js2-current-token-end) beg)
@@ -8291,7 +8301,8 @@ consumes no tokens"
                   :from-clause from-clause
                   :var-stmt var-stmt
                   :declaration declaration
-                  :default default)))
+                  :default default
+                  :expr expr)))
       (apply #'js2-node-add-children node children)
       node)))
 
