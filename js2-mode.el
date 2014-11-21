@@ -2457,11 +2457,11 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
             (:constructor make-js2-export-node (&key (type js2-EXPORT)
                                                      (pos) (js2-current-token-beg)
                                                      len
-                                                     default-p
-                                                     expr)))
-  name
-  default-p
-  expr)
+                                                     exports-list
+                                                     from-clause)))
+  exports-list
+  from-clause)
+
 (put 'cl-struct-js2-export-node 'js2-visitor 'js2-visit-export-node)
 (put 'cl-struct-js2-export-node 'js2-printer 'js2-print-export-node)
 
@@ -8212,18 +8212,24 @@ consumes no tokens"
 
 (defun js2-parse-export ()
   "Parser for export statement. Last matched token must be js2-EXPORT"
-  (let* ((pos (js2-current-token-beg))
-         (default-p (js2-match-token js2-DEFAULT))
-         (expr (js2-parse-expr)))
-    (if expr
-        (let ((node (make-js2-export-node
-                    :pos pos
-                    :expr expr
-                    :len (- (js2-current-token-beg) pos)
-                    :default-p default-p)))
-          (js2-node-add-children node expr)
-          node)
-      (js2-report-error "msg.syntax"))))
+  (let ((beg (js2-current-token-beg))
+        exports-list from-clause var-stmt declaration
+        hoistable-declaration assignment-expr)
+    (cond ((js2-match-token js2-MUL)
+           (setq from-clause (js2-parse-from-clause)))
+          ((js2-match-token js2-LC)
+           (setq exports-list (js2-parse-named-imports))
+           (when (js2-match-token js2-NAME)
+             (if (equal "from" (js2-current-token-string))
+                 (setq from-clause (progn
+                                     (js2-unget-token)
+                                     (js2-parse-from-clause)))
+               (js2-unget-token)))))
+    (make-js2-export-node
+     :pos beg
+     :len (- (js2-current-token-end) beg)
+     :exports-list exports-list
+     :from-clause from-clause)))
 
 (defun js2-parse-for ()
   "Parser for for-statement.  Last matched token must be js2-FOR.

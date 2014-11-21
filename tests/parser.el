@@ -471,25 +471,33 @@ the test."
 (js2-deftest-parse import-renaming-named "import {one as uno, two as dos} from 'src/lib';")
 (js2-deftest-parse import-default-and-namespace "import robert as bob, * as lib from 'src/lib';")
 
-;; TODO
-;; (js2-deftest-parse import-module-metadata "import {url} from this module;")
+;; Module Exports
 
-(js2-deftest export-tokens "export default"
+(js2-deftest export-rexport "export * from 'other/lib'"
   (js2-init-scanner)
-  (should (eq js2-EXPORT (js2-next-token)))
-  (should (eq js2-DEFAULT (js2-next-token))))
+  (should (js2-match-token js2-EXPORT))
+  (let ((export-node (js2-parse-export)))
+    (should (not (null export-node)))
+    (should (not (null (js2-export-node-from-clause export-node))))))
 
-(js2-deftest export-default "export default new Object();"
+(js2-deftest export-export-named-list "export {foo, bar as bang};"
   (js2-init-scanner)
-  (should (eq js2-EXPORT (js2-next-token)))
-  (let* ((node (js2-parse-export))
-         (expr (js2-export-node-expr node)))
-    (should (js2-export-node-default-p node))
-    (should (eq node (js2-node-parent expr)))))
+  (should (js2-match-token js2-EXPORT))
+  (let ((export-node (js2-parse-export)))
+    (should (not (null export-node)))
+    (let ((exports (js2-export-node-exports-list export-node)))
+      (should (not (null exports)))
+      (should (= 2 (length exports))))))
 
-
-(js2-deftest-parse named-export-function-expression "export function hereIsANamedFunction() {};")
-(js2-deftest-parse export-variable "export foo;")
+(js2-deftest export-rexport-named-list "export {foo, bar as bang} from 'other/lib'"
+  (js2-init-scanner)
+  (should (js2-match-token js2-EXPORT))
+  (let ((export-node (js2-parse-export)))
+    (should (not (null export-node)))
+    (should (not (null (js2-export-node-from-clause export-node))))
+    (let ((exports (js2-export-node-exports-list export-node)))
+      (should (not (null exports)))
+      (should (= 2 (length exports))))))
 
 ;; TODO
 ;; (js2-deftest-parse export-const "export const PI = Math.PI;")
