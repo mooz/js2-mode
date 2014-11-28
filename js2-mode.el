@@ -664,8 +664,9 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-EXTENDS 164)
 (defvar js2-STATIC 165)
 (defvar js2-SUPER 166)
+(defvar js2-TEMPLATE_STRING 167)
 
-(defconst js2-num-tokens (1+ js2-SUPER))
+(defconst js2-num-tokens (1+ js2-TEMPLATE_STRING))
 
 (defconst js2-debug-print-trees nil)
 
@@ -5349,7 +5350,7 @@ into temp buffers."
       ""
     (let ((name (js2-tt-name token)))
       (cond
-       ((memq token (list js2-STRING js2-REGEXP js2-NAME))
+       ((memq token (list js2-STRING js2-REGEXP js2-NAME js2-TEMPLATE_STRING))
         (concat name " `" (js2-current-token-string) "'"))
        ((eq token js2-NUMBER)
         (format "NUMBER %g" (js2-token-number (js2-current-token))))
@@ -5395,6 +5396,7 @@ into temp buffers."
       (aset table i 'font-lock-keyword-face))
     (aset table js2-STRING 'font-lock-string-face)
     (aset table js2-REGEXP 'font-lock-string-face)
+    (aset table js2-TEMPLATE_STRING 'font-lock-string-face)
     (aset table js2-COMMENT 'font-lock-comment-face)
     (aset table js2-THIS 'font-lock-builtin-face)
     (aset table js2-SUPER 'font-lock-builtin-face)
@@ -5722,7 +5724,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
                   (js2-string-to-number str base)))
           (throw 'return js2-NUMBER))
         ;; is it a string?
-        (when (memq c '(?\" ?\'))
+        (when (memq c '(?\" ?\' ?`))
           ;; We attempt to accumulate a string the fast way, by
           ;; building it directly out of the reader.  But if there
           ;; are any escaped characters in the string, we revert to
@@ -5733,11 +5735,14 @@ its relevant fields and puts it into `js2-ti-tokens'."
           (catch 'break
             (while (/= c quote-char)
               (catch 'continue
-                (when (or (eq c ?\n) (eq c js2-EOF_CHAR))
+                (when (eq c js2-EOF_CHAR)
                   (js2-unget-char)
-                  (setf (js2-token-end token) js2-ts-cursor)
                   (js2-report-error "msg.unterminated.string.lit")
-                  (throw 'return js2-STRING))
+                  (throw 'break nil))
+                (when (and (eq c ?\n) (not (eq quote-char ?`)))
+                  (js2-unget-char)
+                  (js2-report-error "msg.unterminated.string.lit")
+                  (throw 'break nil))
                 (when (eq c ?\\)
                   ;; We've hit an escaped character
                   (setq c (js2-get-char))
@@ -5819,7 +5824,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
                 (js2-add-to-string c)
                 (setq c (js2-get-char)))))
           (js2-set-string-from-buffer token)
-          (throw 'return js2-STRING))
+          (throw 'return (if (eq quote-char ?`)
+                             js2-TEMPLATE_STRING
+                           js2-STRING)))
         (js2-ts-return token
          (case c
           (?\;
@@ -9346,9 +9353,9 @@ array-literals, array comprehensions and regular expressions."
       (js2-parse-name tt))
      ((= tt js2-NUMBER)
       (make-js2-number-node))
-     ((= tt js2-STRING)
+     ((or (= tt js2-STRING) (= tt js2-TEMPLATE_STRING))
       (prog1
-          (make-js2-string-node)
+          (make-js2-string-node :type tt)
         (js2-record-face 'font-lock-string-face)))
      ((or (= tt js2-DIV) (= tt js2-ASSIGN_DIV))
       ;; Got / or /= which in this context means a regexp literal

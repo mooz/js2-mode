@@ -343,6 +343,9 @@ the test."
 (js2-deftest-parse object-get-string-literal
   "var x = {y: 5};\nvar z = x[\"y\"];")
 
+(js2-deftest-parse template-string
+  "var x = `${a + b}`, y = `\\u0000`;")
+
 ;;; Classes
 
 (js2-deftest-parse parse-harmony-class-statement
