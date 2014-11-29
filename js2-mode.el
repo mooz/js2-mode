@@ -2742,14 +2742,14 @@ so many of its properties will be nil.
                                                              len
                                                              local-name
                                                              extern-name)))
-  "AST node for an external symbol binding. It contains a local-name node which
-is the name of the value in the current scope, and extern-name which is the name
-of the value in the imported or exported scope. By default these are the same,
-but if the name is aliased as in {foo as bar}, it would have an extern-name node
-containing 'foo' and a local-name node containing 'bar'.
-"
-  local-name ; js2-name-node containing the variable name in this scope
-  extern-name)   ; the name of the export in the source module
+  "AST node for an external symbol binding.
+It contains a local-name node which is the name of the value in the
+current scope, and extern-name which is the name of the value in the
+imported or exported scope. By default these are the same, but if the
+name is aliased as in {foo as bar}, it would have an extern-name node
+containing 'foo' and a local-name node containing 'bar'."
+  local-name ; js2-name-node with the variable name in this scope
+  extern-name)   ; js2-name-node with the value name in the exporting module
 
 (put 'cl-struct-js2-export-binding-node 'js2-printer 'js2-print-extern-binding)
 (put 'cl-struct-js2-export-binding-node 'js2-visitor 'js2-visit-extern-binding)
