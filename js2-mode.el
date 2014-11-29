@@ -2893,7 +2893,8 @@ local context."
                                                                pos
                                                                len
                                                                name)))
-  "AST node for a complete namespace import. E.g. the '* as lib' expression in:
+  "AST node for a complete namespace import.
+E.g. the '* as lib' expression in:
 
 import * as lib from 'src/lib'
 
@@ -8107,7 +8108,7 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
     pn))
 
 (defun js2-parse-import ()
-  "Parser import statement. The current token must be js2-IMPORT."
+  "Parse import statement. The current token must be js2-IMPORT."
   (let ((beg (js2-current-token-beg)))
     (cond ((js2-match-token js2-STRING)
            (make-js2-import-node
@@ -8131,7 +8132,8 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
              node)))))
 
 (defun js2-parse-import-clause ()
-  "Parse the bindings in an import statement. This can take many forms:
+  "Parse the bindings in an import statement.
+This can take many forms:
 
 ImportedDefaultBinding -> 'foo'
 NameSpaceImport -> '* as lib'
@@ -8147,50 +8149,57 @@ imports or a namespace import that follows it.
          (clause (make-js2-import-clause-node
                   :pos beg))
          (children (list)))
-    (cond ((js2-match-token js2-MUL)
-           (let ((ns-import (js2-parse-namespace-import)))
-             (when ns-import
-               (let ((name-node (js2-namespace-import-node-name ns-import)))
-                 (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t)))
-             (setf (js2-import-clause-node-namespace-import clause) ns-import)
-             (push ns-import children)))
-          ((js2-match-token js2-LC)
-           (let ((imports (js2-parse-extern-bindings)))
-             (setf (js2-import-clause-node-named-imports clause) imports)
-             (dolist (import imports)
-               (push import children)
-               (let ((name-node (js2-export-binding-node-local-name import)))
-                 (when name-node
-                   (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t))))))
-          ((= (js2-peek-token) js2-NAME)
-           (let ((binding (js2-match-extern-binding)))
-             (let ((node-name (js2-export-binding-node-local-name binding)))
-               (js2-define-symbol js2-LET (js2-name-node-name node-name) node-name t))
-             (setf (js2-import-clause-node-default-binding clause) binding)
-             (push binding children))
-           (when (js2-match-token js2-COMMA)
-             (cond ((js2-match-token js2-MUL)
-                    (let ((ns-import (js2-parse-namespace-import)))
-                      (let ((name-node (js2-namespace-import-node-name ns-import)))
-                        (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t))
-                      (setf (js2-import-clause-node-namespace-import clause) ns-import)
-                      (push ns-import children)))
-                   ((js2-match-token js2-LC)
-                    (let ((imports (js2-parse-extern-bindings)))
-                      (setf (js2-import-clause-node-named-imports clause) imports)
-                      (dolist (import imports)
-                        (push import children)
-                        (let ((name-node (js2-export-binding-node-local-name import)))
-                          (when name-node
-                            (js2-define-symbol js2-LET (js2-name-node-name name-node) name-node t))))))
-                   (t (js2-report-error "msg.syntax")))))
-          (t (js2-report-error "msg.syntax")))
+    (cond
+     ((js2-match-token js2-MUL)
+      (let ((ns-import (js2-parse-namespace-import)))
+        (when ns-import
+          (let ((name-node (js2-namespace-import-node-name ns-import)))
+            (js2-define-symbol
+             js2-LET (js2-name-node-name name-node) name-node t)))
+        (setf (js2-import-clause-node-namespace-import clause) ns-import)
+        (push ns-import children)))
+     ((js2-match-token js2-LC)
+      (let ((imports (js2-parse-extern-bindings)))
+        (setf (js2-import-clause-node-named-imports clause) imports)
+        (dolist (import imports)
+          (push import children)
+          (let ((name-node (js2-export-binding-node-local-name import)))
+            (when name-node
+              (js2-define-symbol
+               js2-LET (js2-name-node-name name-node) name-node t))))))
+     ((= (js2-peek-token) js2-NAME)
+      (let ((binding (js2-maybe-parse-extern-binding)))
+        (let ((node-name (js2-export-binding-node-local-name binding)))
+          (js2-define-symbol js2-LET (js2-name-node-name node-name) node-name t))
+        (setf (js2-import-clause-node-default-binding clause) binding)
+        (push binding children))
+      (when (js2-match-token js2-COMMA)
+        (cond
+         ((js2-match-token js2-MUL)
+          (let ((ns-import (js2-parse-namespace-import)))
+            (let ((name-node (js2-namespace-import-node-name ns-import)))
+              (js2-define-symbol
+               js2-LET (js2-name-node-name name-node) name-node t))
+            (setf (js2-import-clause-node-namespace-import clause) ns-import)
+            (push ns-import children)))
+         ((js2-match-token js2-LC)
+          (let ((imports (js2-parse-extern-bindings)))
+            (setf (js2-import-clause-node-named-imports clause) imports)
+            (dolist (import imports)
+              (push import children)
+              (let ((name-node (js2-export-binding-node-local-name import)))
+                (when name-node
+                  (js2-define-symbol
+                   js2-LET (js2-name-node-name name-node) name-node t))))))
+         (t (js2-report-error "msg.syntax")))))
+     (t (js2-report-error "msg.syntax")))
     (setf (js2-node-len clause) (- (js2-current-token-end) beg))
     (apply #'js2-node-add-children clause children)
     clause))
 
 (defun js2-parse-namespace-import ()
-  "Match '* as bar'. The current token must be '*'"
+  "Parse a namespace import expression such as  '* as bar'.
+The current token must be js2-MUL."
   (let ((beg (js2-current-token-beg)))
     (when (js2-must-match js2-NAME "msg.syntax")
         (if (equal "as" (js2-current-token-string))
@@ -8222,26 +8231,24 @@ imports or a namespace import that follows it.
         (js2-report-error "msg.syntax")))))
 
 (defun js2-parse-extern-bindings ()
-  "Match {}, {foo, bar} {foo as bar, baz as bang}. The current token must be
+  "Parse a list of export binding expressions such as {}, {foo, bar}, and
+{foo as bar, baz as bang}. The current token must be
 js2-LC. Return a lisp list of js2-export-binding-node"
   (let ((bindings (list)))
     (while
-        (let ((binding (js2-match-extern-binding)))
+        (let ((binding (js2-maybe-parse-extern-binding)))
           (when binding
             (push binding bindings))
           (js2-match-token js2-COMMA)))
     (when (js2-must-match js2-RC "msg.syntax")
       (reverse bindings))))
 
-
-
-
-(defun js2-match-extern-binding ()
-  "Attempt to match a binding expression found inside an import/export statement.
+(defun js2-maybe-parse-extern-binding ()
+  "Attempt to parse a binding expression found inside an import/export statement.
 This can take the form of either as single js2-NAME token as in 'foo' or as in a
 rebinding expression 'bar as foo'. If it matches, it will return an instance of
 js2-export-binding-node and consume all the tokens. If it does not match, it
-consumes no tokens"
+consumes no tokens."
 
   (let ((extern-name (when (js2-match-prop-name) (js2-current-token-string)))
         (beg (js2-current-token-beg))
@@ -8249,7 +8256,8 @@ consumes no tokens"
     (if extern-name
         (let ((as (and (js2-match-token js2-NAME) (js2-current-token-string))))
           (if (and as (equal "as" (js2-current-token-string)))
-              (let ((name (and (js2-match-token js2-NAME) (js2-current-token-string))))
+              (let ((name
+                     (and (js2-match-token js2-NAME) (js2-current-token-string))))
                 (if name
                     (let ((node (make-js2-export-binding-node
                                  :pos beg
@@ -8262,8 +8270,10 @@ consumes no tokens"
                                                :name extern-name
                                                :pos beg
                                                :len extern-name-len))))
-                      (js2-node-add-children node (js2-export-binding-node-local-name node))
-                      (js2-node-add-children node (js2-export-binding-node-extern-name node))
+                      (js2-node-add-children
+                       node (js2-export-binding-node-local-name node))
+                      (js2-node-add-children
+                       node (js2-export-binding-node-extern-name node))
                       node)
                   (js2-unget-token)
                   nil))
@@ -8385,10 +8395,11 @@ consumes no tokens"
     pn))
 
 (defun js2-parse-export ()
-  "Parser for export statement. Last matched token must be js2-EXPORT.
-Currently, the 'default' and 'expr' expressions should only be either hoistable
-expressions (function or generator) or assignment expressions, but there is no
-checking to enforce that and so it will parse without error a small subset of
+  "Parse an export statement.
+The Last matched token must be js2-EXPORT. Currently, the 'default' and 'expr'
+expressions should only be either hoistable expressions (function or generator)
+or assignment expressions, but there is no checking to enforce that and so it
+will parse without error a small subset of
 invalid export statements."
   (let ((beg (js2-current-token-beg))
         (children (list))

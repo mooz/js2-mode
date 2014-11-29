@@ -368,7 +368,6 @@ the test."
       (should (equal "lib" (js2-name-node-name name-node)))
       (should (= 5 (js2-node-pos name-node))))))
 
-
 (js2-deftest parse-from-clause "from 'foo/bar';"
   (js2-init-scanner)
   (let ((from (js2-parse-from-clause)))
@@ -463,7 +462,6 @@ the test."
   (should (js2-scope-get-symbol js2-current-scope "stuff"))
   (should (js2-scope-get-symbol js2-current-scope "lib")))
 
-
 (js2-deftest parse-import-default-and-named-imports
   "import robert as bob, {cookies, pi as PIE} from 'src/lib'"
   (js2-push-scope (make-js2-scope :pos 0))
@@ -484,7 +482,6 @@ the test."
   (should (js2-scope-get-symbol js2-current-scope "bob"))
   (should (js2-scope-get-symbol js2-current-scope "cookies"))
   (should (js2-scope-get-symbol js2-current-scope "PIE")))
-
 
 (js2-deftest-parse import-only-for-side-effects "import 'src/lib';")
 (js2-deftest-parse import-default-only "import theDefault from 'src/lib';")
@@ -555,7 +552,6 @@ the test."
 ;;     (should export-node)
 ;;     (should (js2-export-node-declaration export-node))))
 
-
 (js2-deftest export-function-declaration "export default function doStuff() {};"
   (js2-init-scanner)
   (js2-push-scope (make-js2-scope :pos 0))
@@ -579,7 +575,6 @@ the test."
   (let ((export-node (js2-parse-export)))
     (should export-node)
     (should (js2-export-node-default export-node))))
-
 
 (js2-deftest-parse parse-export-rexport "export * from 'other/lib';")
 (js2-deftest-parse parse-export-export-named-list "export {foo, bar as bang};")
