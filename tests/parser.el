@@ -419,7 +419,7 @@ the test."
         (should (not (equal nil ns-import)))
         (should (js2-namespace-import-node-p ns-import))
         (should (equal "lib" (js2-name-node-name (js2-namespace-import-node-name ns-import)))))))
-  (should (not (null (js2-scope-get-symbol js2-current-scope "lib")))))
+  (should (js2-scope-get-symbol js2-current-scope "lib")))
 
 (js2-deftest parse-import-named-imports "import {foo as bar, baz} from 'src/lib'"
   (js2-push-scope (make-js2-scope :pos 0))
@@ -440,8 +440,8 @@ the test."
               (second (nth 1 named-imports)))
           (should (equal "bar" (js2-name-node-name (js2-export-binding-node-local-name first))))
           (should (equal "baz" (js2-name-node-name (js2-export-binding-node-local-name second))))))))
-  (should (not (null (js2-scope-get-symbol js2-current-scope "bar"))))
-  (should (not (null (js2-scope-get-symbol js2-current-scope "baz")))))
+  (should (js2-scope-get-symbol js2-current-scope "bar"))
+  (should (js2-scope-get-symbol js2-current-scope "baz")))
 
 (js2-deftest parse-import-default-and-namespace "import stuff, * as lib from 'src/lib'"
   (js2-push-scope (make-js2-scope :pos 0))
@@ -460,8 +460,8 @@ the test."
         (should (not (equal nil ns-import)))
         (should (js2-namespace-import-node-p ns-import))
         (should (equal "lib" (js2-name-node-name (js2-namespace-import-node-name ns-import)))))))
-  (should (not (null (js2-scope-get-symbol js2-current-scope "stuff"))))
-  (should (not (null (js2-scope-get-symbol js2-current-scope "lib")))))
+  (should (js2-scope-get-symbol js2-current-scope "stuff"))
+  (should (js2-scope-get-symbol js2-current-scope "lib")))
 
 
 (js2-deftest parse-import-default-and-named-imports
@@ -481,9 +481,9 @@ the test."
         (should (equal "bob" (js2-name-node-name (js2-export-binding-node-local-name default))))
         (should (not (equal nil named-imports)))
         (should (= 2 (length named-imports))))))
-  (should (not (null (js2-scope-get-symbol js2-current-scope "bob"))))
-  (should (not (null (js2-scope-get-symbol js2-current-scope "cookies"))))
-  (should (not (null (js2-scope-get-symbol js2-current-scope "PIE")))))
+  (should (js2-scope-get-symbol js2-current-scope "bob"))
+  (should (js2-scope-get-symbol js2-current-scope "cookies"))
+  (should (js2-scope-get-symbol js2-current-scope "PIE")))
 
 
 (js2-deftest-parse import-only-for-side-effects "import 'src/lib';")
@@ -500,26 +500,26 @@ the test."
   (js2-init-scanner)
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
-    (should (not (null export-node)))
-    (should (not (null (js2-export-node-from-clause export-node))))))
+    (should export-node)
+    (should (js2-export-node-from-clause export-node))))
 
 (js2-deftest export-export-named-list "export {foo, bar as bang};"
   (js2-init-scanner)
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
-    (should (not (null export-node)))
+    (should export-node)
     (let ((exports (js2-export-node-exports-list export-node)))
-      (should (not (null exports)))
+      (should exports)
       (should (= 2 (length exports))))))
 
 (js2-deftest re-export-named-list "export {foo, bar as bang} from 'other/lib'"
   (js2-init-scanner)
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
-    (should (not (null export-node)))
-    (should (not (null (js2-export-node-from-clause export-node))))
+    (should export-node)
+    (should (js2-export-node-from-clause export-node))
     (let ((exports (js2-export-node-exports-list export-node)))
-      (should (not (null exports)))
+      (should exports)
       (should (= 2 (length exports))))))
 
 (js2-deftest export-variable-statement "export var foo = 'bar', baz = 'bang';"
@@ -527,24 +527,24 @@ the test."
   (js2-push-scope (make-js2-scope :pos 0))
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
-    (should (not (null export-node)))
-    (should (not (null (js2-export-node-var-stmt export-node))))))
+    (should export-node)
+    (should (js2-export-node-var-stmt export-node))))
 
 (js2-deftest export-const-declaration "export const PI = Math.PI;"
   (js2-init-scanner)
   (js2-push-scope (make-js2-scope :pos 0))
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
-    (should (not (null export-node)))
-    (should (not (null (js2-export-node-declaration export-node))))))
+    (should export-node)
+    (should (js2-export-node-declaration export-node))))
 
 (js2-deftest export-let-declaration "export let foo = [1];"
   (js2-init-scanner)
   (js2-push-scope (make-js2-scope :pos 0))
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
-    (should (not (null export-node)))
-    (should (not (null (js2-export-node-declaration export-node))))))
+    (should export-node)
+    (should (js2-export-node-declaration export-node))))
 
 ;; This test will be valid when js2-mode supports es6 classes.
 ;; (js2-deftest export-class-declaration "export class Foo {};"
@@ -552,8 +552,8 @@ the test."
 ;;   (js2-push-scope (make-js2-scope :pos 0))
 ;;   (should (js2-match-token js2-EXPORT))
 ;;   (let ((export-node (js2-parse-export)))
-;;     (should (not (null export-node)))
-;;     (should (not (null (js2-export-node-declaration export-node))))))
+;;     (should export-node)
+;;     (should (js2-export-node-declaration export-node))))
 
 
 (js2-deftest export-function-declaration "export default function doStuff() {};"
@@ -561,24 +561,24 @@ the test."
   (js2-push-scope (make-js2-scope :pos 0))
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
-    (should (not (null export-node)))
-    (should (not (null (js2-export-node-default export-node))))))
+    (should export-node)
+    (should (js2-export-node-default export-node))))
 
 (js2-deftest export-generator-declaration "export default function* one() {};"
   (js2-init-scanner)
   (js2-push-scope (make-js2-scope :pos 0))
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
-    (should (not (null export-node)))
-    (should (not (null (js2-export-node-default export-node))))))
+    (should export-node)
+    (should (js2-export-node-default export-node))))
 
 (js2-deftest export-assignment-expression "export default a = b;"
   (js2-init-scanner)
   (js2-push-scope (make-js2-scope :pos 0))
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
-    (should (not (null export-node)))
-    (should (not (null (js2-export-node-default export-node))))))
+    (should export-node)
+    (should (js2-export-node-default export-node))))
 
 
 (js2-deftest-parse parse-export-rexport "export * from 'other/lib';")
