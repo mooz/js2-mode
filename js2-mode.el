@@ -9394,9 +9394,7 @@ array-literals, array comprehensions and regular expressions."
      ((= tt js2-NUMBER)
       (make-js2-number-node))
      ((or (= tt js2-STRING) (= tt js2-NO_SUBS_TEMPLATE))
-      (prog1
-          (make-js2-string-node :type tt)
-        (js2-record-face 'font-lock-string-face)))
+      (make-js2-string-node :type tt))
      ((= tt js2-TEMPLATE_HEAD)
       (js2-parse-template-literal))
      ((or (= tt js2-DIV) (= tt js2-ASSIGN_DIV))
