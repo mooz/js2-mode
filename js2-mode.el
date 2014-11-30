@@ -664,9 +664,10 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-EXTENDS 164)
 (defvar js2-STATIC 165)
 (defvar js2-SUPER 166)
-(defvar js2-TEMPLATE_STRING 167)
+(defvar js2-TEMPLATE_HEAD 167)
+(defvar js2-NO_SUBS_TEMPLATE 168)
 
-(defconst js2-num-tokens (1+ js2-TEMPLATE_STRING))
+(defconst js2-num-tokens (1+ js2-NO_SUBS_TEMPLATE))
 
 (defconst js2-debug-print-trees nil)
 
@@ -3498,6 +3499,30 @@ You can tell the quote type by looking at the first character."
   (insert (js2-make-pad i)
           (js2-node-string n)))
 
+(defstruct (js2-template-node
+            (:include js2-node)
+            (:constructor nil)
+            (:constructor make-js2-template-node (&key (type js2-TEMPLATE_HEAD)
+                                                       beg len kids)))
+  "Template literal."
+  kids)  ; `js2-string-node' is used for string segments, other nodes
+         ; for substitutions inside.
+
+(put 'cl-struct-js2-template-node 'js2-visitor 'js2-visit-template)
+(put 'cl-struct-js2-template-node 'js2-printer 'js2-print-template)
+
+(defun js2-visit-template (n callback)
+  "Visit the `js2-template-node' children of AST."
+  (dolist (kid (js2-template-node-kids n))
+    (js2-visit-ast kid callback)))
+
+(defun js2-print-template (n i)
+  (insert (js2-make-pad i))
+  (dolist (kid (js2-template-node-kids n))
+    (if (js2-string-node-p kid)
+        (insert (js2-node-string kid))
+      (js2-print-ast kid))))
+
 (defstruct (js2-array-node
             (:include js2-node)
             (:constructor nil)
@@ -5350,7 +5375,8 @@ into temp buffers."
       ""
     (let ((name (js2-tt-name token)))
       (cond
-       ((memq token (list js2-STRING js2-REGEXP js2-NAME js2-TEMPLATE_STRING))
+       ((memq token '(js2-STRING js2-REGEXP js2-NAME
+                      js2-TEMPLATE_HEAD js2-NO_SUBS_TEMPLATE))
         (concat name " `" (js2-current-token-string) "'"))
        ((eq token js2-NUMBER)
         (format "NUMBER %g" (js2-token-number (js2-current-token))))
@@ -5396,7 +5422,8 @@ into temp buffers."
       (aset table i 'font-lock-keyword-face))
     (aset table js2-STRING 'font-lock-string-face)
     (aset table js2-REGEXP 'font-lock-string-face)
-    (aset table js2-TEMPLATE_STRING 'font-lock-string-face)
+    (aset table js2-NO_SUBS_TEMPLATE 'font-lock-string-face)
+    (aset table js2-TEMPLATE_HEAD 'font-lock-string-face)
     (aset table js2-COMMENT 'font-lock-comment-face)
     (aset table js2-THIS 'font-lock-builtin-face)
     (aset table js2-SUPER 'font-lock-builtin-face)
@@ -5481,7 +5508,7 @@ corresponding number.  Otherwise return -1."
       (throw 'return -1))
     (logior c (lsh accumulator 4))))
 
-(defun js2-get-token ()
+(defun js2-get-token (&optional modifier)
   "If `js2-ti-lookahead' is zero, call scanner to get new token.
 Otherwise, move `js2-ti-tokens-cursor' and return the type of
 next saved token.
@@ -5495,7 +5522,7 @@ records comments found in `js2-scanned-comments'.  If the token
 returned by this function immediately follows a jsdoc comment,
 the token is flagged as such."
   (if (zerop js2-ti-lookahead)
-      (js2-get-token-internal)
+      (js2-get-token-internal modifier)
     (decf js2-ti-lookahead)
     (setq js2-ti-tokens-cursor (mod (1+ js2-ti-tokens-cursor) js2-ti-ntokens))
     (let ((tt (js2-current-token-type)))
@@ -5507,8 +5534,8 @@ the token is flagged as such."
   (incf js2-ti-lookahead)
   (setq js2-ti-tokens-cursor (mod (1- js2-ti-tokens-cursor) js2-ti-ntokens)))
 
-(defun js2-get-token-internal ()
-  (let* ((token (js2-get-token-internal-1)) ; call scanner
+(defun js2-get-token-internal (modifier)
+  (let* ((token (js2-get-token-internal-1 modifier)) ; call scanner
          (tt (js2-token-type token))
          saw-eol
          face)
@@ -5520,7 +5547,7 @@ the token is flagged as such."
         (when js2-record-comments
           (js2-record-comment token)))
       (setq js2-ti-tokens-cursor (mod (1- js2-ti-tokens-cursor) js2-ti-ntokens))
-      (setq token (js2-get-token-internal-1) ; call scanner again
+      (setq token (js2-get-token-internal-1 modifier) ; call scanner again
             tt (js2-token-type token)))
 
     (when saw-eol
@@ -5538,7 +5565,7 @@ the token is flagged as such."
         (js2-record-face 'font-lock-constant-face token))))
     tt))
 
-(defun js2-get-token-internal-1 ()
+(defun js2-get-token-internal-1 (modifier)
   "Return next JavaScript token type, an int such as js2-RETURN.
 During operation, creates an instance of `js2-token' struct, sets
 its relevant fields and puts it into `js2-ti-tokens'."
@@ -5549,6 +5576,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
    (setq
     tt
     (catch 'return
+      (when (eq modifier 'TEMPLATE_TAIL)
+        (setf (js2-token-beg token) (1- js2-ts-cursor))
+        (throw 'return (js2-get-string-or-template-token ?` token)))
       (while t
         ;; Eat whitespace, possibly sensitive to newlines.
         (setq continue t)
@@ -5725,108 +5755,8 @@ its relevant fields and puts it into `js2-ti-tokens'."
           (throw 'return js2-NUMBER))
         ;; is it a string?
         (when (memq c '(?\" ?\' ?`))
-          ;; We attempt to accumulate a string the fast way, by
-          ;; building it directly out of the reader.  But if there
-          ;; are any escaped characters in the string, we revert to
-          ;; building it out of a string buffer.
-          (setq quote-char c
-                js2-ts-string-buffer nil
-                c (js2-get-char))
-          (catch 'break
-            (while (/= c quote-char)
-              (catch 'continue
-                (when (eq c js2-EOF_CHAR)
-                  (js2-unget-char)
-                  (js2-report-error "msg.unterminated.string.lit")
-                  (throw 'break nil))
-                (when (and (eq c ?\n) (not (eq quote-char ?`)))
-                  (js2-unget-char)
-                  (js2-report-error "msg.unterminated.string.lit")
-                  (throw 'break nil))
-                (when (eq c ?\\)
-                  ;; We've hit an escaped character
-                  (setq c (js2-get-char))
-                  (case c
-                    (?b (setq c ?\b))
-                    (?f (setq c ?\f))
-                    (?n (setq c ?\n))
-                    (?r (setq c ?\r))
-                    (?t (setq c ?\t))
-                    (?v (setq c ?\v))
-                    (?u
-                     (setq c1 (js2-read-unicode-escape))
-                     (if js2-parse-ide-mode
-                         (if c1
-                             (progn
-                               ;; just copy the string in IDE-mode
-                               (js2-add-to-string ?\\)
-                               (js2-add-to-string ?u)
-                               (dotimes (_ 3)
-                                 (js2-add-to-string (js2-get-char)))
-                               (setq c (js2-get-char))) ; added at end of loop
-                           ;; flag it as an invalid escape
-                           (js2-report-warning "msg.invalid.escape"
-                                               nil (- js2-ts-cursor 2) 6))
-                       ;; Get 4 hex digits; if the u escape is not
-                       ;; followed by 4 hex digits, use 'u' + the
-                       ;; literal character sequence that follows.
-                       (js2-add-to-string ?u)
-                       (setq escape-val 0)
-                       (dotimes (_ 4)
-                         (setq c (js2-get-char)
-                               escape-val (js2-x-digit-to-int c escape-val))
-                         (if (minusp escape-val)
-                             (throw 'continue nil))
-                         (js2-add-to-string c))
-                       ;; prepare for replace of stored 'u' sequence by escape value
-                       (setq js2-ts-string-buffer (nthcdr 5 js2-ts-string-buffer)
-                             c escape-val)))
-                    (?x
-                     ;; Get 2 hex digits, defaulting to 'x'+literal
-                     ;; sequence, as above.
-                     (setq c (js2-get-char)
-                           escape-val (js2-x-digit-to-int c 0))
-                     (if (minusp escape-val)
-                         (progn
-                           (js2-add-to-string ?x)
-                           (throw 'continue nil))
-                       (setq c1 c
-                             c (js2-get-char)
-                             escape-val (js2-x-digit-to-int c escape-val))
-                       (if (minusp escape-val)
-                           (progn
-                             (js2-add-to-string ?x)
-                             (js2-add-to-string c1)
-                             (throw 'continue nil))
-                         ;; got 2 hex digits
-                         (setq c escape-val))))
-                    (?\n
-                     ;; Remove line terminator after escape to follow
-                     ;; SpiderMonkey and C/C++
-                     (setq c (js2-get-char))
-                     (throw 'continue nil))
-                    (t
-                     (when (and (<= ?0 c) (< c ?8))
-                       (setq val (- c ?0)
-                             c (js2-get-char))
-                       (when (and (<= ?0 c) (< c ?8))
-                         (setq val (- (+ (* 8 val) c) ?0)
-                               c (js2-get-char))
-                         (when (and (<= ?0 c)
-                                    (< c ?8)
-                                    (< val #o37))
-                           ;; c is 3rd char of octal sequence only
-                           ;; if the resulting val <= 0377
-                           (setq val (- (+ (* 8 val) c) ?0)
-                                 c (js2-get-char))))
-                       (js2-unget-char)
-                       (setq c val)))))
-                (js2-add-to-string c)
-                (setq c (js2-get-char)))))
-          (js2-set-string-from-buffer token)
-          (throw 'return (if (eq quote-char ?`)
-                             js2-TEMPLATE_STRING
-                           js2-STRING)))
+          (throw 'return
+                 (js2-get-string-or-template-token c token)))
         (js2-ts-return token
          (case c
           (?\;
@@ -5997,6 +5927,116 @@ its relevant fields and puts it into `js2-ti-tokens'."
            (js2-report-scan-error "msg.illegal.character")))))))
    (setf (js2-token-type token) tt)
    token))
+
+(defun js2-get-string-or-template-token (quote-char token)
+  ;; We attempt to accumulate a string the fast way, by
+  ;; building it directly out of the reader.  But if there
+  ;; are any escaped characters in the string, we revert to
+  ;; building it out of a string buffer.
+  (let ((c (js2-get-char))
+        js2-ts-string-buffer
+        nc)
+    (catch 'break
+      (while (/= c quote-char)
+        (catch 'continue
+          (when (eq c js2-EOF_CHAR)
+            (js2-unget-char)
+            (js2-report-error "msg.unterminated.string.lit")
+            (throw 'break nil))
+          (when (and (eq c ?\n) (not (eq quote-char ?`)))
+            (js2-unget-char)
+            (js2-report-error "msg.unterminated.string.lit")
+            (throw 'break nil))
+          (when (eq c ?\\)
+            ;; We've hit an escaped character
+            (setq c (js2-get-char))
+            (case c
+              (?b (setq c ?\b))
+              (?f (setq c ?\f))
+              (?n (setq c ?\n))
+              (?r (setq c ?\r))
+              (?t (setq c ?\t))
+              (?v (setq c ?\v))
+              (?u
+               (setq c1 (js2-read-unicode-escape))
+               (if js2-parse-ide-mode
+                   (if c1
+                       (progn
+                         ;; just copy the string in IDE-mode
+                         (js2-add-to-string ?\\)
+                         (js2-add-to-string ?u)
+                         (dotimes (_ 3)
+                           (js2-add-to-string (js2-get-char)))
+                         (setq c (js2-get-char))) ; added at end of loop
+                     ;; flag it as an invalid escape
+                     (js2-report-warning "msg.invalid.escape"
+                                         nil (- js2-ts-cursor 2) 6))
+                 ;; Get 4 hex digits; if the u escape is not
+                 ;; followed by 4 hex digits, use 'u' + the
+                 ;; literal character sequence that follows.
+                 (js2-add-to-string ?u)
+                 (setq escape-val 0)
+                 (dotimes (_ 4)
+                   (setq c (js2-get-char)
+                         escape-val (js2-x-digit-to-int c escape-val))
+                   (if (minusp escape-val)
+                       (throw 'continue nil))
+                   (js2-add-to-string c))
+                 ;; prepare for replace of stored 'u' sequence by escape value
+                 (setq js2-ts-string-buffer (nthcdr 5 js2-ts-string-buffer)
+                       c escape-val)))
+              (?x
+               ;; Get 2 hex digits, defaulting to 'x'+literal
+               ;; sequence, as above.
+               (setq c (js2-get-char)
+                     escape-val (js2-x-digit-to-int c 0))
+               (if (minusp escape-val)
+                   (progn
+                     (js2-add-to-string ?x)
+                     (throw 'continue nil))
+                 (setq c1 c
+                       c (js2-get-char)
+                       escape-val (js2-x-digit-to-int c escape-val))
+                 (if (minusp escape-val)
+                     (progn
+                       (js2-add-to-string ?x)
+                       (js2-add-to-string c1)
+                       (throw 'continue nil))
+                   ;; got 2 hex digits
+                   (setq c escape-val))))
+              (?\n
+               ;; Remove line terminator after escape to follow
+               ;; SpiderMonkey and C/C++
+               (setq c (js2-get-char))
+               (throw 'continue nil))
+              (t
+               (when (and (<= ?0 c) (< c ?8))
+                 (setq val (- c ?0)
+                       c (js2-get-char))
+                 (when (and (<= ?0 c) (< c ?8))
+                   (setq val (- (+ (* 8 val) c) ?0)
+                         c (js2-get-char))
+                   (when (and (<= ?0 c)
+                              (< c ?8)
+                              (< val #o37))
+                     ;; c is 3rd char of octal sequence only
+                     ;; if the resulting val <= 0377
+                     (setq val (- (+ (* 8 val) c) ?0)
+                           c (js2-get-char))))
+                 (js2-unget-char)
+                 (setq c val)))))
+          (when (and (eq quote-char ?`) (eq c ?$))
+            (when (eq (setq nc (js2-get-char)) ?\{)
+              (throw 'break nil))
+            (js2-unget-char))
+          (js2-add-to-string c)
+          (setq c (js2-get-char)))))
+    (js2-set-string-from-buffer token)
+    (if (not (eq quote-char ?`))
+        js2-STRING
+      (if (and (eq c ?$) (eq nc ?\{))
+          js2-TEMPLATE_HEAD
+        js2-NO_SUBS_TEMPLATE))))
 
 (defsubst js2-string-to-number (str base)
   ;; TODO:  Maybe port ScriptRuntime.stringToNumber.
@@ -7183,7 +7223,7 @@ from `js2-ti-tokens'.  Otherwise, call `js2-get-token'."
   (if (not (zerop js2-ti-lookahead))
       (js2-token-type
        (aref js2-ti-tokens (mod (1+ js2-ti-tokens-cursor) js2-ti-ntokens)))
-    (let ((tt (js2-get-token-internal)))
+    (let ((tt (js2-get-token-internal nil)))
       (js2-unget-token)
       tt)))
 
@@ -9353,10 +9393,12 @@ array-literals, array comprehensions and regular expressions."
       (js2-parse-name tt))
      ((= tt js2-NUMBER)
       (make-js2-number-node))
-     ((or (= tt js2-STRING) (= tt js2-TEMPLATE_STRING))
+     ((or (= tt js2-STRING) (= tt js2-NO_SUBS_TEMPLATE))
       (prog1
           (make-js2-string-node :type tt)
         (js2-record-face 'font-lock-string-face)))
+     ((= tt js2-TEMPLATE_HEAD)
+      (js2-parse-template-literal))
      ((or (= tt js2-DIV) (= tt js2-ASSIGN_DIV))
       ;; Got / or /= which in this context means a regexp literal
       (let ((px-pos (js2-current-token-beg))
@@ -9411,6 +9453,22 @@ array-literals, array comprehensions and regular expressions."
      (t
       (js2-report-error "msg.syntax")
       (make-js2-error-node)))))
+
+(defun js2-parse-template-literal ()
+  (let ((beg (js2-current-token-beg))
+        (kids (list (make-js2-string-node :type js2-TEMPLATE_HEAD)))
+        (tt js2-TEMPLATE_HEAD))
+    (while (eq tt js2-TEMPLATE_HEAD)
+      (push (js2-parse-expr) kids)
+      (js2-must-match js2-RC "msg.syntax")
+      (setq tt (js2-get-token 'TEMPLATE_TAIL))
+      (push (make-js2-string-node :type tt) kids))
+    (setq kids (nreverse kids))
+    (let ((tpl (make-js2-template-node :beg beg
+                                       :len (- (js2-current-token-end) beg)
+                                       :kids kids)))
+      (apply #'js2-node-add-children tpl kids)
+      tpl)))
 
 (defun js2-parse-name (_tt)
   (let ((name (js2-current-token-string))

@@ -343,8 +343,12 @@ the test."
 (js2-deftest-parse object-get-string-literal
   "var x = {y: 5};\nvar z = x[\"y\"];")
 
-(js2-deftest-parse template-string
-  "var x = `${a + b}`, y = `\\u0000`;")
+(js2-deftest-parse template-no-substritutions
+  "var x = `abc
+            def`, y = `\\u0000`;")
+
+(js2-deftest-parse template-with-substitutions
+  "var y = `${a + b} ${d + e + f}`;")
 
 ;;; Classes
 
@@ -453,6 +457,19 @@ the test."
     (should (eq js2-NUMBER (js2-next-token)))
     (should (eq 1 (js2-token-number
                    (js2-current-token))))))
+
+(js2-deftest get-token-template-literal "`abc ${i} z ${j} def`"
+  (js2-init-scanner)
+  (should (eq js2-TEMPLATE_HEAD (js2-next-token)))
+  (should (equal "abc " (js2-current-token-string)))
+  (should (eq js2-NAME (js2-next-token)))
+  (should (eq js2-RC (js2-next-token)))
+  (should (eq js2-TEMPLATE_HEAD (js2-next-token 'TEMPLATE_TAIL)))
+  (should (equal " z " (js2-current-token-string)))
+  (should (eq js2-NAME (js2-next-token)))
+  (should (eq js2-RC (js2-next-token)))
+  (should (eq js2-NO_SUBS_TEMPLATE (js2-next-token 'TEMPLATE_TAIL)))
+  (should (equal " def" (js2-current-token-string))))
 
 ;;; Error handling
 
