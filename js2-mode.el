@@ -664,8 +664,8 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-EXTENDS 164)
 (defvar js2-STATIC 165)
 (defvar js2-SUPER 166)
-(defvar js2-TEMPLATE_HEAD 167)
-(defvar js2-NO_SUBS_TEMPLATE 168)
+(defvar js2-TEMPLATE_HEAD 167)    ; part of template literal before substitution
+(defvar js2-NO_SUBS_TEMPLATE 168) ; template literal without substitutions
 
 (defconst js2-num-tokens (1+ js2-NO_SUBS_TEMPLATE))
 
