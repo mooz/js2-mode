@@ -387,17 +387,6 @@ yield, and Array comprehensions, and 1.8 adds function closures."
   :type 'integer
   :group 'js2-mode)
 
-(defcustom js2-allow-keywords-as-property-names t
-  "If non-nil, you can use JavaScript keywords as object property names.
-Examples:
-
-  var foo = {int: 5, while: 6, continue: 7};
-  foo.return = 8;
-
-Ecma-262 5.1 allows this syntax, but some engines still don't."
-  :type 'boolean
-  :group 'js2-mode)
-
 (defcustom js2-instanceof-has-side-effects nil
   "If non-nil, treats the instanceof operator as having side effects.
 This is useful for xulrunner apps."
@@ -5684,7 +5673,8 @@ its relevant fields and puts it into `js2-ti-tokens'."
             ;; OPT we shouldn't have to make a string (object!) to
             ;; check if it's a keyword.
             ;; Return the corresponding token if it's a keyword
-            (when (setq result (js2-string-to-keyword str))
+            (when (and (not (eq modifier 'KEYWORD_IS_NAME))
+                       (setq result (js2-string-to-keyword str)))
               (if (and (< js2-language-version 170)
                        (memq result '(js2-LET js2-YIELD)))
                   ;; LET and YIELD are tokens only in 1.7 and later
@@ -7268,18 +7258,14 @@ string is NAME.  Returns nil and keeps current token otherwise."
     (js2-record-face 'font-lock-keyword-face)
     t))
 
-(defun js2-valid-prop-name-token (tt)
-  (or (= tt js2-NAME)
-      (and js2-allow-keywords-as-property-names
-           (plusp tt)
-           (or (= tt js2-RESERVED)
-               (aref js2-kwd-tokens tt)))))
+(defun js2-get-prop-name-token ()
+  (js2-get-token (and (>= js2-language-version 170) 'KEYWORD_IS_NAME)))
 
 (defun js2-match-prop-name ()
   "Consume token and return t if next token is a valid property name.
-It's valid if it's a js2-NAME, or `js2-allow-keywords-as-property-names'
-is non-nil and it's a keyword token."
-  (if (js2-valid-prop-name-token (js2-get-token))
+If `js2-language-version' is >= 180, a keyword or reserved word
+is considered valid name as well."
+  (if (eq js2-NAME (js2-get-prop-name-token))
       t
     (js2-unget-token)
     nil))
@@ -9279,13 +9265,10 @@ Last token parsed must be `js2-RB'."
             (js2-node-pos result) (js2-node-pos pn)
             (js2-infix-node-op-pos result) dot-pos
             (js2-infix-node-left result) pn  ; do this after setting position
-            tt (js2-next-token))
+            tt (js2-get-prop-name-token))
       (cond
-       ;; needed for generator.throw()
-       ((= tt js2-THROW)
-        (setq ref (js2-parse-property-name nil nil member-type-flags)))
        ;; handles: name, ns::name, ns::*, ns::[expr]
-       ((js2-valid-prop-name-token tt)
+       ((= tt js2-NAME)
         (setq ref (js2-parse-property-name -1 nil member-type-flags)))
        ;; handles: *, *::name, *::*, *::[expr]
        ((= tt js2-MUL)
@@ -9314,11 +9297,11 @@ This includes expressions of the forms:
   @[expr]    @*::[expr]    @ns::[expr]
 
 Called if we peeked an '@' token."
-  (let ((tt (js2-next-token))
+  (let ((tt (js2-get-prop-name-token))
         (at-pos (js2-current-token-beg)))
     (cond
      ;; handles: @name, @ns::name, @ns::*, @ns::[expr]
-     ((js2-valid-prop-name-token tt)
+     ((= tt js2-NAME)
       (js2-parse-property-name at-pos nil 0))
      ;; handles: @*, @*::name, @*::*, @*::[expr]
      ((= tt js2-MUL)
@@ -9349,10 +9332,10 @@ operator, or the name is followed by ::.  For a plain name, returns a
       (when (js2-match-token js2-COLONCOLON)
         (setq ns name
               colon-pos (js2-current-token-beg)
-              tt (js2-next-token))
+              tt (js2-get-prop-name-token))
         (cond
          ;; handles name::name
-         ((js2-valid-prop-name-token tt)
+         ((= tt js2-NAME)
           (setq name (js2-create-name-node)))
          ;; handles name::*
          ((= tt js2-MUL)
@@ -9781,13 +9764,13 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
         tt elems elem after-comma)
     (while continue
       (setq static (and class-p (js2-match-token js2-STATIC))
-            tt (js2-get-token)
+            tt (js2-get-prop-name-token)
             elem nil)
       (cond
        ;; {foo: ...}, {'foo': ...}, {foo, bar, ...},
        ;; {get foo() {...}}, {set foo(x) {...}}, or {foo(x) {...}}
        ;; TODO(sdh): support *foo() {...}
-       ((or (js2-valid-prop-name-token tt)
+       ((or (= js2-NAME tt)
             (= tt js2-STRING))
         (setq after-comma nil
               elem (js2-parse-named-prop tt))
