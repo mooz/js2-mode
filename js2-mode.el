@@ -5765,7 +5765,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
                   (js2-string-to-number str base)))
           (throw 'return js2-NUMBER))
         ;; is it a string?
-        (when (memq c '(?\" ?\' ?`))
+        (when (or (memq c '(?\" ?\'))
+                  (and (>= js2-language-version 200)
+                       (= c ?`)))
           (throw 'return
                  (js2-get-string-or-template-token c token)))
         (js2-ts-return token
