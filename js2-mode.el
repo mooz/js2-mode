@@ -666,8 +666,9 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-SUPER 166)
 (defvar js2-TEMPLATE_HEAD 167)    ; part of template literal before substitution
 (defvar js2-NO_SUBS_TEMPLATE 168) ; template literal without substitutions
+(defvar js2-TAGGED_TEMPLATE 169)  ; tagged template literal
 
-(defconst js2-num-tokens (1+ js2-NO_SUBS_TEMPLATE))
+(defconst js2-num-tokens (1+ js2-TAGGED_TEMPLATE))
 
 (defconst js2-debug-print-trees nil)
 
@@ -3512,7 +3513,6 @@ You can tell the quote type by looking at the first character."
 (put 'cl-struct-js2-template-node 'js2-printer 'js2-print-template)
 
 (defun js2-visit-template (n callback)
-  "Visit the `js2-template-node' children of AST."
   (dolist (kid (js2-template-node-kids n))
     (js2-visit-ast kid callback)))
 
@@ -3522,6 +3522,27 @@ You can tell the quote type by looking at the first character."
     (if (js2-string-node-p kid)
         (insert (js2-node-string kid))
       (js2-print-ast kid))))
+
+(defstruct (js2-tagged-template-node
+            (:include js2-node)
+            (:constructor nil)
+            (:constructor make-js2-tagged-template-node (&key (type js2-TAGGED_TEMPLATE)
+                                                              beg len tag template)))
+  "Tagged template literal."
+  tag       ; `js2-node' with the tag expression.
+  template) ; `js2-template-node' with the template.
+
+(put 'cl-struct-js2-tagged-template-node 'js2-visitor 'js2-visit-tagged-template)
+(put 'cl-struct-js2-tagged-template-node 'js2-printer 'js2-print-tagged-template)
+
+(defun js2-visit-tagged-template (n callback)
+  (js2-visit-ast (js2-tagged-template-node-tag n) kid callback)
+  (js2-visit-ast (js2-tagged-template-node-template n) kid callback))
+
+(defun js2-print-tagged-template (n i)
+  (insert (js2-make-pad i))
+  (js2-print-ast (js2-tagged-template-node-tag n))
+  (js2-print-ast (js2-tagged-template-node-template n)))
 
 (defstruct (js2-array-node
             (:include js2-node)
@@ -9145,11 +9166,25 @@ Returns an expression tree that includes PN, the parent node."
         (if allow-call-syntax
             (setq pn (js2-parse-function-call pn))
           (setq continue nil)))
+       ((= tt js2-TEMPLATE_HEAD)
+        (setq pn (js2-parse-tagged-template pn (js2-parse-template-literal))))
+       ((= tt js2-NO_SUBS_TEMPLATE)
+        (setq pn (js2-parse-tagged-template pn (make-js2-string-node :type tt))))
        (t
         (js2-unget-token)
         (setq continue nil))))
     (if (>= js2-highlight-level 2)
         (js2-parse-highlight-member-expr-node pn))
+    pn))
+
+(defun js2-parse-tagged-template (tag-node tpl-node)
+  "Parse tagged template expression."
+  (let* ((beg (js2-node-pos tag-node))
+         (pn (make-js2-tagged-template-node :beg beg
+                                            :len (- (js2-current-token-end) beg)
+                                            :tag tag-node
+                                            :template tpl-node)))
+    (js2-node-add-children pn tag-node tpl-node)
     pn))
 
 (defun js2-parse-dot-query (pn)

@@ -350,6 +350,9 @@ the test."
 (js2-deftest-parse template-with-substitutions
   "var y = `${a + b} ${d + e + f}`;")
 
+(js2-deftest-parse tagged-template
+  "foo.args`${++x, \"o\"}k`;")
+
 ;;; Classes
 
 (js2-deftest-parse parse-harmony-class-statement
