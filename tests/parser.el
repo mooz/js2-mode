@@ -483,6 +483,17 @@ the test."
   (should (js2-scope-get-symbol js2-current-scope "cookies"))
   (should (js2-scope-get-symbol js2-current-scope "PIE")))
 
+(js2-deftest parse-this-module-in-from-clause "import {url} from this module;"
+  (js2-push-scope (make-js2-scope :pos 0))
+  (js2-init-scanner)
+  (should (js2-match-token js2-IMPORT))
+  (let ((import-node (js2-parse-import)))
+    (should import-node)
+    (let ((from-clause (js2-import-node-from import-node)))
+      (should from-clause)
+      (should (equal "this" (js2-from-clause-node-module-id from-clause)))
+      (should (js2-from-clause-node-metadata-p from-clause)))))
+
 (js2-deftest-parse import-only-for-side-effects "import 'src/lib';")
 (js2-deftest-parse import-default-only "import theDefault from 'src/lib';")
 (js2-deftest-parse import-named-only "import {one, two} from 'src/lib';")
@@ -490,6 +501,7 @@ the test."
 (js2-deftest-parse import-renaming-default "import * as lib from 'src/mylib';")
 (js2-deftest-parse import-renaming-named "import {one as uno, two as dos} from 'src/lib';")
 (js2-deftest-parse import-default-and-namespace "import robert as bob, * as lib from 'src/lib';")
+(js2-deftest-parse import-from-this-module "import {url} from this module;")
 
 ;; Module Exports
 

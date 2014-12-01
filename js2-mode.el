@@ -2913,18 +2913,24 @@ It contains a single name node referring to the bound name."
             (:constructor make-js2-from-clause-node (&key (type js2-NAME)
                                                          pos
                                                          len
-                                                         module-id)))
-  "AST node for the from clause in an import or export statement. E.g.
-from 'my/module'."
-  module-id) ; string containing the module specifier.
+                                                         module-id
+                                                         metadata-p)))
+  "AST node for the from clause in an import or export statement.
+E.g. from 'my/module'. It can refere to either an external module, or to the
+modules metadata itself."
+  module-id ; string containing the module specifier.
+  metadata-p) ; true if this clause refers to the module's metadata
 
 (put 'cl-struct-js2-from-clause-node 'js2-visitor 'js2-visit-none)
 (put 'cl-struct-js2-from-clause-node 'js2-printer 'js2-print-from-clause)
 
 (defun js2-print-from-clause (n)
-  (insert "from '")
-  (insert (js2-from-clause-node-module-id n))
-  (insert "'"))
+  (insert "from ")
+  (if (js2-from-clause-node-metadata-p n)
+      (insert "this module")
+    (insert "'")
+    (insert (js2-from-clause-node-module-id n))
+    (insert "'")))
 
 (defstruct (js2-try-node
             (:include js2-node)
@@ -8222,11 +8228,24 @@ The current token must be js2-MUL."
   (when (js2-must-match-name "msg.syntax")
     (let ((beg (js2-current-token-beg)))
       (if (equal "from" (js2-current-token-string))
-          (when (js2-must-match js2-STRING "msg.syntax")
+          (cond
+           ((js2-match-token js2-STRING)
             (make-js2-from-clause-node
              :pos beg
              :len (- (js2-current-token-end) beg)
-             :module-id (js2-current-token-string)))
+             :module-id (js2-current-token-string)
+             :metadata-p nil))
+           ((js2-match-token js2-THIS)
+            (when (js2-must-match-name "msg.syntax")
+              (if (equal "module" (js2-current-token-string))
+                  (make-js2-from-clause-node
+                   :pos beg
+                   :len (- (js2-current-token-end) beg)
+                   :module-id "this"
+                   :metadata-p t)
+                (js2-unget-token)
+                (js2-unget-token))))
+           (t (js2-report-error "msg.syntax")))
         (js2-unget-token)
         (js2-report-error "msg.syntax")))))
 
