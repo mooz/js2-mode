@@ -537,7 +537,7 @@ the test."
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
     (should export-node)
-    (should (js2-export-node-var-stmt export-node))))
+    (should (js2-export-node-declaration export-node))))
 
 (js2-deftest export-const-declaration "export const PI = Math.PI;"
   (js2-init-scanner)
@@ -553,16 +553,15 @@ the test."
   (should (js2-match-token js2-EXPORT))
   (let ((export-node (js2-parse-export)))
     (should export-node)
-    (should (js2-export-node-declaration export-node))))
+    (should (js2-var-decl-node-p (js2-export-node-declaration export-node)))))
 
-;; This test will be valid when js2-mode supports es6 classes.
-;; (js2-deftest export-class-declaration "export class Foo {};"
-;;   (js2-init-scanner)
-;;   (js2-push-scope (make-js2-scope :pos 0))
-;;   (should (js2-match-token js2-EXPORT))
-;;   (let ((export-node (js2-parse-export)))
-;;     (should export-node)
-;;     (should (js2-export-node-declaration export-node))))
+(js2-deftest export-class-declaration "export class Foo {};"
+  (js2-init-scanner)
+  (js2-push-scope (make-js2-scope :pos 0))
+  (should (js2-match-token js2-EXPORT))
+  (let ((export-node (js2-parse-export)))
+    (should export-node)
+    (should (js2-class-node-p (js2-export-node-declaration export-node)))))
 
 (js2-deftest export-function-declaration "export default function doStuff() {};"
   (js2-init-scanner)

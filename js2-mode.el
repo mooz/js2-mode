@@ -2494,19 +2494,15 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                      len
                                                      exports-list
                                                      from-clause
-                                                     var-stmt
                                                      declaration
-                                                     default
-                                                     expr)))
+                                                     default)))
   "AST node for an export statement. There are many things that can be exported,
 so many of its properties will be nil.
 "
   exports-list ; lisp list of js2-export-binding-node to export
   from-clause ; js2-from-clause-node for re-exporting symbols from another module
-  var-stmt ; js2-var-decl-node when exporting a var statement
-  declaration ; js2-var-decl-node when export a let or const statement.
-  default ; js2-node containing the default export expression.
-  expr) ; Failing all other cases, any expression to be exported.
+  declaration ; js2-var-decl-node (var, let, const) or js2-class-node
+  default) ; js2-function-node or js2-assign-node
 
 (put 'cl-struct-js2-export-node 'js2-visitor 'js2-visit-export-node)
 (put 'cl-struct-js2-export-node 'js2-printer 'js2-print-export-node)
@@ -2514,39 +2510,29 @@ so many of its properties will be nil.
 (defun js2-visit-export-node (n v)
   (let ((exports-list (js2-export-node-exports-list n))
         (from (js2-export-node-from-clause n))
-        (var-stmt (js2-export-node-var-stmt n))
         (declaration (js2-export-node-declaration n))
-        (default (js2-export-node-default n))
-        (expr (js2-export-node-expr n)))
+        (default (js2-export-node-default n)))
     (when exports-list
       (dolist (export exports-list)
         (js2-visit-ast export v)))
     (when from
       (js2-visit-ast from v))
-    (when var-stmt
-      (js2-visit-ast var-stmt v))
     (when declaration
       (js2-visit-ast declaration v))
     (when default
-      (js2-visit-ast default v))
-    (when expr
-      (js2-visit-ast expr v))))
+      (js2-visit-ast default v))))
 
 (defun js2-print-export-node (n i)
   (let ((pad (js2-make-pad i))
         (exports-list (js2-export-node-exports-list n))
         (from (js2-export-node-from-clause n))
-        (var-stmt (js2-export-node-var-stmt n))
         (declaration (js2-export-node-declaration n))
-        (default (js2-export-node-default n))
-        (expr (js2-export-node-expr n)))
+        (default (js2-export-node-default n)))
     (insert pad "export ")
     (cond
      (default
        (insert "default ")
        (js2-print-ast default i))
-     (var-stmt
-      (js2-print-ast var-stmt i))
      (declaration
        (js2-print-ast declaration i))
      ((and exports-list from)
@@ -2557,9 +2543,7 @@ so many of its properties will be nil.
       (insert "* ")
       (js2-print-from-clause from))
      (exports-list
-      (js2-print-named-imports exports-list))
-     (expr
-      (js2-print-ast expr i)))
+      (js2-print-named-imports exports-list)))
     (insert ";\n")))
 
 (defstruct (js2-while-node
@@ -8423,49 +8407,48 @@ will parse without error a small subset of
 invalid export statements."
   (let ((beg (js2-current-token-beg))
         (children (list))
-        exports-list from-clause var-stmt declaration
-        default expr)
-    (cond ((js2-match-token js2-MUL)
-           (setq from-clause (js2-parse-from-clause))
-           (when from-clause
-             (push from-clause children)))
-          ((js2-match-token js2-LC)
-           (setq exports-list (js2-parse-extern-bindings))
-           (when exports-list
-             (dolist (export exports-list)
-               (push export children)))
-           (when (js2-match-token js2-NAME)
-             (if (equal "from" (js2-current-token-string))
-                 (progn
-                   (js2-unget-token)
-                   (setq from-clause (js2-parse-from-clause))
-                   (when from-clause
-                     (push from-clause children)))
-               (js2-unget-token))))
-          ((js2-match-token js2-VAR)
-           (setq var-stmt (js2-parse-variables js2-VAR (js2-current-token-beg)))
-           (when var-stmt
-             (push var-stmt children)))
-          ((or (js2-match-token js2-CONST) (js2-match-token js2-LET))
-           (setq declaration (js2-parse-variables (js2-current-token-type) (js2-current-token-beg)))
-           (when declaration
-             (push declaration children)))
-          ((js2-match-token js2-DEFAULT)
-            (setq default (js2-parse-expr))
-            (when default
-              (push default children)))
-          (t
-           (setq expr (js2-parse-expr))
-           (push expr children)))
+        exports-list from-clause declaration default)
+    (cond
+     ((js2-match-token js2-MUL)
+      (setq from-clause (js2-parse-from-clause))
+      (when from-clause
+        (push from-clause children)))
+     ((js2-match-token js2-LC)
+      (setq exports-list (js2-parse-extern-bindings))
+      (when exports-list
+        (dolist (export exports-list)
+          (push export children)))
+      (when (js2-match-token js2-NAME)
+        (if (equal "from" (js2-current-token-string))
+            (progn
+              (js2-unget-token)
+              (setq from-clause (js2-parse-from-clause)))
+          (js2-unget-token))))
+     ((js2-match-token js2-DEFAULT)
+      (let ((expr (js2-parse-expr)))
+        (if (or (js2-function-node-p expr) (js2-assign-node-p expr))
+            (setq default expr)
+          (js2-report-error "msg.syntax"))))
+     ((or (js2-match-token js2-VAR) (js2-match-token js2-CONST) (js2-match-token js2-LET))
+      (setq declaration (js2-parse-variables (js2-current-token-type) (js2-current-token-beg))))
+     (t
+      (let ((expr (js2-parse-expr)))
+        (if (js2-class-node-p expr)
+            (setq declaration expr)
+          (js2-report-error "msg.syntax")))))
+    (when from-clause
+      (push from-clause children))
+    (when declaration
+      (push declaration children))
+    (when default
+      (push default children))
     (let ((node (make-js2-export-node
                   :pos beg
                   :len (- (js2-current-token-end) beg)
                   :exports-list exports-list
                   :from-clause from-clause
-                  :var-stmt var-stmt
                   :declaration declaration
-                  :default default
-                  :expr expr)))
+                  :default default)))
       (apply #'js2-node-add-children node children)
       node)))
 
