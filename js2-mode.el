@@ -8247,7 +8247,8 @@ The current token must be js2-MUL."
                 (js2-unget-token))))
            (t (js2-report-error "msg.syntax")))
         (js2-unget-token)
-        (js2-report-error "msg.syntax")))))
+        (js2-report-error "msg.syntax")
+        nil))))
 
 (defun js2-parse-extern-bindings ()
   "Parse a list of export binding expressions such as {}, {foo, bar}, and
