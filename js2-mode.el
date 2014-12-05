@@ -8425,17 +8425,11 @@ invalid export statements."
               (setq from-clause (js2-parse-from-clause)))
           (js2-unget-token))))
      ((js2-match-token js2-DEFAULT)
-      (let ((expr (js2-parse-expr)))
-        (if (or (js2-function-node-p expr) (js2-assign-node-p expr))
-            (setq default expr)
-          (js2-report-error "msg.syntax"))))
+      (setq default (js2-parse-expr)))
      ((or (js2-match-token js2-VAR) (js2-match-token js2-CONST) (js2-match-token js2-LET))
       (setq declaration (js2-parse-variables (js2-current-token-type) (js2-current-token-beg))))
      (t
-      (let ((expr (js2-parse-expr)))
-        (if (js2-class-node-p expr)
-            (setq declaration expr)
-          (js2-report-error "msg.syntax")))))
+      (setq declaration (js2-parse-expr))))
     (when from-clause
       (push from-clause children))
     (when declaration
