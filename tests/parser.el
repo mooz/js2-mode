@@ -199,6 +199,16 @@ the test."
 (js2-deftest-parse object-literal-computed-keys
   "var x = {[Symbol.iterator]: function() {}};")
 
+;;; Function definition
+
+(js2-deftest function-redeclaring-var "var gen = 3; function gen() {};"
+  (js2-mode)
+  (should (= (length (js2-ast-root-warnings js2-mode-ast)) 1)))
+
+(js2-deftest function-expression-var-same-name "var gen = function gen() {};"
+  (js2-mode)
+  (should (null (js2-ast-root-warnings js2-mode-ast))))
+
 ;;; Function parameters
 
 (js2-deftest-parse function-with-default-parameters
