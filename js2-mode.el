@@ -3525,8 +3525,8 @@ You can tell the quote type by looking at the first character."
 (put 'cl-struct-js2-tagged-template-node 'js2-printer 'js2-print-tagged-template)
 
 (defun js2-visit-tagged-template (n callback)
-  (js2-visit-ast (js2-tagged-template-node-tag n) kid callback)
-  (js2-visit-ast (js2-tagged-template-node-template n) kid callback))
+  (js2-visit-ast (js2-tagged-template-node-tag n) callback)
+  (js2-visit-ast (js2-tagged-template-node-template n) callback))
 
 (defun js2-print-tagged-template (n i)
   (insert (js2-make-pad i))
