@@ -337,10 +337,10 @@ the test."
 
 ;;; Modules
 
-(js2-deftest parse-extern-bindings "{one, two as dos}"
+(js2-deftest parse-export-bindings "{one, two as dos}"
   (js2-init-scanner)
   (should (js2-match-token js2-LC))
-  (let ((imports (js2-parse-extern-bindings)))
+  (let ((imports (js2-parse-export-bindings)))
     (should (not (equal nil imports)))
     (should (= 2 (length imports)))
     (let ((first (nth 0 imports))
