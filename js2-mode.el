@@ -8261,13 +8261,15 @@ consumes no tokens."
         (let ((as (and (js2-match-token js2-NAME) (js2-current-token-string))))
           (if (and as (equal "as" (js2-current-token-string)))
               (let ((name
-                     (and (js2-match-token js2-NAME) (js2-current-token-string))))
+                     (or
+                      (and (js2-match-token js2-DEFAULT) "default")
+                      (and (js2-match-token js2-NAME) (js2-current-token-string)))))
                 (if name
                     (let ((node (make-js2-export-binding-node
                                  :pos beg
                                  :len (- (js2-current-token-end) beg)
                                  :local-name (make-js2-name-node
-                                              :name (js2-current-token-string)
+                                              :name name
                                               :pos (js2-current-token-beg)
                                               :len (js2-current-token-len))
                                  :extern-name (make-js2-name-node

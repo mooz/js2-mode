@@ -356,6 +356,15 @@ the test."
         (should (equal 3 (js2-node-len second-name)))
         (should (equal "dos" (js2-name-node-name second-name)))))))
 
+(js2-deftest parse-export-binding-as-default "one as default"
+  (js2-init-scanner)
+  (let ((binding (js2-maybe-parse-export-binding)))
+    (should binding)
+    (should (js2-export-binding-node-p binding))
+    (let ((name (js2-export-binding-node-local-name binding)))
+      (should name)
+      (should (equal "default" (js2-name-node-name name))))))
+
 (js2-deftest parse-namepsace-import "* as lib;"
   (js2-init-scanner)
   (should (js2-match-token js2-MUL))
