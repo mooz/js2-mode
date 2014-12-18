@@ -1524,14 +1524,8 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.mod.export.decl.at.top.level"
          "SyntaxError: export declarations may only appear at top level")
 
-(js2-msg "msg.mod.no.binding.name"
-         "SyntaxError: missing binding name")
-
 (js2-msg "msg.mod.rc.after.export.spec.list"
          "SyntaxError: missing '}' after export specifier list")
-
-(js2-msg "msg.mod.declaration.after.export"
-         "SyntaxError: missing declaration after 'export' keyword")
 
 ;; NodeTransformer
 (js2-msg "msg.dup.label"
@@ -8214,7 +8208,7 @@ imports or a namespace import that follows it.
                   (js2-define-symbol
                    js2-LET (js2-name-node-name name-node) name-node t))))))
          (t (js2-report-error "msg.syntax")))))
-     (t (js2-report-error "msg.syntax")))
+     (t (js2-report-error "msg.mod.declaration.after.import")))
     (setf (js2-node-len clause) (- (js2-current-token-end) beg))
     (apply #'js2-node-add-children clause children)
     clause))
