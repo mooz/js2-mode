@@ -8181,7 +8181,7 @@ imports or a namespace import that follows it.
         (setf (js2-import-clause-node-namespace-import clause) ns-import)
         (push ns-import children)))
      ((js2-match-token js2-LC)
-      (let ((imports (js2-parse-export-bindings)))
+      (let ((imports (js2-parse-export-bindings t)))
         (setf (js2-import-clause-node-named-imports clause) imports)
         (dolist (import imports)
           (push import children)
@@ -8205,7 +8205,7 @@ imports or a namespace import that follows it.
             (setf (js2-import-clause-node-namespace-import clause) ns-import)
             (push ns-import children)))
          ((js2-match-token js2-LC)
-          (let ((imports (js2-parse-export-bindings)))
+          (let ((imports (js2-parse-export-bindings t)))
             (setf (js2-import-clause-node-named-imports clause) imports)
             (dolist (import imports)
               (push import children)
@@ -8267,7 +8267,7 @@ The current token must be js2-MUL."
         (js2-report-error "msg.syntax")
         nil))))
 
-(defun js2-parse-export-bindings ()
+(defun js2-parse-export-bindings (&optional is-import)
   "Parse a list of export binding expressions such as {}, {foo, bar}, and
 {foo as bar, baz as bang}. The current token must be
 js2-LC. Return a lisp list of js2-export-binding-node"
@@ -8277,7 +8277,9 @@ js2-LC. Return a lisp list of js2-export-binding-node"
           (when binding
             (push binding bindings))
           (js2-match-token js2-COMMA)))
-    (when (js2-must-match js2-RC "msg.syntax")
+    (when (js2-must-match js2-RC (if is-import
+                                     "msg.mod.rc.after.import.spec.list"
+                                   "msg.mod.rc.after.export.spec.list"))
       (reverse bindings))))
 
 (defun js2-maybe-parse-export-binding ()
