@@ -8289,7 +8289,9 @@ consumes no tokens."
 
   (let ((extern-name (when (js2-match-prop-name) (js2-current-token-string)))
         (beg (js2-current-token-beg))
-        (extern-name-len (js2-current-token-len)))
+        (extern-name-len (js2-current-token-len))
+        (is-reserved-name (or (= (js2-current-token-type) js2-RESERVED)
+                              (aref js2-kwd-tokens (js2-current-token-type)))))
     (if extern-name
         (let ((as (and (js2-match-token js2-NAME) (js2-current-token-string))))
           (if (and as (equal "as" (js2-current-token-string)))
@@ -8326,6 +8328,8 @@ consumes no tokens."
                          :len (js2-current-token-len)
                          :local-name name-node
                          :extern-name name-node)))
+              (when is-reserved-name
+                (js2-report-error "msg.mod.as.after.reserved.word" extern-name))
               (js2-node-add-children node name-node)
               node)))
       nil)))
