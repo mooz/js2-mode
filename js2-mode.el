@@ -1503,6 +1503,36 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.let.decl.not.in.block"
          "SyntaxError: let declaration not directly within block")
 
+(js2-msg "msg.mod.import.decl.at.top.level"
+         "SyntaxError: import declarations may only appear at the top level")
+
+(js2-msg "msg.mod.as.after.reserved.word"
+         "SyntaxError: missing keyword 'as' after reserved word %s")
+
+(js2-msg "msg.mod.rc.after.import.spec.list"
+         "SyntaxError: missing '}' after module specifier list")
+
+(js2-msg "msg.mod.from.after.import.spec.set"
+         "SyntaxError: missing keyword 'from' after import specifier set")
+
+(js2-msg "msg.mod.declaration.after.import"
+         "SyntaxError: missing declaration after 'import' keyword")
+
+(js2-msg "msg.mod.spec.after.from"
+         "SyntaxError: missing module specifier after 'from' keyword")
+
+(js2-msg "msg.mod.export.decl.at.top.level"
+         "SyntaxError: export declarations may only appear at top level")
+
+(js2-msg "msg.mod.no.binding.name"
+         "SyntaxError: missing binding name")
+
+(js2-msg "msg.mod.rc.after.export.spec.list"
+         "SyntaxError: missing '}' after export specifier list")
+
+(js2-msg "msg.mod.declaration.after.export"
+         "SyntaxError: missing declaration after 'export' keyword")
+
 ;; NodeTransformer
 (js2-msg "msg.dup.label"
          "duplicated label")
@@ -8099,6 +8129,8 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
 
 (defun js2-parse-import ()
   "Parse import statement. The current token must be js2-IMPORT."
+  (unless (js2-ast-root-p js2-current-scope)
+    (js2-report-error "msg.mod.import.decl.at.top.level"))
   (let ((beg (js2-current-token-beg)))
     (cond ((js2-match-token js2-STRING)
            (make-js2-import-node
@@ -8408,6 +8440,8 @@ expressions should only be either hoistable expressions (function or generator)
 or assignment expressions, but there is no checking to enforce that and so it
 will parse without error a small subset of
 invalid export statements."
+  (unless (js2-ast-root-p js2-current-scope)
+    (js2-report-error "msg.mod.export.decl.at.top.level"))
   (let ((beg (js2-current-token-beg))
         (children (list))
         exports-list from-clause declaration default)
