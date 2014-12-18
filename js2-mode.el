@@ -8241,7 +8241,7 @@ The current token must be js2-MUL."
 
 (defun js2-parse-from-clause ()
   "Parse the from clause in an import or export statement. E.g. from 'src/lib'"
-  (when (js2-must-match-name "msg.syntax")
+  (when (js2-must-match-name "msg.mod.from.after.import.spec.set")
     (let ((beg (js2-current-token-beg)))
       (if (equal "from" (js2-current-token-string))
           (cond
@@ -8252,7 +8252,7 @@ The current token must be js2-MUL."
              :module-id (js2-current-token-string)
              :metadata-p nil))
            ((js2-match-token js2-THIS)
-            (when (js2-must-match-name "msg.syntax")
+            (when (js2-must-match-name "msg.mod.spec.after.from")
               (if (equal "module" (js2-current-token-string))
                   (make-js2-from-clause-node
                    :pos beg
@@ -8261,10 +8261,11 @@ The current token must be js2-MUL."
                    :metadata-p t)
                 (js2-unget-token)
                 (js2-unget-token)
+                (js2-report-error "msg.mod.spec.after.from")
                 nil)))
-           (t (js2-report-error "msg.syntax") nil))
+           (t (js2-report-error "msg.mod.spec.after.from") nil))
         (js2-unget-token)
-        (js2-report-error "msg.syntax")
+        (js2-report-error "msg.mod.from.after.import.spec.set")
         nil))))
 
 (defun js2-parse-export-bindings (&optional is-import)
