@@ -8228,8 +8228,9 @@ The current token must be js2-MUL."
                    :module-id "this"
                    :metadata-p t)
                 (js2-unget-token)
-                (js2-unget-token))))
-           (t (js2-report-error "msg.syntax")))
+                (js2-unget-token)
+                nil)))
+           (t (js2-report-error "msg.syntax") nil))
         (js2-unget-token)
         (js2-report-error "msg.syntax")
         nil))))
