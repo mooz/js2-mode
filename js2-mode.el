@@ -8262,7 +8262,7 @@ The current token must be js2-MUL."
         (js2-report-error "msg.mod.from.after.import.spec.set")
         nil))))
 
-(defun js2-parse-export-bindings (&optional is-import)
+(defun js2-parse-export-bindings (&optional import-p)
   "Parse a list of export binding expressions such as {}, {foo, bar}, and
 {foo as bar, baz as bang}. The current token must be
 js2-LC. Return a lisp list of js2-export-binding-node"
@@ -8272,7 +8272,7 @@ js2-LC. Return a lisp list of js2-export-binding-node"
           (when binding
             (push binding bindings))
           (js2-match-token js2-COMMA)))
-    (when (js2-must-match js2-RC (if is-import
+    (when (js2-must-match js2-RC (if import-p
                                      "msg.mod.rc.after.import.spec.list"
                                    "msg.mod.rc.after.export.spec.list"))
       (reverse bindings))))
