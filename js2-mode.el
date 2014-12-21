@@ -8308,9 +8308,9 @@ consumes no tokens."
                                                :pos beg
                                                :len extern-name-len))))
                       (js2-node-add-children
-                       node (js2-export-binding-node-local-name node))
-                      (js2-node-add-children
-                       node (js2-export-binding-node-extern-name node))
+                       node
+                       (js2-export-binding-node-local-name node)
+                       (js2-export-binding-node-extern-name node))
                       node)
                   (js2-unget-token)
                   nil))
