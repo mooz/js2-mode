@@ -8283,7 +8283,6 @@ This can take the form of either as single js2-NAME token as in 'foo' or as in a
 rebinding expression 'bar as foo'. If it matches, it will return an instance of
 js2-export-binding-node and consume all the tokens. If it does not match, it
 consumes no tokens."
-
   (let ((extern-name (when (js2-match-prop-name) (js2-current-token-string)))
         (beg (js2-current-token-beg))
         (extern-name-len (js2-current-token-len))
