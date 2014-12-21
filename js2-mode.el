@@ -8142,7 +8142,7 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
                          :from from-clause
                          :module-id module-id)))
              (when import-clause
-               (js2-node-add-children import-clause))
+               (js2-node-add-children node import-clause))
              (when from-clause
                (js2-node-add-children node from-clause))
              node)))))
