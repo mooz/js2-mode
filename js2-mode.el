@@ -7414,8 +7414,7 @@ leaving a statement, an expression, or a function definition."
             js2-imenu-function-map nil
             js2-label-set nil)
       (js2-init-scanner)
-      (setq ast (with-silent-modifications
-                  (js2-do-parse)))
+      (setq ast (js2-do-parse))
       (unless js2-ts-hit-eof
         (js2-report-error "msg.got.syntax.errors" (length js2-parsed-errors)))
       (setf (js2-ast-root-errors ast) js2-parsed-errors
@@ -10890,17 +10889,17 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
       (unwind-protect
           (when (or js2-mode-buffer-dirty-p force)
             (js2-remove-overlays)
-            (with-silent-modifications
-              (setq js2-mode-buffer-dirty-p nil
-                    js2-mode-fontifications nil
-                    js2-mode-deferred-properties nil)
-              (if js2-mode-verbose-parse-p
-                  (message "parsing..."))
-              (setq time
-                    (js2-time
-                     (setq interrupted-p
-                           (catch 'interrupted
-                             (js2-parse)
+            (setq js2-mode-buffer-dirty-p nil
+                  js2-mode-fontifications nil
+                  js2-mode-deferred-properties nil)
+            (if js2-mode-verbose-parse-p
+                (message "parsing..."))
+            (setq time
+                  (js2-time
+                   (setq interrupted-p
+                         (catch 'interrupted
+                           (js2-parse)
+                           (with-silent-modifications
                              ;; if parsing is interrupted, comments and regex
                              ;; literals stay ignored by `parse-partial-sexp'
                              (remove-text-properties (point-min) (point-max)
@@ -10910,15 +10909,15 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
                              (js2-mode-show-warnings)
                              (js2-mode-show-errors)
                              (if (>= js2-highlight-level 1)
-                                 (js2-highlight-jsdoc js2-mode-ast))
-                             nil))))
-              (if interrupted-p
-                  (progn
-                    ;; unfinished parse => try again
-                    (setq js2-mode-buffer-dirty-p t)
-                    (js2-mode-reset-timer))
-                (if js2-mode-verbose-parse-p
-                    (message "Parse time: %s" time)))))
+                                 (js2-highlight-jsdoc js2-mode-ast)))
+                           nil))))
+            (if interrupted-p
+                (progn
+                  ;; unfinished parse => try again
+                  (setq js2-mode-buffer-dirty-p t)
+                  (js2-mode-reset-timer))
+              (if js2-mode-verbose-parse-p
+                  (message "Parse time: %s" time))))
         (setq js2-mode-parsing nil)
         (unless interrupted-p
           (setq js2-mode-parse-timer nil))))))
@@ -10978,7 +10977,6 @@ The last element is optional.  When present, use instead of FACE."
          ;; Don't inadvertently go out of bounds.
          (beg (max (point-min) (min beg (point-max))))
          (end (max (point-min) (min end (point-max))))
-         (js2-highlight-level 3)    ; so js2-set-face is sure to fire
          (ovl (make-overlay beg end)))
     (overlay-put ovl 'font-lock-face (or (fourth e) face))
     (overlay-put ovl 'js2-error t)
