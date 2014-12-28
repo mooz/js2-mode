@@ -7991,14 +7991,14 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
     pn))
 
 (defun js2-parse-for ()
-  "Parser for for-statement.  Last matched token must be js2-FOR.
-Parses for, for-in, and for each-in statements."
+  "Parse a for, for-in or for each-in statement.
+Last matched token must be js2-FOR."
   (let ((for-pos (js2-current-token-beg))
         pn is-for-each is-for-in-or-of is-for-of
         in-pos each-pos tmp-pos
-        init  ; Node init is also foo in 'foo in object'
-        cond  ; Node cond is also object in 'foo in object'
-        incr  ; 3rd section of for-loop initializer
+        init  ; Node init is also foo in 'foo in object'.
+        cond  ; Node cond is also object in 'foo in object'.
+        incr  ; 3rd section of for-loop initializer.
         body tt lp rp)
     ;; See if this is a for each () instead of just a for ()
     (when (js2-match-token js2-NAME)
