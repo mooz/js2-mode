@@ -21,6 +21,7 @@
 
 (require 'ert)
 (require 'js2-mode)
+(require 'cl-lib)
 
 (defun js2-test-indent (content)
   (let ((s (replace-regexp-in-string "^ *|" "" content)))
@@ -31,7 +32,7 @@
       (should (string= s (buffer-substring-no-properties
                           (point-min) (point)))))))
 
-(defmacro* js2-deftest-indent (name content &key bind)
+(cl-defmacro js2-deftest-indent (name content &key bind)
   `(ert-deftest ,(intern (format "js2-%s" name)) ()
      (let ,(append '((js2-basic-offset 2)
                      (js2-pretty-multiline-declarations t)
