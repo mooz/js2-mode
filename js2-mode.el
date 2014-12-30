@@ -11170,12 +11170,12 @@ highlighting features of `js2-mode'."
   (unless (js2-have-errors-p)
     (message "No errors")
     (return-from js2-display-error-list))
-  (labels ((annotate-list
-            (lst type)
-            "Add diagnostic TYPE and line number to errs list"
-            (mapcar (lambda (err)
-                      (list err type (line-number-at-pos (nth 1 err))))
-                    lst)))
+  (cl-labels ((annotate-list
+               (lst type)
+               "Add diagnostic TYPE and line number to errs list"
+               (mapcar (lambda (err)
+                         (list err type (line-number-at-pos (nth 1 err))))
+                       lst)))
     (let* ((srcbuf (current-buffer))
            (errbuf (get-buffer-create "*js-lint*"))
            (errors (annotate-list
