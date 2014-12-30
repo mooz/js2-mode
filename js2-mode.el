@@ -10375,7 +10375,7 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
      ;; method definition: {f() {...}}
      ((and (= (js2-peek-token) js2-LP)
            (>= js2-language-version 200))
-      (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; name
+      (js2-record-face 'font-lock-function-name-face)      ; name
       (js2-parse-getter-setter-prop ppos name ""))
      ;; regular prop
      (t
