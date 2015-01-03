@@ -9309,7 +9309,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
         async-p)
     (if (= tt js2-YIELD)
         (js2-parse-return-or-yield tt t)
-      ;; TODO(mooz): Bit cofusing.
+      ;; TODO(mooz): Bit confusing.
       ;; If we meet `async` token and it's not part of `async
       ;; function`, then this `async` is for a succeeding async arrow
       ;; function.
