@@ -356,6 +356,20 @@ the test."
                    "a = () => {  await bar();\n}"
                    :syntax-error "await")
 
+;;; 'async' and 'await' are contextual keywords
+
+(js2-deftest-parse async-can-be-var-name
+  "var async = 3;")
+
+(js2-deftest-parse async-can-be-function-name
+  "function async() {\n}")
+
+(js2-deftest-parse await-can-be-var-name
+  "var await = 3;")
+
+(js2-deftest-parse await-can-be-function-name
+  "function await() {\n}")
+
 ;;; Numbers
 
 (js2-deftest-parse decimal-starting-with-zero "081;" :reference "81;")
