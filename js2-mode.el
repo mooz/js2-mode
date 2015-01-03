@@ -9317,8 +9317,8 @@ If NODE is non-nil, it is the AST node associated with the symbol."
       ;; `js2-parse-function-stmt' nor `js2-parse-function-expr' that
       ;; interpret `async` token, we trash `async` and just remember
       ;; we met `async` keyword to `async-p'.
-      (when (and (eq tt js2-ASYNC)
-                 (not (eq (js2-peek-token) js2-FUNCTION)))
+      (when (and (= tt js2-ASYNC)
+                 (/= (js2-peek-token) js2-FUNCTION))
         (setq async-p t)
         (js2-get-token))
       ;; Save the tokenizer state in case we find an arrow function
@@ -9582,7 +9582,7 @@ to parse the operand (for prefix operators)."
      ((= tt js2-DELPROP)
       (js2-get-token)
       (js2-make-unary js2-DELPROP 'js2-parse-unary-expr))
-     ((eq tt js2-AWAIT)
+     ((= tt js2-AWAIT)
       (setq beg (js2-current-token-beg)
             end (js2-current-token-end))
       (js2-get-token)
