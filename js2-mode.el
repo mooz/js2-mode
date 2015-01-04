@@ -7573,7 +7573,7 @@ string is NAME.  Returns nil and keeps current token otherwise."
     nil))
 
 (defun js2-contextual-kwd-p (token name &optional no-record-face)
-  "Return t if `token' is `js2-NAME', and its string is NAME."
+  "Return t if TOKEN is `js2-NAME', and its string is NAME."
   (and (= (js2-token-type token) js2-NAME)
        (string= (js2-token-string token) name)
        (prog1 t (or no-record-face
