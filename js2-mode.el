@@ -7568,27 +7568,40 @@ string is NAME.  Returns nil and keeps current token otherwise."
   (if (js2-contextual-kwd-p (progn (js2-get-token)
                                    (js2-current-token))
                             name)
-      t
+      (progn (js2-record-face 'font-lock-keyword-face) t)
     (js2-unget-token)
     nil))
 
-(defun js2-contextual-kwd-p (token name &optional no-record-face)
+(defun js2-contextual-kwd-p (token name)
   "Return t if TOKEN is `js2-NAME', and its string is NAME."
   (and (= (js2-token-type token) js2-NAME)
-       (string= (js2-token-string token) name)
-       (prog1 t (or no-record-face
-                    (js2-record-face 'font-lock-keyword-face)))))
+       (string= (js2-token-string token) name)))
 
 (defun js2-match-async-function ()
   (when (and (js2-contextual-kwd-p (js2-current-token) "async")
              (= (js2-peek-token) js2-FUNCTION))
+    (js2-record-face 'font-lock-keyword-face)
     (js2-get-token)
     t))
 
 (defun js2-match-async-arrow-function ()
   (when (and (js2-contextual-kwd-p (js2-current-token) "async")
              (/= (js2-peek-token) js2-FUNCTION))
+    (js2-record-face 'font-lock-keyword-face)
     (js2-get-token)
+    t))
+
+(defun js2-match-await ()
+  (when (and (= tt js2-NAME)
+             (js2-contextual-kwd-p (js2-current-token) "await"))
+    (js2-record-face 'font-lock-keyword-face)
+    (let ((beg (js2-current-token-beg))
+          (end (js2-current-token-end)))
+      (js2-get-token)
+      (unless (and (js2-inside-function)
+                   (js2-function-node-async js2-current-script-or-fn))
+        (js2-report-error "msg.bad.await" nil
+                          beg (- end beg))))
     t))
 
 (defun js2-get-prop-name-token ()
@@ -9619,15 +9632,7 @@ to parse the operand (for prefix operators)."
      ((= tt js2-DELPROP)
       (js2-get-token)
       (js2-make-unary js2-DELPROP 'js2-parse-unary-expr))
-     ((and (= tt js2-NAME)
-           (js2-contextual-kwd-p (js2-current-token) "await"))
-      (setq beg (js2-current-token-beg)
-            end (js2-current-token-end))
-      (js2-get-token)
-      (unless (and (js2-inside-function)
-                   (js2-function-node-async js2-current-script-or-fn))
-        (js2-report-error "msg.bad.await" nil
-                          beg (- end beg)))
+     ((js2-match-await)
       (js2-make-await))
      ((= tt js2-ERROR)
       (js2-get-token)
