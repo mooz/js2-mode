@@ -656,7 +656,9 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-NO_SUBS_TEMPLATE 168) ; template literal without substitutions
 (defvar js2-TAGGED_TEMPLATE 169)  ; tagged template literal
 
-(defconst js2-num-tokens (1+ js2-TAGGED_TEMPLATE))
+(defvar js2-AWAIT 170)  ; await (pseudo keyword)
+
+(defconst js2-num-tokens (1+ js2-AWAIT))
 
 (defconst js2-debug-print-trees nil)
 
@@ -3488,6 +3490,7 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-TYPEOF "typeof")
                (cons js2-INSTANCEOF "instanceof")
                (cons js2-DELPROP "delete")
+               (cons js2-AWAIT "await")
                (cons js2-COMMA ",")
                (cons js2-COLON ":")
                (cons js2-OR "||")
@@ -3568,7 +3571,7 @@ The type field holds the actual assignment operator.")
                                                        len operand)))
   "AST node type for unary operator nodes.
 The type field can be NOT, BITNOT, POS, NEG, INC, DEC,
-TYPEOF, DELPROP or TRIPLEDOT.  For INC or DEC, a 'postfix node
+TYPEOF, DELPROP, TRIPLEDOT or AWAIT.  For INC or DEC, a 'postfix node
 property is added if the operator follows the operand."
   operand)  ; a `js2-node' expression
 
@@ -3588,30 +3591,12 @@ property is added if the operator follows the operand."
     (unless postfix
       (insert op))
     (if (or (= tt js2-TYPEOF)
-            (= tt js2-DELPROP))
+            (= tt js2-DELPROP)
+            (= tt js2-AWAIT))
         (insert " "))
     (js2-print-ast (js2-unary-node-operand n) 0)
     (when postfix
       (insert op))))
-
-(cl-defstruct (js2-await-node
-               (:include js2-node)
-               (:constructor nil)
-               (:constructor make-js2-await-node (&key (pos js2-ts-cursor)
-                                                       len operand)))
-  "AST node type for await nodes."
-  operand)  ; a `js2-node' expression
-
-(put 'cl-struct-js2-await-node 'js2-visitor 'js2-visit-await-node)
-(put 'cl-struct-js2-await-node 'js2-printer 'js2-print-await-node)
-
-(defun js2-visit-await-node (n v)
-  (js2-visit-ast (js2-await-node-operand n) v))
-
-(defun js2-print-await-node (n i)
-  (insert (js2-make-pad i))
-  (insert "await ")
-  (js2-print-ast (js2-await-node-operand n) 0))
 
 (cl-defstruct (js2-let-node
                (:include js2-scope)
@@ -5148,8 +5133,8 @@ You should use `js2-print-tree' instead of this function."
           (or (js2-node-has-side-effects expr)
               (when (js2-string-node-p expr)
                 (member (js2-string-node-value expr) '("use strict" "use asm"))))))
-       ((js2-await-node-p node)
-        (js2-node-has-side-effects (js2-await-node-operand node)))
+       ((= tt js2-AWAIT)
+        (js2-node-has-side-effects (js2-unary-node-operand node)))
        ((= tt js2-COMMA)
         (js2-node-has-side-effects (js2-infix-node-right node)))
        ((or (= tt js2-AND)
@@ -9633,7 +9618,7 @@ to parse the operand (for prefix operators)."
       (js2-get-token)
       (js2-make-unary js2-DELPROP 'js2-parse-unary-expr))
      ((js2-match-await)
-      (js2-make-await))
+      (js2-make-unary js2-AWAIT 'js2-parse-unary-expr))
      ((= tt js2-ERROR)
       (js2-get-token)
       (make-js2-error-node))  ; try to continue
