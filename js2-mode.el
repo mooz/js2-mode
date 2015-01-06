@@ -1017,6 +1017,14 @@ callback to `js2-mode-wait-for-parse', and your callback will be
 called after the new parse tree is built.  This can take some time
 in large files.")
 
+(defvar js2-normal-indent-hook nil
+  "Similar to `js2-indent-hook' but used when `js2-bounce-indent' is
+not in effect.
+
+Hooks are run without arguments.  The first hook to return a
+non-nil value determines the indentation to use; hooks after that
+are still executed for possible side-effects.")
+
 (defface js2-warning
   `((((class color) (background light))
      (:underline  "orange"))
@@ -11095,8 +11103,9 @@ If so, we don't ever want to use bounce-indent."
               (not (js2-same-line (point-min)))
               (not (js2-1-line-comment-continuation-p)))
          (js2-bounce-indent indent-col parse-status bounce-backwards))
-        ;; just indent to the guesser's likely spot
-        (t (indent-line-to indent-col))))
+        ;; indent to user provided indentation or the guesser's likely spot
+        (t (indent-line-to (or (find-if #'identity (mapcar #'funcall js2-normal-indent-hook))
+                               indent-col)))))
      (when (cl-plusp offset)
        (forward-char offset)))))
 
