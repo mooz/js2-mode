@@ -112,3 +112,30 @@
   |  are kept
   |        unchanged!`"
   :keep-indent t)
+
+(js2-deftest-indent no-multiline-decl-first-arg-function-dynamic
+  "var foo = function() {
+  |  return 7;
+  |};"
+  :bind ((js2-pretty-multiline-declarations 'dynamic)))
+
+(js2-deftest-indent multiline-decl-first-arg-function-indent-dynamic
+  "var foo = function() {
+  |      return 7;
+  |    },
+  |    bar = 8;"
+  :bind ((js2-pretty-multiline-declarations 'dynamic)))
+
+(js2-deftest-indent multiline-decl-first-arg-function-indent-dynamic-comment
+  "var foo = function() {
+  |      return 7;
+  |    }/* MUAHAHAHA, ah ha! */,
+  |    bar = 8;"
+  :bind ((js2-pretty-multiline-declarations 'dynamic)))
+
+(js2-deftest-indent multiline-decl-first-arg-function-indent-dynamic-scan-error
+  "var foo = function() {
+  |  return 7;
+  |  ,
+  |  bar = 8;"
+  :bind ((js2-pretty-multiline-declarations 'dynamic)))

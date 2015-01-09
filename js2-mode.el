@@ -263,14 +263,37 @@ js2-mode also binds `js2-bounce-indent-backwards' to Shift-Tab."
       b = 20,
       c = 30;
 
-If the value is not `all', and the first assigned value in
+If the value is t, and the first assigned value in the
 declaration is a function/array/object literal spanning several
 lines, it won't be indented additionally:
 
   var o = {                   var bar = 2,
     foo: 3          vs.           o = {
   },                                foo: 3
-      bar = 2;                    };"
+      bar = 2;                    };
+
+If the value is `all', it will always be indented additionally:
+
+  var o = {
+        foo: 3
+      };
+
+  var o = {
+        foo: 3
+      },
+      bar = 2;
+
+If the value is `dynamic', it will be indented additionally only
+if the declaration contains more than one variable:
+
+  var o = {
+    foo: 3
+  };
+
+  var o = {
+        foo: 3
+      },
+      bar = 2;"
   :group 'js2-mode
   :type 'symbol)
 (js2-mark-safe-local 'js2-pretty-multiline-declarations 'symbolp)
@@ -10780,6 +10803,40 @@ In particular, return the buffer position of the first `for' kwd."
       (goto-char for-kwd)
       (current-column))))
 
+(defun js2-maybe-goto-declaration-keyword-end (bracket)
+  "Helper function for `js2-proper-indentation'.
+Depending on the value of `js2-pretty-multiline-declarations',
+move point to the end of a variable declaration keyword so that
+indentation is aligned to that column."
+  (cond
+   ((eq js2-pretty-multiline-declarations 'all)
+    (when (looking-at js2-declaration-keyword-re)
+      (goto-char (1+ (match-end 0)))))
+   ((eq js2-pretty-multiline-declarations 'dynamic)
+    (let (declaration-keyword-end
+          at-closing-bracket-p
+          comma-p)
+      (when (looking-at js2-declaration-keyword-re)
+        ;; Preserve the match data lest it somehow be overridden.
+        (setq declaration-keyword-end (match-end 0))
+        (save-excursion
+          (goto-char bracket)
+          (setq at-closing-bracket-p
+                ;; Handle scan errors gracefully.
+                (condition-case nil
+                    (progn
+                      ;; Use the regular `forward-sexp-function' because the
+                      ;; normal one for this mode uses the AST.
+                      (let (forward-sexp-function)
+                        (forward-sexp))
+                      t)
+                  (error nil)))
+          (when at-closing-bracket-p
+            (js2-forward-sws)
+            (setq comma-p (looking-at-p ","))))
+        (when comma-p
+          (goto-char (1+ declaration-keyword-end))))))))
+
 (defun js2-proper-indentation (parse-status)
   "Return the proper indentation for the current line."
   (save-excursion
@@ -10823,9 +10880,7 @@ In particular, return the buffer position of the first `for' kwd."
                                 (looking-at ")"))
             (backward-list))
           (back-to-indentation)
-          (and (eq js2-pretty-multiline-declarations 'all)
-               (looking-at js2-declaration-keyword-re)
-               (goto-char (1+ (match-end 0))))
+          (js2-maybe-goto-declaration-keyword-end bracket)
           (setq indent
                 (cond (same-indent-p
                        (current-column))
