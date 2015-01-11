@@ -275,6 +275,16 @@ lines, it won't be indented additionally:
   :type 'symbol)
 (js2-mark-safe-local 'js2-pretty-multiline-declarations 'symbolp)
 
+(defcustom js2-pretty-multiline-function-arguments t
+  "Non-nil to line up multiline function arguments vertically:
+
+  function foo(bar,             function foo(bar,
+               baz) {   vs.       baz) {
+  }                             }"
+  :group 'js2-mode
+  :type 'symbol)
+(js2-mark-safe-local 'js2-pretty-multiline-function-arguments 'symbolp)
+
 (defcustom js2-indent-switch-body nil
   "When nil, case labels are indented on the same level as the
 containing switch statement.  Otherwise, all lines inside
@@ -10807,11 +10817,20 @@ In particular, return the buffer position of the first `for' kwd."
                    (looking-at "\\_<switch\\_>"))
               (+ indent js2-basic-offset)
             indent))
-         (t
+         (js2-pretty-multiline-function-arguments
           (unless same-indent-p
             (forward-char)
             (skip-chars-forward " \t"))
-          (current-column))))
+          (current-column))
+         (t
+          (if same-indent-p
+              (progn
+                (if at-closing-bracket
+                    (back-to-indentation))
+                (current-column))
+            (progn
+              (back-to-indentation)
+              (+ (current-column) js2-basic-offset))))))
 
        (continued-expr-p js2-basic-offset)
 
