@@ -101,7 +101,7 @@
   (mapcar 'symbol-name
           '(Array Boolean Date Error EvalError Function Infinity JSON
           Math NaN Number Object RangeError ReferenceError RegExp
-          String SyntaxError TypeError URIError arguments
+          String SyntaxError TypeError URIError
           decodeURI decodeURIComponent encodeURI
           encodeURIComponent escape eval isFinite isNaN
           parseFloat parseInt undefined unescape))
@@ -2325,8 +2325,11 @@ Returns `js2-scope' in which NAME is defined, or nil if not found."
         result
         (continue t))
     (while (and scope continue)
-      (if (and (setq table (js2-scope-symbol-table scope))
-               (assq sym table))
+      (if (or
+           (and (setq table (js2-scope-symbol-table scope))
+                (assq sym table))
+           (and (eq sym 'arguments)
+                (js2-function-node-p scope)))
           (setq continue nil
                 result scope)
         (setq scope (js2-scope-parent-scope scope))))
