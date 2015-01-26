@@ -7763,6 +7763,7 @@ Scanner should be initialized."
                                    (js2-parse-expr t))))))
 
 (defun js2-parse-function-body (fn-node)
+  (js2-define-symbol js2-FUNCTION "arguments" fn-node)
   (js2-must-match js2-LC "msg.no.brace.body"
                   (js2-node-pos fn-node)
                   (- js2-ts-cursor (js2-node-pos fn-node)))
