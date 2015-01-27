@@ -147,7 +147,7 @@
 
             ;; Window
             window alert confirm document java navigator prompt screen
-            self top
+            self top requestAnimationFrame cancelAnimationFrame
 
             ;; W3C CSS
             CSSCharsetRule CSSFontFace CSSFontFaceRule
