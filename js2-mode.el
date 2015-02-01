@@ -10248,9 +10248,16 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
     pn))
 
 (defun js2-parse-class-stmt ()
-  (let ((pos (js2-current-token-beg)))
-    (js2-must-match-name "msg.unnamed.class.stmt")
-    (js2-parse-class pos 'CLASS_STATEMENT (js2-create-name-node t))))
+  (let ((pos (js2-current-token-beg))
+        (_ (js2-must-match-name "msg.unnamed.class.stmt"))
+        (name (js2-create-name-node t)))
+    (js2-set-face (js2-node-pos name) (js2-node-end name)
+                  'font-lock-function-name-face 'record)
+    (let ((node (js2-parse-class pos 'CLASS_STATEMENT name)))
+      (js2-define-symbol js2-FUNCTION
+                         (js2-name-node-name name)
+                         node)
+      node)))
 
 (defun js2-parse-class-expr ()
   (let ((pos (js2-current-token-beg))
@@ -10262,9 +10269,6 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
 (defun js2-parse-class (pos form name)
   ;; class X [extends ...] {
   (let (pn elems extends)
-    (when name
-      (js2-set-face (js2-node-pos name) (js2-node-end name)
-                    'font-lock-function-name-face 'record))
     (if (js2-match-token js2-EXTENDS)
         (if (= (js2-peek-token) js2-LC)
             (js2-report-error "msg.missing.extends")
