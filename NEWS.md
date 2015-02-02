@@ -36,8 +36,10 @@ The options `js2-indent-on-enter-key` and `js2-enter-indents-newline` were also 
 
 To bring back the previous behavior, put this in your init file:
 
-    (eval-after-load 'js2-mode
-      '(define-key js2-mode-map (kbd "RET") 'js2-line-break))
+```js
+(eval-after-load 'js2-mode
+  '(define-key js2-mode-map (kbd "RET") 'js2-line-break))
+```
 
 ## 20120617
 
@@ -51,75 +53,91 @@ To bring back the previous behavior, put this in your init file:
 
 ### Popular indentation style
 
-    [foo, bar, baz].forEach(function (v) {
-        if (validate(v))
-            process(v);
-    });
+```js
+[foo, bar, baz].forEach(function (v) {
+    if (validate(v))
+        process(v);
+});
 
-    [a, b, c].some(function (v) {
-        return validate(v);
-    });
+[a, b, c].some(function (v) {
+    return validate(v);
+});
+```
 
 ### Pretty multiline variable declaration
 
 In the original mode,
 
-    var foo = 10,
-    bar = 20,
-    baz = 30;
+```js
+var foo = 10,
+bar = 20,
+baz = 30;
+```
 
 In this mode when the value of `js2-pretty-multiline-declarations` is non-nil,
 
-    var foo = 10,
-        bar = 20,
-        baz = 30;
+```js
+var foo = 10,
+    bar = 20,
+    baz = 30;
+```
 
 ### Abbreviated destructuring assignments
 
-    let {a, b}       = {a: 10, b: 20}; // Abbreviated   (Not supported in the original mode)
-    let {a: a, b: b} = {a: 10, b: 20}; // Same as above (Supported in the original mode)
+```js
+let {a, b}       = {a: 10, b: 20}; // Abbreviated   (Not supported in the original mode)
+let {a: a, b: b} = {a: 10, b: 20}; // Same as above (Supported in the original mode)
 
-    (function ({responseText}) { /* */ })(xhr); // As the argument of function
+(function ({responseText}) { /* */ })(xhr); // As the argument of function
 
-    for (let [k, { name, age }] in Iterator(obj)) // nested
-        print(k, name, age);
+for (let [k, { name, age }] in Iterator(obj)) // nested
+    print(k, name, age);
+```
 
 ### Expression closure in property value
 
-    let worker = {
-        get age() 20,
-        get sex() "male",
-        fire: function () _fire()
-    };
+```js
+let worker = {
+    get age() 20,
+    get sex() "male",
+    fire: function () _fire()
+};
+```
 
 ### Fix for odd indentation of "else if" with no braces
 
 In the original mode,
 
-    if (foo)
-        return foo;
-    else if (bar)
-    return bar;      // here
+```js
+if (foo)
+    return foo;
+else if (bar)
+return bar;      // here
+```
 
 In this mode,
 
-    if (foo)
-        return foo;
-    else if (bar)
-        return bar;  // fixed
+```js
+if (foo)
+    return foo;
+else if (bar)
+    return bar;  // fixed
+```
 
 ### Imenu support for function nesting
 
 Supports function nesting and anonymous wrappers:
 
-    (function() {
-      var foo = function() {
-        function bar() { // shown as foo.bar.<definition-1>
-          function baz() {} // foo.bar.baz
-          var qux = function() {}; // foo.bar.quux
-        }
-      };
-    });
+```js
+(function() {
+  var foo = function() {
+    function bar() { // shown as foo.bar.<definition-1>
+      function baz() {} // foo.bar.baz
+      var qux = function() {}; // foo.bar.quux
+    }
+  };
+});
+```
 
 Examples of output:
 
@@ -133,24 +151,30 @@ For library-specific extension methods like `$.extend` and `dojo.declare`, see [
 
 Original mode highlights them only on the left side of assignments:
 
-    var house;
-    hose = new House(); // highlights "hose"
+```js
+var house;
+hose = new House(); // highlights "hose"
+```
 
 Here they are highlighted in all expressions:
 
-    function feed(fishes, food) {
-        for each (var fish in fshes) { // highlights "fshes"
-            food.feed(fsh); // highlights "fsh"
-        }
-        hood.discard(); // highlights "hood"
+```js
+function feed(fishes, food) {
+    for each (var fish in fshes) { // highlights "fshes"
+        food.feed(fsh); // highlights "fsh"
     }
+    hood.discard(); // highlights "hood"
+}
+```
 
 Destructuring assignments and array comprehensions (JS 1.7) are supported:
 
-    let three, [one, two] = [1, 2];
-    thee = one + two; // highlights "thee"
+```js
+let three, [one, two] = [1, 2];
+thee = one + two; // highlights "thee"
 
-    function revenue(goods) {
-        // highlights "coast"
-        return [price - coast for each ({price, cost} in goods)].reduce(add);
-    }
+function revenue(goods) {
+    // highlights "coast"
+    return [price - coast for each ({price, cost} in goods)].reduce(add);
+}
+```
