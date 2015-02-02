@@ -48,7 +48,7 @@
       (if syntax-error
           (let ((errors (js2-ast-root-errors ast)))
             (should (= (or errors-count 1) (length errors)))
-            (cl-destructuring-bind (_ pos len) (cl-first errors)
+            (cl-destructuring-bind (_ pos len) (car (last errors))
               (should (string= syntax-error (substring code-string
                                                        (1- pos) (+ pos len -1))))))
         (should (= 0 (length (js2-ast-root-errors ast))))
@@ -184,7 +184,7 @@ the test."
   "var x = {a: 1, b, c: 1, d};")
 
 (js2-deftest-parse object-literal-shorthard-with-number
-  "var a = {1};" :syntax-error ";" :errors-count 2)
+  "var a = {1};" :syntax-error "}" :errors-count 2)
 
 (js2-deftest-parse object-literal-method
   "var x = {f(y) {  return y;\n}};")
@@ -255,13 +255,13 @@ the test."
   "([{a}, b]) => {  a + b;\n};")
 
 (js2-deftest-parse parenless-arrow-function-prohibits-rest
-  "...b => {b + 1;};" :syntax-error "=>" :errors-count 1)
+  "...b => {b + 1;};" :syntax-error "=>")
 
 (js2-deftest-parse parenless-arrow-function-prohibits-destructuring
-  "[a, b] => {a + b;};" :syntax-error "=>" :errors-count 4)
+  "[a, b] => {a + b;};" :syntax-error "]" :errors-count 4)
 
 (js2-deftest-parse arrow-function-recovers-from-error
-  "[(,foo) => 1];" :syntax-error "=>" :errors-count 6)
+  "[(,foo) => 1];" :syntax-error "," :errors-count 6)
 
 ;;; Automatic semicolon insertion
 
