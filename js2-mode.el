@@ -2313,19 +2313,25 @@ Returns nil if there is no enclosing scope node."
       (setq parent (js2-node-parent parent)))
     parent))
 
-(defun js2-get-defining-scope (scope name)
+(defun js2-get-defining-scope (scope name &optional point)
   "Search up scope chain from SCOPE looking for NAME, a string or symbol.
-Returns `js2-scope' in which NAME is defined, or nil if not found."
+Returns `js2-scope' in which NAME is defined, or nil if not found.
+
+If POINT is non-nil, and if the found declaration type is
+`js2-LET', also check that the declaration node is before POINT."
   (let ((sym (if (symbolp name)
                  name
                (intern name)))
-        table
         result
         (continue t))
     (while (and scope continue)
       (if (or
-           (and (setq table (js2-scope-symbol-table scope))
-                (assq sym table))
+           (let ((entry (cdr (assq sym (js2-scope-symbol-table scope)))))
+             (and entry
+                  (or (not point)
+                      (not (eq js2-LET (js2-symbol-decl-type entry)))
+                      (>= point
+                          (js2-node-abs-pos (js2-symbol-ast-node entry))))))
            (and (eq sym 'arguments)
                 (js2-function-node-p scope)))
           (setq continue nil
@@ -7034,7 +7040,7 @@ it is considered declared."
         (unless (or (member name js2-global-externs)
                     (member name js2-default-externs)
                     (member name js2-additional-externs)
-                    (js2-get-defining-scope scope name))
+                    (js2-get-defining-scope scope name pos))
           (js2-report-warning "msg.undeclared.variable" name pos (- end pos)
                               'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
