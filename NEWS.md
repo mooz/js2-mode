@@ -1,3 +1,5 @@
+# History of user-visible changes
+
 ## 20141115
 
 Support for:
