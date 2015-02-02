@@ -1,5 +1,20 @@
 # History of user-visible changes
 
+## 20150202
+
+Support for:
+
+* [ES6 modules](http://www.2ality.com/2014/09/es6-modules-final.html).
+* [Short-hand object literals](http://ariya.ofilabs.com/2013/02/es6-and-object-literal-property-value-shorthand.html).
+* [Method definitions](http://ariya.ofilabs.com/2013/03/es6-and-method-definitions.html).
+* ['u' and 'y' RegExp flags](https://mathiasbynens.be/notes/es6-unicode-regex).
+* [Computed property names](http://people.mozilla.org/~jorendorff/es6-draft.html#sec-object-initializer).
+* [Class statements and expressions](https://github.com/lukehoban/es6features#classes).
+* [Template strings](http://tc39wiki.calculist.org/es6/template-strings/), including tagged ones.
+
+The variable `js2-allow-keywords-as-property-names` has been
+removed. Instead we check if `js2-language-version` is 180 or highter.
+
 ## 20141115
 
 Support for:
