@@ -260,6 +260,9 @@ the test."
 (js2-deftest-parse parenless-arrow-function-prohibits-destructuring
   "[a, b] => {a + b;};" :syntax-error "=>" :errors-count 4)
 
+(js2-deftest-parse arrow-function-recovers-from-error
+  "[(,foo) => 1];" :syntax-error "=>" :errors-count 6)
+
 ;;; Automatic semicolon insertion
 
 (js2-deftest-parse no-auto-semi-insertion-after-if

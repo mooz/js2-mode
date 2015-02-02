@@ -9238,9 +9238,21 @@ If NODE is non-nil, it is the AST node associated with the symbol."
 
 (defun js2-parse-paren-expr-or-generator-comp ()
   (let ((px-pos (js2-current-token-beg)))
-    (if (and (>= js2-language-version 200)
-             (js2-match-token js2-FOR))
-        (js2-parse-generator-comp px-pos)
+    (cond
+     ((and (>= js2-language-version 200)
+           (js2-match-token js2-FOR))
+      (js2-parse-generator-comp px-pos))
+     ((and (>= js2-language-version 200)
+           (js2-match-token js2-RP))
+      ;; Not valid expression syntax, but this is valid in an arrow
+      ;; function with no params: () => body.
+      (if (eq (js2-peek-token) js2-ARROW)
+          ;; Return whatever, it will hopefully be rewinded and
+          ;; reparsed when we reach the =>.
+          (make-js2-keyword-node :type js2-NULL)
+        (js2-report-error "msg.syntax")
+        (make-js2-error-node)))
+     (t
       (let* ((js2-in-for-init nil)
              (expr (js2-parse-expr))
              (pn (make-js2-paren-node :pos px-pos
@@ -9249,7 +9261,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
                                               px-pos))))
         (js2-node-add-children pn (js2-paren-node-expr pn))
         (js2-must-match js2-RP "msg.no.paren")
-        pn))))
+        pn)))))
 
 (defun js2-parse-expr (&optional oneshot)
   (let* ((pn (js2-parse-assign-expr))
@@ -9968,17 +9980,6 @@ array-literals, array comprehensions and regular expressions."
           (= tt js2-FALSE)
           (= tt js2-TRUE))
       (make-js2-keyword-node :type tt))
-     ((= tt js2-RP)
-      ;; Not valid expression syntax, but this is valid in an arrow
-      ;; function with no params: () => body.
-      (if (eq (js2-peek-token) js2-ARROW)
-          (progn
-            (js2-unget-token)  ; Put back the right paren.
-            ;; Return whatever, it will hopefully be rewinded and
-            ;; reparsed when we reach the =>.
-            (make-js2-keyword-node :type js2-NULL))
-        (js2-report-error "msg.syntax")
-        (make-js2-error-node)))
      ((= tt js2-TRIPLEDOT)
       ;; Likewise, only valid in an arrow function with a rest param.
       (if (and (js2-match-token js2-NAME)
