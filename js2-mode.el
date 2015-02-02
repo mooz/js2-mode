@@ -5632,8 +5632,7 @@ See http://es5.github.io/#x7.6"
   "Skip to end of line."
   (while (not (memq (js2-get-char) js2-eol-chars)))
   (js2-unget-char)
-  (setf (js2-token-end (js2-current-token)) js2-ts-cursor)
-  (setq js2-token-end js2-ts-cursor))
+  (setf (js2-token-end (js2-current-token)) js2-ts-cursor))
 
 (defun js2-init-scanner (&optional buf line)
   "Create token stream for BUF starting on LINE.
@@ -5869,9 +5868,9 @@ the token is flagged as such."
 During operation, creates an instance of `js2-token' struct, sets
 its relevant fields and puts it into `js2-ti-tokens'."
   (let (identifier-start
-        is-unicode-escape-start c c1
+        is-unicode-escape-start c
         contains-escape escape-val str result base
-        quote-char val look-for-slash continue tt
+        quote-char look-for-slash continue tt
         (token (js2-new-token 0)))
     (setq
      tt
@@ -6238,7 +6237,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
   ;; building it out of a string buffer.
   (let ((c (js2-get-char))
         js2-ts-string-buffer
-        nc)
+        nc c1 val escape-val)
     (catch 'break
       (while (/= c quote-char)
         (catch 'continue
