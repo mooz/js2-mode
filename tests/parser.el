@@ -608,6 +608,16 @@ the test."
     (should export-node)
     (should (js2-export-node-default export-node))))
 
+(js2-deftest export-function-no-semicolon "export default function foo() {}"
+  (js2-mode)
+  (should (equal nil js2-parsed-warnings)))
+(js2-deftest export-default-function-no-semicolon "export function foo() {}"
+  (js2-mode)
+  (should (equal nil js2-parsed-warnings)))
+(js2-deftest export-anything-else-does-require-a-semicolon "export var obj = {}"
+  (js2-mode)
+  (should (not (equal nil js2-parsed-warnings))))
+
 (js2-deftest-parse parse-export-rexport "export * from 'other/lib';")
 (js2-deftest-parse parse-export-export-named-list "export {foo, bar as bang};")
 (js2-deftest-parse parse-re-export-named-list "export {foo, bar as bang} from 'other/lib';")
