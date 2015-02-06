@@ -8094,7 +8094,8 @@ node are given relative start positions and correct lengths."
         js2-ERROR
         js2-SEMI
         js2-CLASS
-        js2-FUNCTION)
+        js2-FUNCTION
+        js2-EXPORT)
   "List of tokens that don't do automatic semicolon insertion.")
 
 (defconst js2-autoinsert-semi-and-warn
@@ -8529,9 +8530,13 @@ invalid export statements."
     (when from-clause
       (push from-clause children))
     (when declaration
-      (push declaration children))
+      (push declaration children)
+      (when (not (js2-function-node-p declaration))
+        (js2-auto-insert-semicolon declaration)))
     (when default
-      (push default children))
+      (push default children)
+      (when (not (js2-function-node-p default))
+        (js2-auto-insert-semicolon default)))
     (let ((node (make-js2-export-node
                   :pos beg
                   :len (- (js2-current-token-end) beg)
