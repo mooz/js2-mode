@@ -1384,7 +1384,7 @@ the correct number of ARGS must be provided."
          "Invalid assignment left-hand side.")
 
 (js2-msg "msg.bad.decr"
-         "Invalid decerement operand.")
+         "Invalid decrement operand.")
 
 (js2-msg "msg.bad.incr"
          "Invalid increment operand.")
@@ -5366,7 +5366,7 @@ Returns logical OR of END_* flags."
   (let* ((rv js2-END_DROPS_OFF)
          (kids (js2-block-node-kids node))
          (n (car kids)))
-    ;; Check each statment.  If the statement can continue onto the next
+    ;; Check each statement.  If the statement can continue onto the next
     ;; one (i.e. END_DROPS_OFF is set), then check the next statement.
     (while (and n (js2-flag-set-p rv js2-END_DROPS_OFF))
       (js2-clear-flag rv js2-END_DROPS_OFF)
@@ -6779,7 +6779,7 @@ Shown at or above `js2-highlight-level' 3.")
 
 (defun js2-parse-highlight-member-expr-node (node)
   "Perform syntax highlighting of EcmaScript built-in properties.
-The variable `js2-highlight-level' governs this highighting."
+The variable `js2-highlight-level' governs this highlighting."
   (let (face target prop name pos end parent call-p callee)
     (cond
      ;; case 1:  simple name, e.g. foo
@@ -9161,7 +9161,7 @@ Returns the parsed `js2-var-decl-node' expression node."
 (defun js2-parse-let (pos &optional stmt-p)
   "Parse a let expression or statement.
 A let-expression is of the form `let (vars) expr'.
-A let-statment is of the form `let (vars) {statements}'.
+A let-statement is of the form `let (vars) {statements}'.
 The third form of let is a variable declaration list, handled
 by `js2-parse-variables'."
   (let ((pn (make-js2-let-node :pos pos))
@@ -12075,7 +12075,7 @@ move backward across N balanced expressions."
                    (when (setq child (js2-node-closest-child node (point) rp))
                      (setq pos (js2-node-abs-end child)))
                  (setq pos (1+ rp))))
-             ;; No parens or child nodes, looks for the end of the curren node.
+             ;; No parens or child nodes, looks for the end of the current node.
              (cl-incf pos (js2-node-len
                            (if (js2-expr-stmt-node-p (js2-node-parent node))
                                ;; Stop after the semicolon.
