@@ -7059,18 +7059,34 @@ it is considered declared."
                               'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
 
-(defun js2-node-assign-childs (node)
-  "Return a list of assigned variable names."
-  (let ((assigns))
+(defun js2-function-assigned-variables (fn-node)
+  "Return a list of assigned variable names.
+Only variables in the outer scope are considered."
+  (let ((assigned-vars))
     (js2-visit-ast
-     node
-     (lambda (n e)
-       (when (and e (js2-assign-node-p n))
-         (let ((name (js2-name-node-name (js2-assign-node-left n))))
-           (if (not (member name assigns))
-               (push name assigns))))
-       t))
-    assigns))
+     fn-node
+     (lambda (node end-p)
+       (if end-p
+           (cond
+            ((js2-var-decl-node-p node)
+             (cl-loop with kids = (js2-var-decl-node-kids node)
+                      for kid in kids
+                      when (js2-var-init-node-initializer kid)
+                      do (let ((name (js2-name-node-name (js2-var-init-node-target kid))))
+                           (unless (member name assigned-vars)
+                             (when (eq fn-node (js2-get-defining-scope
+                                                (js2-node-get-enclosing-scope kid)
+                                                name))
+                               (push name assigned-vars))))))
+            ((js2-assign-node-p node)
+             (let ((name (js2-name-node-name (js2-assign-node-left node))))
+               (unless (member name assigned-vars)
+                 (when (eq fn-node (js2-get-defining-scope
+                                    (js2-node-get-enclosing-scope node)
+                                    name))
+                   (push name assigned-vars))))))
+         t)))
+    assigned-vars))
 
 (defun js2-highlight-unused-variables (fn-node)
   "Highlight unused variables."
@@ -7091,7 +7107,7 @@ it is considered declared."
                (js2-report-warning "msg.unused.variable" name pos len
                                    'js2-unused-variable)))))
         ((js2-function-node-p node)
-         (setq assigned-vars (append assigned-vars (js2-node-assign-childs node)))
+         (setq assigned-vars (append assigned-vars (js2-function-assigned-variables node)))
          nil)
         ((js2-var-decl-node-p node)
          (cl-loop with kids = (js2-var-decl-node-kids node)
@@ -7100,7 +7116,7 @@ it is considered declared."
                   (push (js2-var-init-node-target kid) defined-vars))
          nil)
         (t
-         (setq assigned-vars (append assigned-vars (js2-node-assign-childs node)))
+         (setq assigned-vars (append assigned-vars (js2-function-assigned-variables node)))
          t))))))
 
 (defun js2-set-default-externs ()
