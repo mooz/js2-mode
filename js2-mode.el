@@ -1102,6 +1102,10 @@ Not currently used."
   '((t :foreground "orange"))
   "Face used to highlight undeclared variable identifiers.")
 
+(defface js2-unused-variable
+  '((t :foreground "magenta"))
+  "Face used to highlight unused variable identifiers.")
+
 (defcustom js2-init-hook nil
   "List of functions to be called after `js2-mode' or
 `js2-minor-mode' has initialized all variables, before parsing
@@ -1130,6 +1134,13 @@ An undeclared variable is any variable not declared with var or let
 in the current scope or any lexically enclosing scope.  If you use
 such a variable, then you are either expecting it to originate from
 another file, or you've got a potential bug."
+  :type 'boolean
+  :group 'js2-mode)
+
+(defcustom js2-highlight-unused-variables t
+  "Non-nil to highlight unused variable identifiers.
+An unused variable is any variable declared with var or let that
+is not assigned in its scope."
   :type 'boolean
   :group 'js2-mode)
 
@@ -1769,6 +1780,9 @@ the correct number of ARGS must be provided."
 
 (js2-msg "msg.undeclared.variable"  ; added by js2-mode
          "Undeclared variable or function '%s'")
+
+(js2-msg "msg.unused.variable"  ; added by js2-mode
+         "Unused variable '%s'")
 
 (js2-msg "msg.ref.undefined.prop"
          "Reference to undefined property '%s'")
@@ -7045,6 +7059,50 @@ it is considered declared."
                               'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
 
+(defun js2-node-assign-childs (node)
+  "Return a list of assigned variable names."
+  (let ((assigns))
+    (js2-visit-ast
+     node
+     (lambda (n e)
+       (when (and e (js2-assign-node-p n))
+         (let ((name (js2-name-node-name (js2-assign-node-left n))))
+           (if (not (member name assigns))
+               (push name assigns))))
+       t))
+    assigns))
+
+(defun js2-highlight-unused-variables (fn-node)
+  "Highlight unused variables."
+  (let ((body (js2-function-node-body fn-node))
+        defined-vars
+        assigned-vars)
+    (js2-visit-ast
+     body
+     (lambda (node end-p)
+       (cond
+        (end-p
+         (let (name pos len)
+           (dolist (var defined-vars)
+             (setq name (js2-name-node-name var))
+             (unless (member name assigned-vars)
+               (setq pos (js2-node-abs-pos var))
+               (setq len (js2-name-node-len var))
+               (js2-report-warning "msg.unused.variable" name pos len
+                                   'js2-unused-variable)))))
+        ((js2-function-node-p node)
+         (setq assigned-vars (append assigned-vars (js2-node-assign-childs node)))
+         nil)
+        ((js2-var-decl-node-p node)
+         (cl-loop with kids = (js2-var-decl-node-kids node)
+                  for kid in kids
+                  do
+                  (push (js2-var-init-node-target kid) defined-vars))
+         nil)
+        (t
+         (setq assigned-vars (append assigned-vars (js2-node-assign-childs node)))
+         t))))))
+
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
 `js2-include-?-externs' variables."
@@ -7979,6 +8037,8 @@ arrow function), NAME is js2-name-node."
           (js2-parse-function-closure-body fn-node)
         (js2-parse-function-body fn-node))
       (js2-check-inconsistent-return-warning fn-node name)
+      (if js2-highlight-unused-variables
+          (js2-highlight-unused-variables fn-node))
 
       (when name
         (js2-node-add-children fn-node name)
