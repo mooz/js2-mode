@@ -88,6 +88,7 @@
 (require 'cl-lib)
 (require 'imenu)
 (require 'js)
+(require 'etags)
 
 (eval-and-compile
   (if (version< emacs-version "25.0")
