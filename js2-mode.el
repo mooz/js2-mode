@@ -1103,8 +1103,12 @@ Not currently used."
   "Face used to highlight undeclared variable identifiers.")
 
 (defface js2-unused-variable
-  '((t :foreground "magenta"))
+  '((t :foreground "brown"))
   "Face used to highlight unused variable identifiers.")
+
+(defface js2-uninitialized-variable
+  '((t :foreground "magenta"))
+  "Face used to highlight used but not initialized variable identifiers.")
 
 (defcustom js2-init-hook nil
   "List of functions to be called after `js2-mode' or
@@ -1783,6 +1787,9 @@ the correct number of ARGS must be provided."
 
 (js2-msg "msg.unused.variable"  ; added by js2-mode
          "Unused variable '%s'")
+
+(js2-msg "msg.uninitialized.variable"  ; added by js2-mode
+         "Variable '%s' referenced but never initialized")
 
 (js2-msg "msg.ref.undefined.prop"
          "Reference to undefined property '%s'")
@@ -7088,24 +7095,43 @@ Only variables in the outer scope are considered."
          t)))
     assigned-vars))
 
+(defun js2-function-used-variables ()
+  "Return a list of referenced variables, ignoring assignments."
+  (let (used-vars node parent name)
+    (dolist (entry js2-recorded-identifiers)
+      (setq node (car entry))
+      (setq parent (js2-node-parent node))
+      (when parent
+        (unless (eq (js2-node-type parent) js2-ASSIGN)
+          (setq name (js2-name-node-name node))
+          (unless (member name used-vars)
+            (push name used-vars)))))
+    used-vars))
+
 (defun js2-highlight-unused-variables (fn-node)
   "Highlight unused variables."
   (let ((body (js2-function-node-body fn-node))
-        defined-vars
-        assigned-vars)
+        (used-vars (js2-function-used-variables))
+        (assigned-vars (js2-function-assigned-variables fn-node))
+        defined-vars)
     (js2-visit-ast
      body
      (lambda (node end-p)
        (cond
         (end-p
-         (let (name pos len)
+         (let (name used assigned pos len)
            (dolist (var defined-vars)
              (setq name (js2-name-node-name var))
-             (unless (member name assigned-vars)
+             (setq used (member name used-vars))
+             (setq assigned (member name assigned-vars))
+             (unless (and used assigned)
                (setq pos (js2-node-abs-pos var))
                (setq len (js2-name-node-len var))
-               (js2-report-warning "msg.unused.variable" name pos len
-                                   'js2-unused-variable)))))
+               (if used
+                   (js2-report-warning "msg.uninitialized.variable" name pos len
+                                       'js2-uninitialized-variable)
+                 (js2-report-warning "msg.unused.variable" name pos len
+                                     'js2-unused-variable))))))
         ((js2-function-node-p node)
          (setq assigned-vars (append assigned-vars (js2-function-assigned-variables node)))
          nil)
@@ -7115,9 +7141,7 @@ Only variables in the outer scope are considered."
                   do
                   (push (js2-var-init-node-target kid) defined-vars))
          nil)
-        (t
-         (setq assigned-vars (append assigned-vars (js2-function-assigned-variables node)))
-         t))))))
+        (t))))))
 
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
