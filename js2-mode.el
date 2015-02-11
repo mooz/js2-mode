@@ -1102,14 +1102,6 @@ Not currently used."
   '((t :foreground "orange"))
   "Face used to highlight undeclared variable identifiers.")
 
-(defface js2-unused-variable
-  '((t :foreground "brown"))
-  "Face used to highlight unused variable identifiers.")
-
-(defface js2-uninitialized-variable
-  '((t :foreground "magenta"))
-  "Face used to highlight used but not initialized variable identifiers.")
-
 (defcustom js2-init-hook nil
   "List of functions to be called after `js2-mode' or
 `js2-minor-mode' has initialized all variables, before parsing
@@ -7144,11 +7136,11 @@ just the variable names, while the first two lists contain actual AST nodes."
                   (setq pos (js2-node-abs-pos uv))
                   (setq len (js2-name-node-len uv))
                   (js2-report-warning "msg.uninitialized.variable" name pos len
-                                      'js2-uninitialized-variable)))
+                                      'js2-warning)))
             (setq pos (js2-node-abs-pos var))
             (setq len (js2-name-node-len var))
             (js2-report-warning "msg.unused.variable" name pos len
-                                'js2-unused-variable)))))))
+                                'js2-warning)))))))
 
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
