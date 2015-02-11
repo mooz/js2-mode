@@ -208,40 +208,65 @@ the test."
   (js2-mode)
   (should (null (js2-ast-root-warnings js2-mode-ast))))
 
-(js2-deftest function-assigned-variables-0-a
+(js2-deftest function-classify-variables-a
   "function foo () { var x; return 42; }"
   (js2-mode)
   (let* ((scope (js2-node-at-point (point-min)))
-         (assigned-vars (js2-function-assigned-variables scope)))
-    (should (equal nil assigned-vars))))
+         (vars (js2-function-classify-variables scope))
+         (declared (pop vars))
+         (used (pop vars))
+         (assigned (pop vars)))
+    (should (equal (list "x") (mapcar (lambda (n) (js2-name-node-name n)) declared)))
+    (should (equal nil (mapcar (lambda (n) (js2-name-node-name n)) used)))
+    (should (equal nil assigned))))
 
-(js2-deftest function-assigned-variables-0-b
+(js2-deftest function-classify-variables-b
   "function foo () { var x; function bar () { var x; x=42; }; }"
   (js2-mode)
   (let* ((scope (js2-node-at-point (point-min)))
-         (assigned-vars (js2-function-assigned-variables scope)))
-    (should (equal nil assigned-vars))))
+         (vars (js2-function-classify-variables scope))
+         (declared (pop vars))
+         (used (pop vars))
+         (assigned (pop vars)))
+    (should (equal (list "x") (mapcar (lambda (n) (js2-name-node-name n)) declared)))
+    (should (equal nil (mapcar (lambda (n) (js2-name-node-name n)) used)))
+    (should (equal nil assigned))))
 
-(js2-deftest function-assigned-variables-1-a
+(js2-deftest function-classify-variables-c
   "function foo () { var x; x=42; return x; }"
   (js2-mode)
   (let* ((scope (js2-node-at-point (point-min)))
-         (assigned-vars (js2-function-assigned-variables scope)))
-    (should (equal (list "x") assigned-vars))))
+         (vars (js2-function-classify-variables scope))
+         (declared (pop vars))
+         (used (pop vars))
+         (assigned (pop vars)))
+    (should (equal (list "x") (mapcar (lambda (n) (js2-name-node-name n)) declared)))
+    (should (equal (list "x") (mapcar (lambda (n) (js2-name-node-name n)) used)))
+    (should (equal (list "x") assigned))))
 
-(js2-deftest function-assigned-variables-1-b
-  "function foo () { var x=42; return x; }"
-  (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (assigned-vars (js2-function-assigned-variables scope)))
-    (should (equal (list "x") assigned-vars))))
-
-(js2-deftest function-assigned-variables-1-c
+(js2-deftest function-classify-variables-d
   "function foo () { var x; function bar () { x=42; }; }"
   (js2-mode)
   (let* ((scope (js2-node-at-point (point-min)))
-         (assigned-vars (js2-function-assigned-variables scope)))
-    (should (equal (list "x") assigned-vars))))
+         (vars (js2-function-classify-variables scope))
+         (declared (pop vars))
+         (used (pop vars))
+         (assigned (pop vars)))
+    (should (equal (list "x") (mapcar (lambda (n) (js2-name-node-name n)) declared)))
+    (should (equal nil (mapcar (lambda (n) (js2-name-node-name n)) used)))
+    (should (equal (list "x") assigned))))
+
+(js2-deftest function-classify-variables-e
+  "function foo() { var i, j=1; function bar() { var x, y=42, z=i; return y; } return i; }"
+  (js2-mode)
+  (let* ((scope (js2-node-at-point (point-min)))
+         (vars (js2-function-classify-variables scope))
+         (declared (pop vars))
+         (used (pop vars))
+         (assigned (pop vars)))
+    (should (equal (list "j" "i") (mapcar (lambda (n) (js2-name-node-name n)) declared)))
+    (should (equal (list "i" "i") (mapcar (lambda (n) (js2-name-node-name n)) used)))
+    (should (equal (list "j") assigned))))
 
 ;;; Function parameters
 

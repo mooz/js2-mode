@@ -1141,10 +1141,10 @@ another file, or you've got a potential bug."
   :type 'boolean
   :group 'js2-mode)
 
-(defcustom js2-highlight-unused-variables t
-  "Non-nil to highlight unused variable identifiers.
-An unused variable is any variable declared with var or let that
-is not assigned in its scope."
+(defcustom js2-highlight-problematic-variables t
+  "Non-nil to highlight problematic variable identifiers.
+A problematic variable is any variable declared within a function that
+is either unused or used but never initialized."
   :type 'boolean
   :group 'js2-mode)
 
@@ -7066,82 +7066,89 @@ it is considered declared."
                               'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
 
-(defun js2-function-assigned-variables (fn-node)
-  "Return a list of assigned variable names.
-Only variables in the outer scope are considered."
-  (let ((assigned-vars))
-    (js2-visit-ast
-     fn-node
-     (lambda (node end-p)
-       (if end-p
-           (cond
-            ((js2-var-decl-node-p node)
-             (cl-loop with kids = (js2-var-decl-node-kids node)
-                      for kid in kids
-                      when (js2-var-init-node-initializer kid)
-                      do (let ((name (js2-name-node-name (js2-var-init-node-target kid))))
-                           (unless (member name assigned-vars)
-                             (when (eq fn-node (js2-get-defining-scope
-                                                (js2-node-get-enclosing-scope kid)
-                                                name))
-                               (push name assigned-vars))))))
-            ((js2-assign-node-p node)
-             (let ((name (js2-name-node-name (js2-assign-node-left node))))
-               (unless (member name assigned-vars)
-                 (when (eq fn-node (js2-get-defining-scope
-                                    (js2-node-get-enclosing-scope node)
-                                    name))
-                   (push name assigned-vars))))))
-         t)))
-    assigned-vars))
-
-(defun js2-function-used-variables ()
-  "Return a list of referenced variables, ignoring assignments."
-  (let (used-vars node parent name)
-    (dolist (entry js2-recorded-identifiers)
-      (setq node (car entry))
-      (setq parent (js2-node-parent node))
-      (when parent
-        (unless (eq (js2-node-type parent) js2-ASSIGN)
-          (setq name (js2-name-node-name node))
-          (unless (member name used-vars)
-            (push name used-vars)))))
-    used-vars))
-
-(defun js2-highlight-unused-variables (fn-node)
-  "Highlight unused variables."
+(defun js2-function-classify-variables (fn-node)
+  "Collect and classify variables inside given FN-NODE.
+Traverse the whole function node and classify each variable, returning a triple
+with lists of declared, used and assigned variables. The latter list contains
+just the variable names, while the first two lists contain actual AST nodes."
   (let ((body (js2-function-node-body fn-node))
-        (used-vars (js2-function-used-variables))
-        (assigned-vars (js2-function-assigned-variables fn-node))
-        defined-vars)
+        declared-vars
+        used-vars
+        assigned-vars)
     (js2-visit-ast
      body
      (lambda (node end-p)
-       (cond
-        (end-p
-         (let (name used assigned pos len)
-           (dolist (var defined-vars)
-             (setq name (js2-name-node-name var))
-             (setq used (member name used-vars))
-             (setq assigned (member name assigned-vars))
-             (unless (and used assigned)
-               (setq pos (js2-node-abs-pos var))
-               (setq len (js2-name-node-len var))
-               (if used
-                   (js2-report-warning "msg.uninitialized.variable" name pos len
-                                       'js2-uninitialized-variable)
-                 (js2-report-warning "msg.unused.variable" name pos len
-                                     'js2-unused-variable))))))
-        ((js2-function-node-p node)
-         (setq assigned-vars (append assigned-vars (js2-function-assigned-variables node)))
-         nil)
-        ((js2-var-decl-node-p node)
-         (cl-loop with kids = (js2-var-decl-node-kids node)
-                  for kid in kids
-                  do
-                  (push (js2-var-init-node-target kid) defined-vars))
-         nil)
-        (t))))))
+       (unless end-p
+         (cond
+          ((js2-var-decl-node-p node)
+           ;; collect declared variables, taking note about initialized ones and
+           ;; considering variables used in initializer expressions
+           (dolist (kid (js2-var-decl-node-kids node))
+            (let* ((target (js2-var-init-node-target kid))
+                   (initializer (js2-var-init-node-initializer kid))
+                   (name (js2-name-node-name target)))
+              (when (eq fn-node (js2-get-defining-scope
+                                 (js2-node-get-enclosing-scope kid)
+                                 name))
+                (push target declared-vars)
+                (when (and initializer (not (member name assigned-vars)))
+                  (push name assigned-vars)))
+              (when initializer
+                (js2-visit-ast
+                 initializer
+                 (lambda (initn inite-p)
+                   (when (and inite-p (js2-name-node-p initn))
+                     (push initn used-vars))
+                   t))))))
+          ((js2-assign-node-p node)
+           ;; take note about assignment to variables belonging to the
+           ;; outer function
+           (let ((name (js2-name-node-name (js2-assign-node-left node))))
+             (when (and (not (member name assigned-vars))
+                        (eq fn-node (js2-get-defining-scope
+                                     (js2-node-get-enclosing-scope node)
+                                     name)))
+               (push name assigned-vars))))
+          ((js2-name-node-p node)
+           ;; take note about used variables belonging to the outer function
+           (let ((parent (js2-node-parent node))
+                 (name (js2-name-node-name node)))
+             (when (and parent
+                        (not (member (js2-node-type parent) (list js2-ASSIGN
+                                                                  js2-VAR
+                                                                  js2-FUNCTION)))
+                        (eq fn-node (js2-get-defining-scope
+                                     (js2-node-get-enclosing-scope node)
+                                     name)))
+               (push node used-vars))))
+          (t)))
+       t))
+    (list declared-vars used-vars assigned-vars)))
+
+(defun js2-function-highlight-problematic-variables (fn-node)
+  "Highlight problematic variables."
+  (let* ((vars (js2-function-classify-variables fn-node))
+         (declared-vars (pop vars))
+         (used-vars (pop vars))
+         (used-names (mapcar (lambda (v) (js2-name-node-name v)) used-vars))
+         (assigned-names (pop vars)))
+    (let (var name pos len used-p declared-p)
+      (dolist (var declared-vars)
+        (setq name (js2-name-node-name var))
+        (setq used-p (member name used-names))
+        (setq assigned-p (member name assigned-names))
+        (unless (and used-p assigned-p)
+          (if used-p
+              (dolist (uv used-vars)
+                (when (equal (js2-name-node-name uv) name)
+                  (setq pos (js2-node-abs-pos uv))
+                  (setq len (js2-name-node-len uv))
+                  (js2-report-warning "msg.uninitialized.variable" name pos len
+                                      'js2-uninitialized-variable)))
+            (setq pos (js2-node-abs-pos var))
+            (setq len (js2-name-node-len var))
+            (js2-report-warning "msg.unused.variable" name pos len
+                                'js2-unused-variable)))))))
 
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
@@ -8077,8 +8084,8 @@ arrow function), NAME is js2-name-node."
           (js2-parse-function-closure-body fn-node)
         (js2-parse-function-body fn-node))
       (js2-check-inconsistent-return-warning fn-node name)
-      (if js2-highlight-unused-variables
-          (js2-highlight-unused-variables fn-node))
+      (if js2-highlight-problematic-variables
+          (js2-function-highlight-problematic-variables fn-node))
 
       (when name
         (js2-node-add-children fn-node name)
