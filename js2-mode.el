@@ -7095,12 +7095,21 @@ just the variable names, while the first two lists contain actual AST nodes."
           ((js2-assign-node-p node)
            ;; take note about assignment to variables belonging to the
            ;; outer function
-           (let ((name (js2-name-node-name (js2-assign-node-left node))))
-             (when (and (not (member name assigned-vars))
-                        (eq fn-node (js2-get-defining-scope
-                                     (js2-node-get-enclosing-scope node)
-                                     name)))
-               (push name assigned-vars))))
+           (let ((left (js2-assign-node-left node)))
+             (when (js2-name-node-p left)
+               (let ((name (js2-name-node-name left)))
+                 (when (and (not (member name assigned-vars))
+                            (eq fn-node (js2-get-defining-scope
+                                         (js2-node-get-enclosing-scope node)
+                                         name)))
+                   (push name assigned-vars)))))
+           (let ((right (js2-assign-node-right node)))
+             (js2-visit-ast
+              right
+              (lambda (rightn righte-p)
+                (when (and righte-p (js2-name-node-p rightn))
+                  (push rightn used-vars))
+                t))))
           ((js2-name-node-p node)
            ;; take note about used variables belonging to the outer function
            (let ((parent (js2-node-parent node))

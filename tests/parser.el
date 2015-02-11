@@ -268,6 +268,30 @@ the test."
     (should (equal (list "i" "i") (mapcar (lambda (n) (js2-name-node-name n)) used)))
     (should (equal (list "j") assigned))))
 
+(js2-deftest function-classify-variables-f
+  "function foo () { var x, y={}; y.a=x; }"
+  (js2-mode)
+  (let* ((scope (js2-node-at-point (point-min)))
+         (vars (js2-function-classify-variables scope))
+         (declared (pop vars))
+         (used (pop vars))
+         (assigned (pop vars)))
+    (should (equal (list "y" "x") (mapcar (lambda (n) (js2-name-node-name n)) declared)))
+    (should (equal (list "y" "x") (mapcar (lambda (n) (js2-name-node-name n)) used)))
+    (should (equal (list "y") assigned))))
+
+(js2-deftest function-classify-variables-g
+  "function foo () { var x; if(x.foo) alert('boom'); }"
+  (js2-mode)
+  (let* ((scope (js2-node-at-point (point-min)))
+         (vars (js2-function-classify-variables scope))
+         (declared (pop vars))
+         (used (pop vars))
+         (assigned (pop vars)))
+    (should (equal (list "x") (mapcar (lambda (n) (js2-name-node-name n)) declared)))
+    (should (equal (list "x") (mapcar (lambda (n) (js2-name-node-name n)) used)))
+    (should (equal nil assigned))))
+
 ;;; Function parameters
 
 (js2-deftest-parse function-with-default-parameters
