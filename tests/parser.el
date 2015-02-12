@@ -292,6 +292,18 @@ the test."
     (should (equal (list "x") (mapcar (lambda (n) (js2-name-node-name n)) used)))
     (should (equal nil assigned))))
 
+(js2-deftest function-classify-variables-h
+  "function foo () { let x,y=1; return x; }"
+  (js2-mode)
+  (let* ((scope (js2-node-at-point (point-min)))
+         (vars (js2-function-classify-variables scope))
+         (declared (pop vars))
+         (used (pop vars))
+         (assigned (pop vars)))
+    (should (equal (list "y" "x") (mapcar (lambda (n) (js2-name-node-name n)) declared)))
+    (should (equal (list "x") (mapcar (lambda (n) (js2-name-node-name n)) used)))
+    (should (equal (list "y") assigned))))
+
 ;;; Function parameters
 
 (js2-deftest-parse function-with-default-parameters

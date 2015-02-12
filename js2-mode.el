@@ -7116,8 +7116,9 @@ just the variable names, while the first two lists contain actual AST nodes."
                  (name (js2-name-node-name node)))
              (when (and parent
                         (not (member (js2-node-type parent) (list js2-ASSIGN
-                                                                  js2-VAR
-                                                                  js2-FUNCTION)))
+                                                                  js2-FUNCTION
+                                                                  js2-LET
+                                                                  js2-VAR)))
                         (eq fn-node (js2-get-defining-scope
                                      (js2-node-get-enclosing-scope node)
                                      name)))
