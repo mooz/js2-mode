@@ -706,6 +706,20 @@ the test."
     (should (= (js2-symbol-decl-type var-entry) js2-VAR))
     (should (js2-name-node-p (js2-symbol-ast-node var-entry)))))
 
+(js2-deftest for-node-is-declaration-scope "for (let i = 0; i; ++i) {};"
+  (js2-mode)
+  (search-forward "i")
+  (forward-char -1)
+  (let ((scope (js2-node-get-enclosing-scope (js2-node-at-point))))
+    (should (js2-for-node-p (js2-get-defining-scope scope "i")))))
+
+(js2-deftest array-comp-is-result-scope "[x * 2 for (x in y)];"
+  (js2-mode)
+  (search-forward "x")
+  (forward-char -1)
+  (let ((scope (js2-node-get-enclosing-scope (js2-node-at-point))))
+    (should (js2-comp-loop-node-p (js2-get-defining-scope scope "x")))))
+
 ;;; Tokenizer
 
 (js2-deftest get-token "(1+1)"

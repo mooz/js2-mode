@@ -8551,6 +8551,7 @@ invalid export statements."
   "Parse a for, for-in or for each-in statement.
 Last matched token must be js2-FOR."
   (let ((for-pos (js2-current-token-beg))
+        (tmp-scope (make-js2-scope))
         pn is-for-each is-for-in-or-of is-for-of
         in-pos each-pos tmp-pos
         init  ; Node init is also foo in 'foo in object'.
@@ -8568,78 +8569,83 @@ Last matched token must be js2-FOR."
     (if (js2-must-match js2-LP "msg.no.paren.for")
         (setq lp (- (js2-current-token-beg) for-pos)))
     (setq tt (js2-get-token))
-    ;; 'for' makes local scope
-    (js2-push-scope (make-js2-scope))
+    ;; Capture identifiers inside parens.  We can't create the node
+    ;; (and use it as the current scope) until we know its type.
+    (js2-push-scope tmp-scope)
     (unwind-protect
-        ;; parse init clause
-        (let ((js2-in-for-init t))  ; set as dynamic variable
-          (cond
-           ((= tt js2-SEMI)
-            (js2-unget-token)
-            (setq init (make-js2-empty-expr-node)))
-           ((or (= tt js2-VAR) (= tt js2-LET))
-            (setq init (js2-parse-variables tt (js2-current-token-beg))))
-           (t
-            (js2-unget-token)
-            (setq init (js2-parse-expr)))))
-      (if (or (js2-match-token js2-IN)
-              (and (>= js2-language-version 200)
-                   (js2-match-contextual-kwd "of")
-                   (setq is-for-of t)))
-          (setq is-for-in-or-of t
-                in-pos (- (js2-current-token-beg) for-pos)
-                ;; scope of iteration target object is not the scope we've created above.
-                ;; stash current scope temporary.
-                cond (let ((js2-current-scope (js2-scope-parent-scope js2-current-scope)))
-                       (js2-parse-expr)))  ; object over which we're iterating
-        ;; else ordinary for loop - parse cond and incr
-        (js2-must-match js2-SEMI "msg.no.semi.for")
-        (setq cond (if (= (js2-peek-token) js2-SEMI)
-                       (make-js2-empty-expr-node) ; no loop condition
-                     (js2-parse-expr)))
-        (js2-must-match js2-SEMI "msg.no.semi.for.cond")
-        (setq tmp-pos (js2-current-token-end)
-              incr (if (= (js2-peek-token) js2-RP)
-                       (make-js2-empty-expr-node :pos tmp-pos)
-                     (js2-parse-expr))))
-      (if (js2-must-match js2-RP "msg.no.paren.for.ctrl")
-          (setq rp (- (js2-current-token-beg) for-pos)))
-      (if (not is-for-in-or-of)
-          (setq pn (make-js2-for-node :init init
-                                      :condition cond
-                                      :update incr
-                                      :lp lp
-                                      :rp rp))
-        ;; cond could be null if 'in obj' got eaten by the init node.
-        (if (js2-infix-node-p init)
-            ;; it was (foo in bar) instead of (var foo in bar)
-            (setq cond (js2-infix-node-right init)
-                  init (js2-infix-node-left init))
-          (if (and (js2-var-decl-node-p init)
-                   (> (length (js2-var-decl-node-kids init)) 1))
-              (js2-report-error "msg.mult.index")))
-        (setq pn (make-js2-for-in-node :iterator init
-                                       :object cond
-                                       :in-pos in-pos
-                                       :foreach-p is-for-each
-                                       :each-pos each-pos
-                                       :forof-p is-for-of
-                                       :lp lp
-                                       :rp rp)))
-      (unwind-protect
-          (progn
-            (js2-enter-loop pn)
-            ;; We have to parse the body -after- creating the loop node,
-            ;; so that the loop node appears in the js2-loop-set, allowing
-            ;; break/continue statements to find the enclosing loop.
-            (setf body (js2-parse-statement)
-                  (js2-loop-node-body pn) body
-                  (js2-node-pos pn) for-pos
-                  (js2-node-len pn) (- (js2-node-end body) for-pos))
-            (js2-node-add-children pn init cond incr body))
-        ;; finally
-        (js2-exit-loop))
+        (progn
+          ;; parse init clause
+          (let ((js2-in-for-init t))  ; set as dynamic variable
+            (cond
+             ((= tt js2-SEMI)
+              (js2-unget-token)
+              (setq init (make-js2-empty-expr-node)))
+             ((or (= tt js2-VAR) (= tt js2-LET))
+              (setq init (js2-parse-variables tt (js2-current-token-beg))))
+             (t
+              (js2-unget-token)
+              (setq init (js2-parse-expr)))))
+          (if (or (js2-match-token js2-IN)
+                  (and (>= js2-language-version 200)
+                       (js2-match-contextual-kwd "of")
+                       (setq is-for-of t)))
+              (setq is-for-in-or-of t
+                    in-pos (- (js2-current-token-beg) for-pos)
+                    ;; scope of iteration target object is not the scope we've created above.
+                    ;; stash current scope temporary.
+                    cond (let ((js2-current-scope (js2-scope-parent-scope js2-current-scope)))
+                           (js2-parse-expr)))  ; object over which we're iterating
+            ;; else ordinary for loop - parse cond and incr
+            (js2-must-match js2-SEMI "msg.no.semi.for")
+            (setq cond (if (= (js2-peek-token) js2-SEMI)
+                           (make-js2-empty-expr-node) ; no loop condition
+                         (js2-parse-expr)))
+            (js2-must-match js2-SEMI "msg.no.semi.for.cond")
+            (setq tmp-pos (js2-current-token-end)
+                  incr (if (= (js2-peek-token) js2-RP)
+                           (make-js2-empty-expr-node :pos tmp-pos)
+                         (js2-parse-expr)))))
       (js2-pop-scope))
+    (if (js2-must-match js2-RP "msg.no.paren.for.ctrl")
+        (setq rp (- (js2-current-token-beg) for-pos)))
+    (if (not is-for-in-or-of)
+        (setq pn (make-js2-for-node :init init
+                                    :condition cond
+                                    :update incr
+                                    :lp lp
+                                    :rp rp))
+      ;; cond could be null if 'in obj' got eaten by the init node.
+      (if (js2-infix-node-p init)
+          ;; it was (foo in bar) instead of (var foo in bar)
+          (setq cond (js2-infix-node-right init)
+                init (js2-infix-node-left init))
+        (if (and (js2-var-decl-node-p init)
+                 (> (length (js2-var-decl-node-kids init)) 1))
+            (js2-report-error "msg.mult.index")))
+      (setq pn (make-js2-for-in-node :iterator init
+                                     :object cond
+                                     :in-pos in-pos
+                                     :foreach-p is-for-each
+                                     :each-pos each-pos
+                                     :forof-p is-for-of
+                                     :lp lp
+                                     :rp rp)))
+    ;; Transplant the declarations.
+    (setf (js2-scope-symbol-table pn)
+          (js2-scope-symbol-table tmp-scope))
+    (unwind-protect
+        (progn
+          (js2-enter-loop pn)
+          ;; We have to parse the body -after- creating the loop node,
+          ;; so that the loop node appears in the js2-loop-set, allowing
+          ;; break/continue statements to find the enclosing loop.
+          (setf body (js2-parse-statement)
+                (js2-loop-node-body pn) body
+                (js2-node-pos pn) for-pos
+                (js2-node-len pn) (- (js2-node-end body) for-pos))
+          (js2-node-add-children pn init cond incr body))
+      ;; finally
+      (js2-exit-loop))
     pn))
 
 (defun js2-parse-try ()
@@ -10160,6 +10166,9 @@ We should have just parsed the 'for' keyword before calling this function."
                                      :loops (nreverse loops)
                                      :filters (and filter (list (car filter)))
                                      :form 'LEGACY_ARRAY))
+    ;; Set comp loop's parent to the last loop.
+    ;; TODO: Get rid of the bogus expr scope.
+    (setf (js2-scope-parent-scope result) first)
     (apply #'js2-node-add-children result expr (car filter)
            (js2-comp-node-loops result))
     result))
