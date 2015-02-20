@@ -9272,11 +9272,10 @@ If NODE is non-nil, it is the AST node associated with the symbol."
       (let* ((js2-in-for-init nil)
              (expr (js2-parse-expr))
              (pn (make-js2-paren-node :pos px-pos
-                                      :expr expr
-                                      :len (- (js2-current-token-end)
-                                              px-pos))))
+                                      :expr expr)))
         (js2-node-add-children pn (js2-paren-node-expr pn))
         (js2-must-match js2-RP "msg.no.paren")
+        (setf (js2-node-len pn) (- (js2-current-token-end) px-pos))
         pn)))))
 
 (defun js2-parse-expr (&optional oneshot)
