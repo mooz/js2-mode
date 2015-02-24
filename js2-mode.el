@@ -650,11 +650,10 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-ARROW 162)         ; function arrow (=>)
 (defvar js2-CLASS 163)
 (defvar js2-EXTENDS 164)
-(defvar js2-STATIC 165)
-(defvar js2-SUPER 166)
-(defvar js2-TEMPLATE_HEAD 167)    ; part of template literal before substitution
-(defvar js2-NO_SUBS_TEMPLATE 168) ; template literal without substitutions
-(defvar js2-TAGGED_TEMPLATE 169)  ; tagged template literal
+(defvar js2-SUPER 165)
+(defvar js2-TEMPLATE_HEAD 166)    ; part of template literal before substitution
+(defvar js2-NO_SUBS_TEMPLATE 167) ; template literal without substitutions
+(defvar js2-TAGGED_TEMPLATE 168)  ; tagged template literal
 
 (defconst js2-num-tokens (1+ js2-TAGGED_TEMPLATE))
 
@@ -5690,7 +5689,7 @@ into temp buffers."
     let
     new null
     return
-    static super switch
+    super switch
     this throw true try typeof
     var void
     while with
@@ -5711,7 +5710,7 @@ into temp buffers."
                js2-LET
                js2-NEW js2-NULL
                js2-RETURN
-               js2-STATIC js2-SUPER js2-SWITCH
+               js2-SUPER js2-SWITCH
                js2-THIS js2-THROW js2-TRUE js2-TRY js2-TYPEOF
                js2-VAR
                js2-WHILE js2-WITH
@@ -5736,7 +5735,7 @@ The values are default faces to use for highlighting the keywords.")
 
 ;; FIXME: Support strict mode-only future reserved words, after we know
 ;; which parts scopes are in strict mode, and which are not.
-(defconst js2-reserved-words '(class enum export extends import super)
+(defconst js2-reserved-words '(class enum export extends import static super)
   "Future reserved keywords in ECMAScript 5.1.")
 
 (defconst js2-keyword-names
@@ -10321,9 +10320,14 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
         (continue t)
         tt elems elem after-comma)
     (while continue
-      (setq static (and class-p (js2-match-token js2-STATIC))
-            tt (js2-get-prop-name-token)
+      (setq tt (js2-get-prop-name-token)
+            static nil
             elem nil)
+      (when (and class-p (= js2-NAME tt)
+                 (string= "static" (js2-current-token-string)))
+        (js2-record-face 'font-lock-keyword-face)
+        (setq static t
+              tt (js2-get-prop-name-token)))
       (cond
        ;; {foo: ...}, {'foo': ...}, {foo, bar, ...},
        ;; {get foo() {...}}, {set foo(x) {...}}, or {foo(x) {...}}
