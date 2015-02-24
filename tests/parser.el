@@ -683,6 +683,9 @@ the test."
 (js2-deftest-parse parse-super-keyword
   "class Foo {\n  constructor() {  super(42);\n}\n  foo() {  super.foo();\n}\n}")
 
+(js2-deftest-parse parse-class-keywordlike-method
+  "class C {\n  delete() {}\n  if() {}\n}")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"

@@ -10367,13 +10367,13 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
           (if elem (js2-node-set-prop elem 'STATIC t)
             (js2-report-error "msg.unexpected.static")))
       ;; Handle commas, depending on class-p.
-      (let ((comma (js2-match-token js2-COMMA)))
-        (if class-p
-            (if comma
-                (js2-report-error "msg.class.unexpected.comma"))
-          (if comma
-              (setq after-comma (js2-current-token-end))
-            (setq continue nil))))
+      (let ((tok (js2-get-prop-name-token)))
+        (if (eq tok js2-COMMA)
+            (if class-p
+                (js2-report-error "msg.class.unexpected.comma")
+              (setq after-comma (js2-current-token-end)))
+          (js2-unget-token)
+          (unless class-p (setq continue nil))))
       ;; Append any parsed element.
       (if elem (push elem elems)))       ; end loop
     (js2-must-match js2-RC "msg.no.brace.prop")
