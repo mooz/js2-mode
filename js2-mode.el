@@ -7058,97 +7058,106 @@ it is considered declared."
                               'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
 
-(defun js2-function-classify-variables (fn-node)
+(defmacro js2--add-or-update-symbol (symbol inition vars)
+  "Add or update SYMBOL entry in the alist VARS."
+  `(let* ((_nm (js2-name-node-name ,symbol))
+          (_es (js2-node-get-enclosing-scope ,symbol))
+          (_ds (js2-get-defining-scope _es _nm)))
+     (when (and _ds (not (equal _nm "arguments")))
+       (let* ((_sym (js2-scope-get-symbol _ds _nm))
+              (_var (assq _sym ,vars)))
+         (if _var
+             (if ,inition
+                 (setcar (cdr _var) t)
+               (push ,symbol (cddr _var)))
+           (push (cons _sym (cons ,inition (if ,inition nil (list ,symbol)))) ,vars))))))
+
+(defun js2-function-variables (fn-node)
   "Collect and classify variables inside given FN-NODE.
-Traverse the whole function node and classify each variable, returning a triple
-with lists of declared, used and assigned variables. The latter list contains
-just the variable names, while the first two lists contain actual AST nodes."
-  (let ((body (js2-function-node-body fn-node))
-        declared-vars
-        used-vars
-        assigned-vars)
+Traverse the whole function node returning an alist summarising variables
+usage, keyed by their corresponding symbol table entry. Each variable is
+described by a tuple where the car is a flag indicating whether the variable
+has been initialized and the cdr is a possibly empty list of references."
+  (let ((handled-elsewhere
+         (list js2-ASSIGN js2-FUNCTION js2-GETPROP js2-LET js2-VAR))
+        vars)
     (js2-visit-ast
-     body
+     fn-node
      (lambda (node end-p)
-       (unless end-p
+       (when end-p
          (cond
-          ((js2-var-decl-node-p node)
-           ;; collect declared variables, taking note about initialized ones and
-           ;; considering variables used in initializer expressions
-           (dolist (kid (js2-var-decl-node-kids node))
-            (let* ((target (js2-var-init-node-target kid))
-                   (initializer (js2-var-init-node-initializer kid))
-                   (name (js2-name-node-name target)))
-              (when (eq fn-node (js2-get-defining-scope
-                                 (js2-node-get-enclosing-scope kid)
-                                 name))
-                (push target declared-vars)
-                (when (and initializer (not (member name assigned-vars)))
-                  (push name assigned-vars)))
-              (when initializer
-                (js2-visit-ast
-                 initializer
-                 (lambda (initn inite-p)
-                   (when (and inite-p (js2-name-node-p initn))
-                     (push initn used-vars))
-                   t))))))
+          ((js2-scope-p node)
+           ;; take note about possibly initialized declarations
+           (dolist (entry (js2-scope-symbol-table node))
+             (let* ((symbol (cdr entry))
+                    (vin (js2-symbol-ast-node symbol))
+                    (pn (js2-node-parent vin))
+                    (var (assq symbol vars)))
+               (if (js2-var-init-node-p pn)
+                   (let ((initializer (js2-var-init-node-initializer pn)))
+                     (if (not initializer)
+                         (unless var
+                           (push (cons symbol (cons nil nil)) vars))
+                       (if var
+                           (setcar (cdr var) t)
+                         (push (cons symbol (cons t nil)) vars))
+                       (js2-visit-ast
+                        initializer
+                        (lambda (initn inite-p)
+                          (when (and inite-p (js2-name-node-p initn))
+                            (js2--add-or-update-symbol initn nil vars)
+                            t)))))
+                 (if var
+                     (setcar (cdr var) t)
+                   (push (cons symbol (cons t ())) vars))))))
+
           ((js2-assign-node-p node)
-           ;; take note about assignment to variables belonging to the
-           ;; outer function
+           ;; take note about assignments
            (let ((left (js2-assign-node-left node)))
              (when (js2-name-node-p left)
-               (let ((name (js2-name-node-name left)))
-                 (when (and (not (member name assigned-vars))
-                            (eq fn-node (js2-get-defining-scope
-                                         (js2-node-get-enclosing-scope node)
-                                         name)))
-                   (push name assigned-vars)))))
+               (js2--add-or-update-symbol left t vars)))
            (let ((right (js2-assign-node-right node)))
              (js2-visit-ast
               right
               (lambda (rightn righte-p)
                 (when (and righte-p (js2-name-node-p rightn))
-                  (push rightn used-vars))
+                  (js2--add-or-update-symbol rightn nil vars))
                 t))))
+
+          ((js2-prop-get-node-p node)
+           ;; handle x.y.z nodes, considering only x
+           (when (js2-name-node-p (js2-prop-get-node-left node))
+             (let ((ln (js2-prop-get-node-left node)))
+               (js2--add-or-update-symbol ln nil vars))))
+
           ((js2-name-node-p node)
-           ;; take note about used variables belonging to the outer function
-           (let ((parent (js2-node-parent node))
-                 (name (js2-name-node-name node)))
+           ;; take note about used variables
+           (let ((parent (js2-node-parent node)))
              (when (and parent
-                        (not (member (js2-node-type parent) (list js2-ASSIGN
-                                                                  js2-FUNCTION
-                                                                  js2-LET
-                                                                  js2-VAR)))
-                        (eq fn-node (js2-get-defining-scope
-                                     (js2-node-get-enclosing-scope node)
-                                     name)))
-               (push node used-vars))))
+                        (not (member (js2-node-type parent) handled-elsewhere)))
+               (js2--add-or-update-symbol node (js2-for-in-node-p parent) vars))))
+
           (t)))
        t))
-    (list declared-vars used-vars assigned-vars)))
+    vars))
 
 (defun js2-function-highlight-problematic-variables (fn-node)
   "Highlight problematic variables."
-  (let* ((vars (js2-function-classify-variables fn-node))
-         (declared-vars (pop vars))
-         (used-vars (pop vars))
-         (used-names (mapcar (lambda (v) (js2-name-node-name v)) used-vars))
-         (assigned-names (pop vars)))
-    (let (var name pos len used-p declared-p)
-      (dolist (var declared-vars)
-        (setq name (js2-name-node-name var))
-        (setq used-p (member name used-names))
-        (setq assigned-p (member name assigned-names))
-        (unless (and used-p assigned-p)
-          (if used-p
-              (dolist (uv used-vars)
-                (when (equal (js2-name-node-name uv) name)
-                  (setq pos (js2-node-abs-pos uv))
-                  (setq len (js2-name-node-len uv))
-                  (js2-report-warning "msg.uninitialized.variable" name pos len
-                                      'js2-warning)))
-            (setq pos (js2-node-abs-pos var))
-            (setq len (js2-name-node-len var))
+  (let ((vars (js2-function-variables fn-node)))
+    (dolist (var vars)
+      (let ((name (js2-symbol-name (car var)))
+            (inited (cadr var))
+            (refs (cddr var))
+            pos len)
+        (unless (and inited refs)
+          (if refs
+              (dolist (ref refs)
+                (setq pos (js2-node-abs-pos ref))
+                (setq len (js2-name-node-len ref))
+                (js2-report-warning "msg.uninitialized.variable" name pos len
+                                    'js2-warning))
+            (setq pos (js2-node-abs-pos (js2-symbol-ast-node (car var))))
+            (setq len (length name))
             (js2-report-warning "msg.unused.variable" name pos len
                                 'js2-warning)))))))
 
