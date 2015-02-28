@@ -12393,8 +12393,8 @@ will be inserted after them."
     (when (and initialiser
                (not (string-match "^[[:space:]\\|\n]*$" initialiser)))
       (setq declaration (concat identifier " = " initialiser)))
-    ;; Find the nearest non-catch-block-scope.  This loop has the intentional
-    ;; side-effects of assigning the values of `scope' and `scope-type'.
+    ;; Find the nearest scope.  This loop has the intentional side-effects of
+    ;; assigning the values of `scope' and `scope-type'.
     (setq scope node-at-point)
     (while (and
             ;; Only continue if there is still a scope to analyze.
@@ -12431,7 +12431,7 @@ will be inserted after them."
                (insert declaration))
              (setq found-variable-declaration t))
            (setq visited-first-node t)
-           ;; Keep searching if the `var' was not found.
+           ;; Keep searching if a `var' was not found.
            (not found-variable-declaration)))))
     ;; Create a `var' statement if one was not found.
     (when (not found-variable-declaration)
@@ -12473,9 +12473,11 @@ will be inserted after them."
                   (forward-comment 1)
                   (next-logical-line)
                   t)
-                 ((not (or (looking-at "\n")
-                           ;; There won't be a newline at the end of the buffer.
-                           (= (point) (buffer-end 1))))
+                 ((not (or
+                        ;; There's no need to make space if space is available.
+                        (looking-at "\n")
+                        ;; There won't be a newline at the end of the buffer.
+                        (= (point) (buffer-end 1))))
                   ;; Move any other code out of the way.
                   (newline-and-indent)
                   (previous-logical-line)
