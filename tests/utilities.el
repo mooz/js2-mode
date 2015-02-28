@@ -174,24 +174,21 @@
   :padding t)
 
 (js2-deftest-declare-variable comment-singleline
-  :before "// comment
-          |" ; TODO: Remove newline
+  :before "// comment"
   :after  "// comment
           |var a;"
   :point 1
   :args '("a"))
 
 (js2-deftest-declare-variable comment-multiline
-  :before "/* comment */
-          |" ; TODO: Remove newline
+  :before "/* comment */"
   :after  "/* comment */
           |var a;"
   :point 1
   :args '("a"))
 
 (js2-deftest-declare-variable comment-padding
-  :before "// comment
-          " ; TODO: Remove newline
+  :before "// comment"
   :after  "// comment
           |
           |var a;
@@ -202,8 +199,7 @@
 
 (js2-deftest-declare-variable use-strict-then-comment
   :before "'use strict';
-          |// comment
-          |" ; TODO: Remove newline
+          |// comment"
   :after  "'use strict';
           |// comment
           |var a;"
@@ -213,8 +209,7 @@
 (js2-deftest-declare-variable use-strict-then-space-then-comment
   :before "'use strict';
           |
-          |// comment
-          |" ; TODO: Remove newline
+          |// comment"
   :after  "'use strict';
           |
           |// comment
