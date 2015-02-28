@@ -222,7 +222,7 @@
   :point 1
   :args '("a"))
 
-(js2-deftest-declare-variable scope
+(js2-deftest-declare-variable block-scope
   :before "if (true) {
           |
           |}"
@@ -233,7 +233,7 @@
   :point 13 ; Inside the if block
   :args '("a"))
 
-(js2-deftest-declare-variable scope
+(js2-deftest-declare-variable nested-block-scope
   :before "if (true) {
           |    if (true) {
           |
