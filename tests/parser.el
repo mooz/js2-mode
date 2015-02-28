@@ -212,12 +212,20 @@ the test."
   (let (r)
     (dolist (v (sort vars (lambda (a b) (< (js2-node-abs-pos (js2-symbol-ast-node (car a)))
                                       (js2-node-abs-pos (js2-symbol-ast-node (car b)))))))
-      (push (format "%s@%s:%s"
-                    (js2-symbol-name (car v))
-                    (js2-node-abs-pos (js2-symbol-ast-node (car v)))
-                    (if (cddr v) (if (cadr v) "I" "N") "U")) r)
-      (dolist (u (sort (cddr v) (lambda (a b) (< (js2-node-abs-pos a) (js2-node-abs-pos b)))))
-        (push (js2-node-abs-pos u) r)))
+      (let ((symbol (car v))
+            (inition (cadr v))
+            (uses (cddr v)))
+        (push (format "%s@%s:%s"
+                      (js2-symbol-name symbol)
+                      (js2-node-abs-pos (js2-symbol-ast-node symbol))
+                      (if (eq inition ?P)
+                          "P"
+                        (if uses
+                            (if inition "I" "N")
+                          "U"))) r)
+        (dolist (u (sort (cddr v) (lambda (a b) (< (js2-node-abs-pos a)
+                                              (js2-node-abs-pos b)))))
+          (push (js2-node-abs-pos u) r))))
     (reverse r)))
 
 (js2-deftest function-variables-a
@@ -233,7 +241,7 @@ the test."
   (js2-mode)
   (let* ((scope (js2-node-at-point (point-min)))
          (vars (js2-function-variables scope)))
-    (should (equal (list "a@15:I" 68 "x@24:U" "bar@27:U" "x@49:U")
+    (should (equal (list "a@15:P" 68 "x@24:U" "bar@27:U" "x@49:U")
                    (js2--function-variables-summary vars)))))
 
 (js2-deftest function-variables-c
@@ -288,7 +296,7 @@ the test."
   (js2-mode)
   (let* ((scope (js2-node-at-point (point-min)))
          (vars (js2-function-variables scope)))
-    (should (equal (list "m@15:I" 32)
+    (should (equal (list "m@15:P" 32)
                    (js2--function-variables-summary vars)))))
 
 (js2-deftest function-variables-j
@@ -313,6 +321,22 @@ the test."
   (let* ((scope (js2-node-at-point (point-min)))
          (vars (js2-function-variables scope)))
     (should (equal (list "x@23:I" 37)
+                   (js2--function-variables-summary vars)))))
+
+(js2-deftest function-variables-m
+  "function foo (a) { return 42; }"
+  (js2-mode)
+  (let* ((scope (js2-node-at-point (point-min)))
+         (vars (js2-function-variables scope)))
+    (should (equal (list "a@15:P")
+                   (js2--function-variables-summary vars)))))
+
+(js2-deftest function-variables-n
+  "function foo (a) { a=42; return a; }"
+  (js2-mode)
+  (let* ((scope (js2-node-at-point (point-min)))
+         (vars (js2-function-variables scope)))
+    (should (equal (list "a@15:P" 33)
                    (js2--function-variables-summary vars)))))
 
 ;;; Function parameters

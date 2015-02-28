@@ -1139,6 +1139,11 @@ is either unused or used but never initialized."
   :type 'boolean
   :group 'js2-mode)
 
+(defcustom js2-warn-about-unused-function-arguments nil
+  "Non-nil to treat function arguments like declared-but-unused variables."
+  :type 'booleanp
+  :group 'js2-mode)
+
 (defcustom js2-include-jslint-globals t
   "Non-nil to include the identifiers from JSLint global
 declaration (see http://www.jslint.com/lint.html#global) in the
@@ -7067,7 +7072,8 @@ it is considered declared."
               (_var (assq _sym ,vars)))
          (if _var
              (if ,inition
-                 (setcar (cdr _var) t)
+                 (when (eq (cadr _var) nil)
+                   (setcar (cdr _var) ,inition))
                (push ,symbol (cddr _var)))
            (push (cons _sym (cons ,inition (if ,inition nil (list ,symbol)))) ,vars))))))
 
@@ -7093,6 +7099,7 @@ has been initialized and the cdr is a possibly empty list of references."
                     (pn (js2-node-parent vin))
                     (var (assq symbol vars)))
                (if (js2-var-init-node-p pn)
+                   ;; a variable declaration
                    (let ((initializer (js2-var-init-node-initializer pn)))
                      (if (not initializer)
                          (unless var
@@ -7106,9 +7113,11 @@ has been initialized and the cdr is a possibly empty list of references."
                           (when (and inite-p (js2-name-node-p initn))
                             (js2--add-or-update-symbol initn nil vars)
                             t)))))
-                 (if var
-                     (setcar (cdr var) t)
-                   (push (cons symbol (cons t ())) vars))))))
+                 ;; either a function parameter or a inner function block
+                 (let ((inition (if (js2-function-node-p pn) ?P t)))
+                   (if var
+                       (setcar (cdr var) inition)
+                     (push (cons symbol (cons inition ())) vars)))))))
 
           ((js2-assign-node-p node)
            ;; take note about assignments
@@ -7155,10 +7164,11 @@ has been initialized and the cdr is a possibly empty list of references."
                 (setq len (js2-name-node-len ref))
                 (js2-report-warning "msg.uninitialized.variable" name pos len
                                     'js2-warning))
-            (setq pos (js2-node-abs-pos (js2-symbol-ast-node (car var))))
-            (setq len (length name))
-            (js2-report-warning "msg.unused.variable" name pos len
-                                'js2-warning)))))))
+            (when (or js2-warn-about-unused-function-arguments (not (eq inited ?P)))
+              (setq pos (js2-node-abs-pos (js2-symbol-ast-node (car var))))
+              (setq len (length name))
+              (js2-report-warning "msg.unused.variable" name pos len
+                                  'js2-warning))))))))
 
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
