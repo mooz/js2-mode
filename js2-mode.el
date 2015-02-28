@@ -12455,7 +12455,7 @@ will be inserted after them."
           (forward-char)
           (next-logical-line)
           (back-to-indentation))
-         ;; Just go to the beginning of the scripts.
+         ;; Just go to the beginning of scripts.
          ((= scope-type js2-SCRIPT)
           (goto-char (js2-node-abs-pos scope))))
         ;; Ensure a "use strict" statement (if there is one) always comes before
@@ -12464,7 +12464,6 @@ will be inserted after them."
                             (js2-node-string scope))
           (goto-char (+ (js2-node-abs-pos scope)
                         (match-end 0)))
-          ;; Only add a newline if necessary.
           (js2-conservatively-goto-next-line)
           (back-to-indentation))
         ;; Sidestep comments and rearrange code in preparation for `var'
