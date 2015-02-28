@@ -127,6 +127,23 @@
   :point 16
   :args '("a"))
 
+(js2-deftest-declare-variable empty-function-oneliner
+  :before "function f() { }"
+  :after  "function f() {
+          |    var a;
+          |}"
+  :point 16 ; Inside the function block
+  :args '("a"))
+
+(js2-deftest-declare-variable function-oneliner-nudge
+  :before "function f() { void 0; }"
+  :after  "function f() {
+          |    var a;
+          |    void 0;
+          |}"
+  :point 16
+  :args '("a"))
+
 (js2-deftest-declare-variable empty-catch
   :before "try {
           |

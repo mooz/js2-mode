@@ -12392,7 +12392,8 @@ will be inserted after them."
         scope
         scope-type
         visited-first-node
-        found-variable-declaration)
+        found-variable-declaration
+        function-braces-need-newlines)
     ;; Build a declaration from the information supplied by the caller.
     (if (and initialiser
              (not (string-match "^[[:space:]\\|\n]*$" initialiser)))
@@ -12450,9 +12451,22 @@ will be inserted after them."
          ((= scope-type js2-FUNCTION)
           (goto-char (js2-node-abs-pos scope))
           (forward-sexp)
-          (forward-sexp)
+          (let ((line-number-before (line-number-at-pos)))
+            (forward-sexp)
+            (when (= line-number-before (line-number-at-pos))
+              (setq function-braces-need-newlines t)))
           (backward-sexp)
           (forward-char)
+          (when function-braces-need-newlines
+            (newline)
+            (backward-char)
+            (backward-char)
+            (forward-sexp)
+            (backward-char)
+            (newline-and-indent)
+            (forward-char)
+            (backward-sexp)
+            (forward-char))
           (next-logical-line)
           (back-to-indentation))
          ;; Just go to the beginning of scripts.
