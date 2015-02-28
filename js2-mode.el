@@ -1140,6 +1140,12 @@ information."
   :type 'boolean
   :group 'js2-mode)
 
+(defcustom js2-declare-variable-padding nil
+  "If non-nil, automatically insert newlines around `var'
+statements inserted by `js2-declare-variable'."
+  :type 'boolean
+  :group 'js2-mode)
+
 (defvar js2-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map [mouse-1] #'js2-mode-show-node)
@@ -1151,6 +1157,7 @@ information."
     (define-key map (kbd "C-c C-t") #'js2-mode-toggle-hide-comments)
     (define-key map (kbd "C-c C-o") #'js2-mode-toggle-element)
     (define-key map (kbd "C-c C-w") #'js2-mode-toggle-warnings-and-errors)
+    (define-key map (kbd "C-c C-v") #'js2-declare-variable)
     (define-key map [down-mouse-3] #'js2-down-mouse-3)
     (when js2-bounce-indent-p
       (define-key map (kbd "<backtab>") #'js2-indent-bounce-backwards))
@@ -2307,10 +2314,9 @@ If any given node in NODES is nil, doesn't record that link."
 (defun js2-node-get-enclosing-scope (node)
   "Return the innermost `js2-scope' node surrounding NODE.
 Returns nil if there is no enclosing scope node."
-  (let ((parent (js2-node-parent node)))
-    (while (not (js2-scope-p parent))
-      (setq parent (js2-node-parent parent)))
-    parent))
+  (while (and (setq node (js2-node-parent node))
+              (not (js2-scope-p node))))
+  node)
 
 (defun js2-get-defining-scope (scope name &optional point)
   "Search up scope chain from SCOPE looking for NAME, a string or symbol.
@@ -12350,6 +12356,139 @@ it marks the next defun after the ones already marked."
          (beg (js2-node-abs-pos fn)))
     (unless (js2-ast-root-p fn)
       (narrow-to-region beg (+ beg (js2-node-len fn))))))
+
+(defun js2-declare-variable (identifier &optional initialiser)
+  "Find the first `var' statement in the scope enclosing point,
+and add IDENTIFIER (optionally initialized to INITIALISER) to it.
+
+If IDENTIFIER is `b' and INTITIALISER is nil, then this
+statement:
+
+    var a = 1;
+
+Becomes this:
+
+    var a = 1,
+        b;
+
+And if INITIALISER had been `2', the statement would have
+become:
+
+    var a = 1,
+        b = 2;
+
+If there isn't already a var statement in the enclosing scope,
+one will be created.  If there is a \"use strict\" statement or
+comments at the top of the enclosing scope, the var statement
+will be inserted after them."
+  (interactive "sIdentifier: \nsInitialiser: ")
+  ;; Ensure the AST is up-to-date.
+  (js2-reparse)
+  (let ((node-at-point (js2-node-at-point))
+        (declaration identifier)
+        scope
+        scope-node-type
+        visited-first-node
+        found-variable-declaration)
+    (when (and initialiser
+               (not (string-match "^[[:space:]\\|\n]*$" initialiser)))
+      (setq declaration (concat identifier " = " initialiser)))
+    ;; Find the nearest non-catch-block-scope.  This loop has the intentional
+    ;; side-effects of assigning the values of `scope' and `scope-node-type'.
+    (let ((continue t))
+      (setq scope node-at-point)
+      (while continue
+        (setq scope (js2-node-get-enclosing-scope scope))
+        (if (not scope)
+            ;; Stopping point.
+            (setq continue nil)
+          (setq scope-node-type (js2-node-type scope))
+          ;; Ignore catch block scopes.
+          (setq continue (= scope-node-type js2-CATCH)))))
+    ;; No scope implies the global scope.
+    (when (not scope)
+      (setq scope js2-mode-ast)
+      (setq scope-node-type (js2-node-type scope)))
+    ;; Search the AST for an existing `var' statement and append to it.
+    (js2-visit-ast
+     scope
+     (lambda (node end-p)
+       (when (null end-p)
+         (when (or
+                ;; Being the unvisited first node is an exemption to the "no
+                ;; nested functions" rule.
+                (and (= scope-node-type js2-FUNCTION)
+                     (not visited-first-node))
+                ;; Don't traverse nested functions.  In this case nil will be
+                ;; returned and children will not be traversed.
+                (not (= (js2-node-type node) js2-FUNCTION)))
+           (when (and (js2-var-decl-node-p node)
+                      (string-match "^var" (js2-node-string node)))
+             ;; Append the declaration.
+             (save-excursion
+               (goto-char (+ (js2-node-abs-end node)))
+               (insert ",")
+               (newline-and-indent)
+               (insert declaration))
+             (setq found-variable-declaration t))
+           (setq visited-first-node t)
+           ;; Keep searching if the `var' was not found.
+           (not found-variable-declaration)))))
+    ;; Create a `var' statement if one was not found.
+    (when (not found-variable-declaration)
+      (save-excursion
+        (cond
+         ((= scope-node-type js2-FUNCTION)
+          ;; Skip past the first opening brace of the function.
+          (goto-char (js2-node-abs-pos scope))
+          (forward-sexp)
+          (forward-sexp)
+          (backward-sexp)
+          (forward-char)
+          (next-logical-line)
+          (back-to-indentation))
+         ((= scope-node-type js2-SCRIPT)
+          ;; Just go to the beginning of the script.
+          (goto-char (js2-node-abs-pos scope))))
+        ;; Ensure a "use strict" statement (if there is one) always comes before
+        ;; the declaration.
+        (when (string-match "\\(?:\"\\|'\\)use strict\\(?:\"\\|'\\);?" (js2-node-string scope))
+          (goto-char (+ (js2-node-abs-pos scope)
+                        (match-end 0)))
+          (if (looking-at "\n")
+              (next-logical-line)
+            (newline))
+          (back-to-indentation))
+        (while
+            (prog1
+                (cond
+                 ((looking-at "\\([[:space:]\\|\n]+\\)\\(?://\\|/\\*\\)")
+                  ;; Skip past the whitespace separating comments.
+                  (goto-char (match-end 1))
+                  t)
+                 ((looking-at "//")
+                  (forward-comment 1)
+                  t)
+                 ((looking-at "/\\*")
+                  (forward-comment 1)
+                  (next-logical-line)
+                  t)
+                 ((not (or (looking-at "\n")
+                           ;; There won't be a newline at the end of the buffer.
+                           (= (point) (buffer-end 1))))
+                  ;; Move any other code out of the way.
+                  (newline-and-indent)
+                  (previous-logical-line)
+                  nil)
+                 (t
+                  nil))
+              (back-to-indentation)))
+        (if js2-declare-variable-padding
+            (newline-and-indent)
+          (funcall indent-line-function))
+        (insert (concat "var " declaration ";"))
+        (when js2-declare-variable-padding
+          (newline))))))
 
 (provide 'js2-mode)
 
