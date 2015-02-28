@@ -6163,6 +6163,11 @@ its relevant fields and puts it into `js2-ti-tokens'."
                              (setf (js2-token-beg token) (- js2-ts-cursor 2))
                              (js2-skip-line)
                              (setf (js2-token-comment-type token) 'line)
+                             ;; include newline so highlighting goes to end of
+                             ;; window, if there actually is a newline; if we
+                             ;; hit eof, then implicitly there isn't
+                             (unless js2-ts-hit-eof
+                               (cl-incf (js2-token-end token)))
                              (throw 'return js2-COMMENT))
                            ;; is it a /* comment?
                            (when (js2-match-char ?*)

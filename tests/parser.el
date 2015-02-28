@@ -800,3 +800,8 @@ the test."
   (js2-mode)
   (let ((node (js2-node-at-point (point-min))))
     (should (= (js2-node-len node) 2))))
+
+(js2-deftest comment-node-length-newline "//\n"
+  (js2-mode)
+  (let ((node (js2-node-at-point (point-min))))
+    (should (= (js2-node-len node) 3))))
