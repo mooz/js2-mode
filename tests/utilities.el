@@ -221,3 +221,29 @@
           |var a;"
   :point 1
   :args '("a"))
+
+(js2-deftest-declare-variable scope
+  :before "if (true) {
+          |
+          |}"
+  :after  "var a;
+          |if (true) {
+          |
+          |}"
+  :point 13 ; Inside the if block
+  :args '("a"))
+
+(js2-deftest-declare-variable scope
+  :before "if (true) {
+          |    if (true) {
+          |
+          |    }
+          |}"
+  :after  "var a;
+          |if (true) {
+          |    if (true) {
+          |
+          |    }
+          |}"
+  :point 29 ; Inside the nested if block
+  :args '("a"))

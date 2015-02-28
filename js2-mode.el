@@ -12387,14 +12387,14 @@ will be inserted after them."
   (let ((node-at-point (js2-node-at-point))
         (declaration identifier)
         scope
-        scope-node-type
+        scope-type
         visited-first-node
         found-variable-declaration)
     (when (and initialiser
                (not (string-match "^[[:space:]\\|\n]*$" initialiser)))
       (setq declaration (concat identifier " = " initialiser)))
     ;; Find the nearest non-catch-block-scope.  This loop has the intentional
-    ;; side-effects of assigning the values of `scope' and `scope-node-type'.
+    ;; side-effects of assigning the values of `scope' and `scope-type'.
     (let ((continue t))
       (setq scope node-at-point)
       (while continue
@@ -12402,13 +12402,14 @@ will be inserted after them."
         (if (not scope)
             ;; Stopping point.
             (setq continue nil)
-          (setq scope-node-type (js2-node-type scope))
-          ;; Ignore catch block scopes.
-          (setq continue (= scope-node-type js2-CATCH)))))
+          (setq scope-type (js2-scope-type scope))
+          ;; Ignore non-function and non-global scopes.
+          (setq continue (not (or (= scope-type js2-FUNCTION)
+                                  (= scope-type js2-SCRIPT)))))))
     ;; No scope implies the global scope.
     (when (not scope)
       (setq scope js2-mode-ast)
-      (setq scope-node-type (js2-node-type scope)))
+      (setq scope-type (js2-scope-type scope)))
     ;; Search the AST for an existing `var' statement and append to it.
     (js2-visit-ast
      scope
@@ -12417,7 +12418,7 @@ will be inserted after them."
          (when (or
                 ;; Being the unvisited first node is an exemption to the "no
                 ;; nested functions" rule.
-                (and (= scope-node-type js2-FUNCTION)
+                (and (= scope-type js2-FUNCTION)
                      (not visited-first-node))
                 ;; Don't traverse nested functions.  In this case nil will be
                 ;; returned and children will not be traversed.
@@ -12438,7 +12439,7 @@ will be inserted after them."
     (when (not found-variable-declaration)
       (save-excursion
         (cond
-         ((= scope-node-type js2-FUNCTION)
+         ((= scope-type js2-FUNCTION)
           ;; Skip past the first opening brace of the function.
           (goto-char (js2-node-abs-pos scope))
           (forward-sexp)
@@ -12447,7 +12448,7 @@ will be inserted after them."
           (forward-char)
           (next-logical-line)
           (back-to-indentation))
-         ((= scope-node-type js2-SCRIPT)
+         ((= scope-type js2-SCRIPT)
           ;; Just go to the beginning of the script.
           (goto-char (js2-node-abs-pos scope))))
         ;; Ensure a "use strict" statement (if there is one) always comes before
