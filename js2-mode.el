@@ -12355,6 +12355,12 @@ it marks the next defun after the ones already marked."
     (unless (js2-ast-root-p fn)
       (narrow-to-region beg (+ beg (js2-node-len fn))))))
 
+(defun js2-conservatively-goto-next-line ()
+  "Go to the next line.  If there isn't a next line, make one."
+  (if (looking-at "\n")
+      (next-logical-line)
+    (newline)))
+
 (defun js2-declare-variable (identifier &optional initialiser)
   "Find the first `var' statement in the scope enclosing point,
 and add IDENTIFIER (optionally initialized to INITIALISER) to it.
@@ -12459,9 +12465,7 @@ will be inserted after them."
           (goto-char (+ (js2-node-abs-pos scope)
                         (match-end 0)))
           ;; Only add a newline if necessary.
-          (if (looking-at "\n")
-              (next-logical-line)
-            (newline))
+          (js2-conservatively-goto-next-line)
           (back-to-indentation))
         ;; Sidestep comments and rearrange code in preparation for `var'
         ;; declaration insertion.  Exciting!
@@ -12473,10 +12477,11 @@ will be inserted after them."
               (goto-char (match-end 1)))
              ;; Skip the comments themselves.
              ((looking-at "//")
-              (forward-comment 1))
+              (forward-comment 1)
+              (js2-conservatively-goto-next-line))
              ((looking-at "/\\*")
               (forward-comment 1)
-              (next-logical-line))
+              (js2-conservatively-goto-next-line))
              ;; If we're not looking at a newline or the end of a buffer, and
              ;; since we're always "back to indentation", then by deduction we
              ;; must be looking at code that needs to be moved out of the way.
@@ -12488,6 +12493,8 @@ will be inserted after them."
              ;; We've made it past all the junk in the header - yay!
              (t
               (setq continue nil)))
+            ;; Guarantee that we will be at the indentation level (ready to
+            ;; analyze the next string at point) on the next iteration.
             (back-to-indentation)))
         (if js2-declare-variable-padding
             (newline-and-indent)
