@@ -12395,17 +12395,15 @@ will be inserted after them."
       (setq declaration (concat identifier " = " initialiser)))
     ;; Find the nearest non-catch-block-scope.  This loop has the intentional
     ;; side-effects of assigning the values of `scope' and `scope-type'.
-    (let ((continue t))
-      (setq scope node-at-point)
-      (while continue
-        (setq scope (js2-node-get-enclosing-scope scope))
-        (if (not scope)
-            ;; Stopping point.
-            (setq continue nil)
-          (setq scope-type (js2-scope-type scope))
-          ;; Ignore non-function and non-global scopes.
-          (setq continue (not (or (= scope-type js2-FUNCTION)
-                                  (= scope-type js2-SCRIPT)))))))
+    (setq scope node-at-point)
+    (while (and
+            ;; Only continue if there is still a scope to analyze.
+            (setq scope (js2-node-get-enclosing-scope scope))
+            (progn
+              (setq scope-type (js2-scope-type scope))
+              ;; Ignore non-function and non-global scopes.
+              (not (or (= scope-type js2-FUNCTION)
+                       (= scope-type js2-SCRIPT))))))
     ;; No scope implies the global scope.
     (when (not scope)
       (setq scope js2-mode-ast)
@@ -12453,7 +12451,8 @@ will be inserted after them."
           (goto-char (js2-node-abs-pos scope))))
         ;; Ensure a "use strict" statement (if there is one) always comes before
         ;; the declaration.
-        (when (string-match "\\(?:\"\\|'\\)use strict\\(?:\"\\|'\\);?" (js2-node-string scope))
+        (when (string-match "\\(?:\"\\|'\\)use strict\\(?:\"\\|'\\);?"
+                            (js2-node-string scope))
           (goto-char (+ (js2-node-abs-pos scope)
                         (match-end 0)))
           (if (looking-at "\n")
