@@ -325,6 +325,13 @@ the test."
     (should (equal (list "foo@1:U" "a@15:P" 33)
                    (js2--variables-summary vars)))))
 
+(js2-deftest get-variables-o
+  "function foo (a) { a=navigator.x||navigator.y; return a; }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@1:U" "a@15:P" 55)
+                   (js2--variables-summary vars)))))
+
 ;;; Function parameters
 
 (js2-deftest-parse function-with-default-parameters

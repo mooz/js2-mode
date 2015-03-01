@@ -7125,14 +7125,23 @@ The variables declared at the outer level are ignored."
              (js2-visit-ast
               right
               (lambda (rightn righte-p)
-                (when (and righte-p (js2-name-node-p rightn))
-                  (setq vars (js2--add-or-update-symbol rightn nil vars)))
+                (when righte-p
+                  (cond
+                   ((js2-name-node-p rightn)
+                    (let ((parent (js2-node-parent rightn)))
+                      (when (and parent
+                                 (not (eq (js2-node-type parent) js2-GETPROP)))
+                        (setq vars (js2--add-or-update-symbol rightn nil vars)))))
+                   ((js2-prop-get-node-p rightn)
+                    (let ((ln (js2-prop-get-node-left rightn)))
+                      (when (js2-name-node-p ln)
+                        (setq vars (js2--add-or-update-symbol ln nil vars)))))))
                 t))))
 
           ((js2-prop-get-node-p node)
            ;; handle x.y.z nodes, considering only x
-           (when (js2-name-node-p (js2-prop-get-node-left node))
-             (let ((ln (js2-prop-get-node-left node)))
+           (let ((ln (js2-prop-get-node-left node)))
+             (when (js2-name-node-p ln)
                (setq vars (js2--add-or-update-symbol ln nil vars)))))
 
           ((js2-name-node-p node)
