@@ -7088,8 +7088,8 @@ The variables declared at the outer level are ignored."
      (lambda (node end-p)
        (when end-p
          (cond
-          ((and (js2-scope-p node) (not (js2-ast-root-p node)))
-             ;; take note about possibly initialized declarations
+          ((js2-scope-p node)
+           ;; take note about possibly initialized declarations
            (dolist (entry (js2-scope-symbol-table node))
              (let* ((symbol (cdr entry))
                     (vin (js2-symbol-ast-node symbol))
@@ -7150,10 +7150,11 @@ The variables declared at the outer level are ignored."
   "Highlight problematic variables."
   (let ((vars (js2-get-variables)))
     (dolist (var vars)
-      (let ((name (js2-symbol-name (car var)))
-            (inited (cadr var))
-            (refs (cddr var))
-            pos len)
+      (let* ((sym (car var))
+             (name (js2-symbol-name sym))
+             (inited (cadr var))
+             (refs (cddr var))
+             pos len)
         (unless (and inited refs)
           (if refs
               (dolist (ref refs)
@@ -7161,8 +7162,13 @@ The variables declared at the outer level are ignored."
                 (setq len (js2-name-node-len ref))
                 (js2-report-warning "msg.uninitialized.variable" name pos len
                                     'js2-warning))
-            (when (or js2-warn-about-unused-function-arguments (not (eq inited ?P)))
-              (setq pos (js2-node-abs-pos (js2-symbol-ast-node (car var))))
+            (when (and (or js2-warn-about-unused-function-arguments (not (eq inited ?P)))
+                       (not (js2-node-top-level-decl-p (js2-symbol-ast-node sym))))
+              (setq pos (js2-node-abs-pos (js2-symbol-ast-node sym)))
+              ;; Uhm, strangely the position of function symbols that of the
+              ;; "function" keyword...
+              (if (= (js2-symbol-decl-type sym) js2-FUNCTION)
+                  (setq pos (+ pos 9)))
               (setq len (length name))
               (js2-report-warning "msg.unused.variable" name pos len
                                   'js2-warning))))))))
