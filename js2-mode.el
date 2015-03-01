@@ -7062,20 +7062,23 @@ it is considered declared."
                               'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
 
-(defmacro js2--add-or-update-symbol (symbol inition vars)
-  "Add or update SYMBOL entry in the alist VARS."
-  `(let* ((_nm (js2-name-node-name ,symbol))
-          (_es (js2-node-get-enclosing-scope ,symbol))
-          (_ds (js2-get-defining-scope _es _nm)))
-     (when (and _ds (not (equal _nm "arguments")))
-       (let* ((_sym (js2-scope-get-symbol _ds _nm))
-              (_var (assq _sym ,vars)))
-         (if _var
-             (if ,inition
-                 (when (eq (cadr _var) nil)
-                   (setcar (cdr _var) ,inition))
-               (push ,symbol (cddr _var)))
-           (push (cons _sym (cons ,inition (if ,inition nil (list ,symbol)))) ,vars))))))
+(defun js2--add-or-update-symbol (symbol inition vars)
+  "Add or update SYMBOL entry in the alist VARS, returning it.
+SYMBOL is a js2-name-node, INITION either nil, t, or ?P, respectively meaning
+that SYMBOL was a mere declaration, an assignment or a function parameter."
+  (let* ((nm (js2-name-node-name symbol))
+         (es (js2-node-get-enclosing-scope symbol))
+         (ds (js2-get-defining-scope es nm)))
+    (when (and ds (not (equal nm "arguments")))
+      (let* ((sym (js2-scope-get-symbol ds nm))
+             (var (assq sym vars)))
+        (if var
+            (if inition
+                (when (eq (cadr var) nil)
+                  (setcar (cdr var) inition))
+              (push symbol (cddr var)))
+          (push (cons sym (cons inition (if inition nil (list symbol)))) vars)))))
+  vars)
 
 (defun js2-function-variables (fn-node)
   "Collect and classify variables inside given FN-NODE.
@@ -7111,7 +7114,7 @@ has been initialized and the cdr is a possibly empty list of references."
                         initializer
                         (lambda (initn inite-p)
                           (when (and inite-p (js2-name-node-p initn))
-                            (js2--add-or-update-symbol initn nil vars)
+                            (setq vars (js2--add-or-update-symbol initn nil vars))
                             t)))))
                  ;; either a function parameter or a inner function block
                  (let ((inition (if (js2-function-node-p pn) ?P t)))
@@ -7123,27 +7126,27 @@ has been initialized and the cdr is a possibly empty list of references."
            ;; take note about assignments
            (let ((left (js2-assign-node-left node)))
              (when (js2-name-node-p left)
-               (js2--add-or-update-symbol left t vars)))
+               (setq vars (js2--add-or-update-symbol left t vars))))
            (let ((right (js2-assign-node-right node)))
              (js2-visit-ast
               right
               (lambda (rightn righte-p)
                 (when (and righte-p (js2-name-node-p rightn))
-                  (js2--add-or-update-symbol rightn nil vars))
+                  (setq vars (js2--add-or-update-symbol rightn nil vars)))
                 t))))
 
           ((js2-prop-get-node-p node)
            ;; handle x.y.z nodes, considering only x
            (when (js2-name-node-p (js2-prop-get-node-left node))
              (let ((ln (js2-prop-get-node-left node)))
-               (js2--add-or-update-symbol ln nil vars))))
+               (setq vars (js2--add-or-update-symbol ln nil vars)))))
 
           ((js2-name-node-p node)
            ;; take note about used variables
            (let ((parent (js2-node-parent node)))
              (when (and parent
                         (not (member (js2-node-type parent) handled-elsewhere)))
-               (js2--add-or-update-symbol node (js2-for-in-node-p parent) vars))))
+               (setq vars (js2--add-or-update-symbol node (js2-for-in-node-p parent) vars)))))
 
           (t)))
        t))
