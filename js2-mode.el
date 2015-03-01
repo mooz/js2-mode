@@ -12495,7 +12495,7 @@ will be inserted after them."
               (goto-char (match-end 1)))
              ;; Skip the comments themselves.
              ((looking-at "//")
-              (forward-comment 1)
+              (end-of-line 1)
               (js2-conservatively-goto-next-line))
              ((looking-at "/\\*")
               (forward-comment 1)

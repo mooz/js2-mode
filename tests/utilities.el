@@ -197,6 +197,13 @@
   :point 1
   :args '("a"))
 
+(js2-deftest-declare-variable comment-singleline-newline
+  :before "// comment\n"
+  :after  "// comment
+          |var a;"
+  :point 1
+  :args '("a"))
+
 (js2-deftest-declare-variable comment-multiline
   :before "/* comment */"
   :after  "/* comment */
@@ -206,6 +213,16 @@
 
 (js2-deftest-declare-variable comment-padding
   :before "// comment"
+  :after  "// comment
+          |
+          |var a;
+          |"
+  :point 1
+  :args '("a")
+  :padding 1)
+
+(js2-deftest-declare-variable comment-padding-newline
+  :before "// comment\n"
   :after  "// comment
           |
           |var a;
