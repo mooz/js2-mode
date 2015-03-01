@@ -793,3 +793,15 @@ the test."
 (js2-deftest function-without-parens-error "function b {}"
   ;; Should finish the parse.
   (js2-mode))
+
+;;; Comments
+
+(js2-deftest comment-node-length "//"
+  (js2-mode)
+  (let ((node (js2-node-at-point (point-min))))
+    (should (= (js2-node-len node) 2))))
+
+(js2-deftest comment-node-length-newline "//\n"
+  (js2-mode)
+  (let ((node (js2-node-at-point (point-min))))
+    (should (= (js2-node-len node) 3))))
