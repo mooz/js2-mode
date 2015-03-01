@@ -7114,7 +7114,18 @@ The variables declared at the outer level are ignored."
                  (let ((inition (if (js2-function-node-p pn) ?P t)))
                    (if var
                        (setcar (cdr var) inition)
-                     (push (cons symbol (cons inition ())) vars)))))))
+                     (push (cons symbol (cons inition ())) vars))))))
+           ;; handle for(var x in array) loops, setting x to initialized
+           (when (and (js2-for-in-node-p node)
+                      (js2-var-decl-node-p (js2-for-in-node-iterator node)))
+             (dolist (k (js2-var-decl-node-kids (js2-for-in-node-iterator node)))
+               (let ((tn (js2-var-init-node-target k)))
+                 (cond
+                  ((js2-name-node-p tn)
+                   (setq vars (js2--add-or-update-symbol tn t vars)))
+                  ((js2-array-node-p tn)
+                   (dolist (te (js2-array-node-elems tn))
+                     (setq vars (js2--add-or-update-symbol te t vars)))))))))
 
           ((js2-assign-node-p node)
            ;; take note about assignments
