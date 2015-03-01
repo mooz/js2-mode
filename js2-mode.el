@@ -1132,13 +1132,6 @@ another file, or you've got a potential bug."
   :type 'boolean
   :group 'js2-mode)
 
-(defcustom js2-highlight-problematic-variables t
-  "Non-nil to highlight problematic variable identifiers.
-A problematic variable is any variable declared within a function that
-is either unused or used but never initialized."
-  :type 'boolean
-  :group 'js2-mode)
-
 (defcustom js2-warn-about-unused-function-arguments nil
   "Non-nil to treat function arguments like declared-but-unused variables."
   :type 'booleanp
@@ -7080,22 +7073,23 @@ that SYMBOL was a mere declaration, an assignment or a function parameter."
           (push (cons sym (cons inition (if inition nil (list symbol)))) vars)))))
   vars)
 
-(defun js2-function-variables (fn-node)
-  "Collect and classify variables inside given FN-NODE.
-Traverse the whole function node returning an alist summarising variables
+(defun js2-get-variables ()
+  "Collect and classify variables declared or used within js2-mode-ast.
+Traverse the whole ast tree returning an alist summarising variables
 usage, keyed by their corresponding symbol table entry. Each variable is
 described by a tuple where the car is a flag indicating whether the variable
-has been initialized and the cdr is a possibly empty list of references."
+has been initialized and the cdr is a possibly empty list of references.
+The variables declared at the outer level are ignored."
   (let ((handled-elsewhere
          (list js2-ASSIGN js2-FUNCTION js2-GETPROP js2-LET js2-VAR))
         vars)
     (js2-visit-ast
-     fn-node
+     js2-mode-ast
      (lambda (node end-p)
        (when end-p
          (cond
-          ((js2-scope-p node)
-           ;; take note about possibly initialized declarations
+          ((and (js2-scope-p node) (not (js2-ast-root-p node)))
+             ;; take note about possibly initialized declarations
            (dolist (entry (js2-scope-symbol-table node))
              (let* ((symbol (cdr entry))
                     (vin (js2-symbol-ast-node symbol))
@@ -7152,9 +7146,9 @@ has been initialized and the cdr is a possibly empty list of references."
        t))
     vars))
 
-(defun js2-function-highlight-problematic-variables (fn-node)
+(defun js2-highlight-problematic-variables ()
   "Highlight problematic variables."
-  (let ((vars (js2-function-variables fn-node)))
+  (let ((vars (js2-get-variables)))
     (dolist (var vars)
       (let ((name (js2-symbol-name (car var)))
             (inited (cadr var))
@@ -7172,6 +7166,14 @@ has been initialized and the cdr is a possibly empty list of references."
               (setq len (length name))
               (js2-report-warning "msg.unused.variable" name pos len
                                   'js2-warning))))))))
+
+;;;###autoload
+(define-minor-mode js2-highlight-problematic-variables-mode
+  "Toggle highlight of problematic variables."
+  :lighter ""
+  (if js2-highlight-problematic-variables-mode
+      (add-hook 'js2-post-parse-callbacks 'js2-highlight-problematic-variables nil t)
+    (remove-hook 'js2-post-parse-callbacks 'js2-highlight-problematic-variables t)))
 
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
@@ -8107,8 +8109,6 @@ arrow function), NAME is js2-name-node."
           (js2-parse-function-closure-body fn-node)
         (js2-parse-function-body fn-node))
       (js2-check-inconsistent-return-warning fn-node name)
-      (if js2-highlight-problematic-variables
-          (js2-function-highlight-problematic-variables fn-node))
 
       (when name
         (js2-node-add-children fn-node name)

@@ -208,7 +208,7 @@ the test."
   (js2-mode)
   (should (null (js2-ast-root-warnings js2-mode-ast))))
 
-(defun js2--function-variables-summary (vars)
+(defun js2--variables-summary (vars)
   (let (r)
     (dolist (v (sort vars (lambda (a b) (< (js2-node-abs-pos (js2-symbol-ast-node (car a)))
                                       (js2-node-abs-pos (js2-symbol-ast-node (car b)))))))
@@ -228,116 +228,102 @@ the test."
           (push (js2-node-abs-pos u) r))))
     (reverse r)))
 
-(js2-deftest function-variables-a
+(js2-deftest get-variables-a
   "function foo () { var x; return 42; }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "x@23:U")
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-b
+(js2-deftest get-variables-b
   "function foo (a) { var x; function bar () { var x; x=42; }; return a;}"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "a@15:P" 68 "x@24:U" "bar@27:U" "x@49:U")
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-c
+(js2-deftest get-variables-c
   "function foo () { var x; x=42; return x; }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "x@23:I" 39)
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-d
+(js2-deftest get-variables-d
   "function foo () { var x; function bar () { x=42; }; }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "x@23:U" "bar@26:U")
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-e
+(js2-deftest get-variables-e
   "function foo() { var i, j=1; function bar() { var x, y=42, z=i; return y; } return i; }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "i@22:N" 62 84 "j@25:U" "bar@30:U" "x@51:U" "y@54:I" 72 "z@60:U")
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-f
+(js2-deftest get-variables-f
   "function foo () { var x, y={}; y.a=x; }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "x@23:N" 36 "y@26:I" 32)
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-g
+(js2-deftest get-variables-g
   "function foo () { var x; if(x.foo) alert('boom'); }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
-    (should (equal (list "x@23:N" 29) (js2--function-variables-summary vars)))))
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "x@23:N" 29) (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-h
+(js2-deftest get-variables-h
   "function foo () { let x,y=1; return x; }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "x@23:N" 37 "y@25:U")
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-i
+(js2-deftest get-variables-i
   "function foo (m) { console.log(m, arguments); }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "m@15:P" 32)
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-j
+(js2-deftest get-variables-j
   "function foo () { for(let x=1,y; x<y; y++) {} }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "x@27:I" 34 "y@31:N" 36 39)
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-k
+(js2-deftest get-variables-k
   "function foo () { var p; for(p in arguments) { return p; } }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "p@23:I" 55)
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-l
+(js2-deftest get-variables-l
   "function foo () { var x={y:{z:{}}}; x.y.z=42; }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "x@23:I" 37)
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-m
+(js2-deftest get-variables-m
   "function foo (a) { return 42; }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "a@15:P")
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
-(js2-deftest function-variables-n
+(js2-deftest get-variables-n
   "function foo (a) { a=42; return a; }"
   (js2-mode)
-  (let* ((scope (js2-node-at-point (point-min)))
-         (vars (js2-function-variables scope)))
+  (let* ((vars (js2-get-variables)))
     (should (equal (list "a@15:P" 33)
-                   (js2--function-variables-summary vars)))))
+                   (js2--variables-summary vars)))))
 
 ;;; Function parameters
 
