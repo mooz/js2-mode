@@ -7182,16 +7182,20 @@ The variables declared at the outer level are ignored."
                 (setq len (js2-name-node-len ref))
                 (js2-report-warning "msg.uninitialized.variable" name pos len
                                     'js2-warning))
-            (when (and (or js2-warn-about-unused-function-arguments (not (eq inited ?P)))
-                       (not (js2-node-top-level-decl-p (js2-symbol-ast-node sym))))
-              (setq pos (js2-node-abs-pos (js2-symbol-ast-node sym)))
-              ;; Uhm, strangely the position of function symbols that of the
-              ;; "function" keyword...
-              (if (= (js2-symbol-decl-type sym) js2-FUNCTION)
-                  (setq pos (+ pos 9)))
-              (setq len (length name))
-              (js2-report-warning "msg.unused.variable" name pos len
-                                  'js2-warning))))))))
+            (when (or js2-warn-about-unused-function-arguments
+                      (not (eq inited ?P)))
+              (let* ((symn (js2-symbol-ast-node sym))
+                     (namen (cond
+                            ((js2-function-node-p symn)
+                             (js2-function-node-name symn))
+                            ((js2-class-node-p symn)
+                             (js2-class-node-name symn))
+                            (t symn))))
+                (unless (js2-node-top-level-decl-p namen)
+                  (setq pos (js2-node-abs-pos namen))
+                  (setq len (js2-name-node-len namen))
+                  (js2-report-warning "msg.unused.variable" name pos len
+                                  'js2-warning))))))))))
 
 ;;;###autoload
 (define-minor-mode js2-highlight-problematic-variables-mode
