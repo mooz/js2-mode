@@ -7067,10 +7067,11 @@ that SYMBOL was a mere declaration, an assignment or a function parameter."
              (var (assq sym vars)))
         (if var
             (if inition
-                (when (eq (cadr var) nil)
+                (when (null (cadr var))
                   (setcar (cdr var) inition))
               (push symbol (cddr var)))
-          (push (cons sym (cons inition (if inition nil (list symbol)))) vars)))))
+          (push (cons sym (cons inition (if inition nil (list symbol))))
+                vars)))))
   vars)
 
 (defun js2-get-variables ()
@@ -7160,7 +7161,9 @@ The variables declared at the outer level are ignored."
            (let ((parent (js2-node-parent node)))
              (when (and parent
                         (not (member (js2-node-type parent) handled-elsewhere)))
-               (setq vars (js2--add-or-update-symbol node (js2-for-in-node-p parent) vars)))))
+               (setq vars (js2--add-or-update-symbol node
+                                                     (js2-for-in-node-p parent)
+                                                     vars)))))
 
           (t)))
        t))
@@ -7202,8 +7205,10 @@ The variables declared at the outer level are ignored."
   "Toggle highlight of problematic variables."
   :lighter ""
   (if js2-highlight-problematic-variables-mode
-      (add-hook 'js2-post-parse-callbacks 'js2-highlight-problematic-variables nil t)
-    (remove-hook 'js2-post-parse-callbacks 'js2-highlight-problematic-variables t)))
+      (add-hook 'js2-post-parse-callbacks
+                #'js2-highlight-problematic-variables nil t)
+    (remove-hook 'js2-post-parse-callbacks
+                 #'js2-highlight-problematic-variables t)))
 
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
