@@ -2318,10 +2318,9 @@ If any given node in NODES is nil, doesn't record that link."
 (defun js2-node-get-enclosing-scope (node)
   "Return the innermost `js2-scope' node surrounding NODE.
 Returns nil if there is no enclosing scope node."
-  (let ((parent (js2-node-parent node)))
-    (while (not (js2-scope-p parent))
-      (setq parent (js2-node-parent parent)))
-    parent))
+  (while (and (setq node (js2-node-parent node))
+              (not (js2-scope-p node))))
+  node)
 
 (defun js2-get-defining-scope (scope name &optional point)
   "Search up scope chain from SCOPE looking for NAME, a string or symbol.
@@ -6174,8 +6173,11 @@ its relevant fields and puts it into `js2-ti-tokens'."
                              (setf (js2-token-beg token) (- js2-ts-cursor 2))
                              (js2-skip-line)
                              (setf (js2-token-comment-type token) 'line)
-                             ;; include newline so highlighting goes to end of window
-                             (cl-incf (js2-token-end token))
+                             ;; include newline so highlighting goes to end of
+                             ;; window, if there actually is a newline; if we
+                             ;; hit eof, then implicitly there isn't
+                             (unless js2-ts-hit-eof
+                               (cl-incf (js2-token-end token)))
                              (throw 'return js2-COMMENT))
                            ;; is it a /* comment?
                            (when (js2-match-char ?*)
