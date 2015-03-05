@@ -10378,6 +10378,7 @@ We should have just parsed the 'for' keyword before calling this function."
                                      :form form))
     (apply #'js2-node-add-children result (js2-comp-node-loops result))
     (apply #'js2-node-add-children result expr (js2-comp-node-filters result))
+    (setf (js2-scope-parent-scope result) js2-current-scope)
     result))
 
 (defun js2-parse-comp-loop (pn &optional only-of-p)
