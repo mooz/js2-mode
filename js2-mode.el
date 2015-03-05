@@ -1273,6 +1273,7 @@ First match-group is the leading whitespace.")
 (defvar js2-mode-syntax-table
   (let ((table (make-syntax-table)))
     (c-populate-syntax-table table)
+    (modify-syntax-entry ?` "\"" table)
     table)
   "Syntax table used in `js2-mode' buffers.")
 
