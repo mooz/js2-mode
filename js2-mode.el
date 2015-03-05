@@ -7163,9 +7163,11 @@ The variables declared at the outer level are ignored."
            (let ((parent (js2-node-parent node)))
              (when (and parent
                         (not (member (js2-node-type parent) handled-elsewhere)))
-               (setq vars (js2--add-or-update-symbol node
-                                                     (js2-for-in-node-p parent)
-                                                     vars)))))
+               (setq vars (js2--add-or-update-symbol
+                           node
+                           (and (js2-for-in-node-p parent)
+                                (eq node (js2-for-in-node-iterator parent)))
+                           vars)))))
 
           (t)))
        t))
@@ -7195,6 +7197,8 @@ The variables declared at the outer level are ignored."
                              (js2-function-node-name symn))
                             ((js2-class-node-p symn)
                              (js2-class-node-name symn))
+                            ((js2-comp-loop-node-p symn)
+                             (js2-comp-loop-node-iterator symn))
                             (t symn))))
                 (unless (js2-node-top-level-decl-p namen)
                   (setq pos (js2-node-abs-pos namen))

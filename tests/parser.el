@@ -221,6 +221,8 @@ the test."
                       (js2-function-node-name symn))
                      ((js2-class-node-p symn)
                       (js2-class-node-name symn))
+                     ((js2-comp-loop-node-p symn)
+                      (js2-comp-loop-node-iterator symn))
                      (t symn))))
         (push (format "%s@%s:%s"
                       (js2-symbol-name symbol)
@@ -343,7 +345,7 @@ the test."
   "function foo () { var d={}; for(var k in d) {var v=d[k]; } }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "d@23:I" 52 "k@37:I" 54 "v@50:U")
+    (should (equal (list "foo@10:U" "d@23:I" 42 52 "k@37:I" 54 "v@50:U")
                    (js2--variables-summary vars)))))
 
 (js2-deftest get-variables-q
@@ -351,6 +353,13 @@ the test."
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "bar@10:I" 58 "foo@41:U" "a@46:P")
+                   (js2--variables-summary vars)))))
+
+(js2-deftest get-variables-r
+  "function foo() { var j,a=[for (i of [1,2,3]) i*j]; }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "j@22:N" 48 "a@24:U" "i@32:U") ; should be "i@32:I" 46)
                    (js2--variables-summary vars)))))
 
 ;;; Function parameters
