@@ -885,13 +885,13 @@ the test."
     (should (js2-comp-loop-node-p (js2-get-defining-scope scope "x")))))
 
 (js2-deftest array-comp-has-parent-scope
-             "var a,b=[for (i of [1,2]) i * a];"
+             "var a,b=[for (i of [[1,2]]) for (j of i) j * a];"
   (js2-mode)
   (search-forward "for")
   (forward-char -3)
   (let ((node (js2-node-at-point)))
     (should (js2-scope-parent-scope node))
-    (should (js2-get-defining-scope node "i"))))
+    (should (js2-get-defining-scope node "j"))))
 
 ;;; Tokenizer
 

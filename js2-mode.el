@@ -10372,7 +10372,7 @@ We should have just parsed the 'for' keyword before calling this function."
           (while (js2-match-token js2-IF)
             (push (car (js2-parse-condition)) filters))
           (setq expr (js2-parse-assign-expr))
-          (setq first (car (last loops))))
+          (setq first (car loops)))
       (dolist (_ loops)
         (js2-pop-scope)))
     (setq result (make-js2-comp-node :pos pos
