@@ -359,7 +359,14 @@ the test."
   "function foo() { var j,a=[for (i of [1,2,3]) i*j]; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "j@22:N" 48 "a@24:U" "i@32:U") ; should be "i@32:I" 46)
+    (should (equal (list "foo@10:U" "j@22:N" 48 "a@24:U" "i@32:I" 46)
+                   (js2--variables-summary vars)))))
+
+(js2-deftest get-variables-s
+  "function foo() { var j,a=[[i,j] for (i of [1,2,3])]; }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "j@22:N" 30 "a@24:U" "i@38:I" 28)
                    (js2--variables-summary vars)))))
 
 ;;; Function parameters
@@ -884,8 +891,7 @@ the test."
   (forward-char -3)
   (let ((node (js2-node-at-point)))
     (should (js2-scope-parent-scope node))
-    ;(should (js2-get-defining-scope node "i"))
-    ))
+    (should (js2-get-defining-scope node "i"))))
 
 ;;; Tokenizer
 

@@ -10360,7 +10360,7 @@ We should have just parsed the 'for' keyword before calling this function."
     pn))
 
 (defun js2-parse-comprehension (pos form)
-  (let (loops filters expr result)
+  (let (loops filters expr result first)
     (unwind-protect
         (progn
           (js2-unget-token)
@@ -10371,7 +10371,8 @@ We should have just parsed the 'for' keyword before calling this function."
               (js2-parse-comp-loop loop)))
           (while (js2-match-token js2-IF)
             (push (car (js2-parse-condition)) filters))
-          (setq expr (js2-parse-assign-expr)))
+          (setq expr (js2-parse-assign-expr))
+          (setq first (car (last loops))))
       (dolist (_ loops)
         (js2-pop-scope)))
     (setq result (make-js2-comp-node :pos pos
@@ -10382,7 +10383,7 @@ We should have just parsed the 'for' keyword before calling this function."
                                      :form form))
     (apply #'js2-node-add-children result (js2-comp-node-loops result))
     (apply #'js2-node-add-children result expr (js2-comp-node-filters result))
-    (setf (js2-scope-parent-scope result) js2-current-scope)
+    (setf (js2-scope-parent-scope result) first)
     result))
 
 (defun js2-parse-comp-loop (pn &optional only-of-p)
