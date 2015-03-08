@@ -7057,10 +7057,11 @@ it is considered declared."
                               'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
 
-(defun js2--add-or-update-symbol (symbol inition vars)
+(defun js2--add-or-update-symbol (symbol inition vars &optional usage)
   "Add or update SYMBOL entry in the alist VARS, returning it.
 SYMBOL is a js2-name-node, INITION either nil, t, or ?P, respectively meaning
-that SYMBOL was a mere declaration, an assignment or a function parameter."
+that SYMBOL was a mere declaration, an assignment or a function parameter.
+The optional USAGE is the node that uses the given symbol."
   (let* ((nm (js2-name-node-name symbol))
          (es (js2-node-get-enclosing-scope symbol))
          (ds (js2-get-defining-scope es nm)))
@@ -7071,9 +7072,12 @@ that SYMBOL was a mere declaration, an assignment or a function parameter."
             (if inition
                 (when (null (cadr var))
                   (setcar (cdr var) inition))
-              (push symbol (cddr var)))
-          (push (cons sym (cons inition (if inition nil (list symbol))))
-                vars)))))
+              (push (or usage symbol) (cddr var)))
+          (if usage
+              (setq usage (list usage))
+            (unless inition
+              (setq usage (list symbol))))
+          (push (cons sym (cons inition usage)) vars)))))
   vars)
 
 (defun js2-get-variables ()
@@ -7162,13 +7166,16 @@ The variables declared at the outer level are ignored."
           ((js2-name-node-p node)
            ;; take note about used variables
            (let ((parent (js2-node-parent node)))
-             (when (and parent
-                        (not (member (js2-node-type parent) handled-elsewhere)))
-               (setq vars (js2--add-or-update-symbol
-                           node
-                           (and (js2-for-in-node-p parent)
-                                (eq node (js2-for-in-node-iterator parent)))
-                           vars)))))
+             (when parent
+               (if (and (js2-function-node-p parent)
+                        (js2-wrapper-function-p parent))
+                   (setq vars (js2--add-or-update-symbol node t vars node))
+                 (when (not (member (js2-node-type parent) handled-elsewhere))
+                   (setq vars (js2--add-or-update-symbol
+                               node
+                               (and (js2-for-in-node-p parent)
+                                    (eq node (js2-for-in-node-iterator parent)))
+                               vars)))))))
 
           (t)))
        t))

@@ -376,6 +376,13 @@ the test."
     (should (equal (list "foo@10:U" "a@22:I" 59 "bar@44:I" 28)
                    (js2--variables-summary vars)))))
 
+(js2-deftest get-variables-u
+  "function foo() { var a; (function bar() { a=42; })(); return a; }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "a@22:I" 62 "bar@35:I" 35)
+                   (js2--variables-summary vars)))))
+
 ;;; Function parameters
 
 (js2-deftest-parse function-with-default-parameters
