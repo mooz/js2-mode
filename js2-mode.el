@@ -7127,7 +7127,7 @@ The variables declared at the outer level are ignored."
                  (cond
                   ((js2-name-node-p tn)
                    (setq vars (js2--add-or-update-symbol tn t vars)))
-                  ((js2-array-node-p tn)
+                  ((js2-array-node-p tn) ; TODO: understand if this is possible
                    (dolist (te (js2-array-node-elems tn))
                      (setq vars (js2--add-or-update-symbol te t vars)))))))))
 
