@@ -7080,7 +7080,7 @@ The optional USAGE is the node that uses the given symbol."
           (push (cons sym (cons inition usage)) vars)))))
   vars)
 
-(defun js2-get-variables ()
+(defun js2--classify-variables ()
   "Collect and classify variables declared or used within js2-mode-ast.
 Traverse the whole ast tree returning an alist summarising variables
 usage, keyed by their corresponding symbol table entry. Each variable is
@@ -7183,7 +7183,7 @@ The variables declared at the outer level are ignored."
 
 (defun js2-highlight-problematic-variables ()
   "Highlight problematic variables."
-  (let ((vars (js2-get-variables)))
+  (let ((vars (js2--classify-variables)))
     (dolist (var vars)
       (let* ((sym (car var))
              (name (js2-symbol-name sym))
