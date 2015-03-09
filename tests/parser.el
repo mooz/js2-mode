@@ -237,146 +237,147 @@ the test."
           (push (js2-node-abs-pos u) r))))
     (reverse r)))
 
-(js2-deftest get-variables-a
+(js2-deftest get-variables-unused-variable
   "function foo () { var x; return 42; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "x@23:U")
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-b
+(js2-deftest get-variables-unused-variable-declared-twice
   "function foo (a) { var x; function bar () { var x; x=42; }; return a;}"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "a@15:P" 68 "x@24:U" "bar@36:U" "x@49:U")
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-c
+(js2-deftest get-variables-assigned-variable
   "function foo () { var x; x=42; return x; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "x@23:I" 39)
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-d
+(js2-deftest get-variables-assignment-in-nested-function
   "function foo () { var x; function bar () { x=42; }; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "x@23:U" "bar@35:U")
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-e
+(js2-deftest get-variables-unused-nested-function
   "function foo() { var i, j=1; function bar() { var x, y=42, z=i; return y; } return i; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "i@22:N" 62 84 "j@25:U" "bar@39:U" "x@51:U" "y@54:I" 72 "z@60:U")
+    (should (equal (list "foo@10:U" "i@22:N" 62 84 "j@25:U"
+                         "bar@39:U" "x@51:U" "y@54:I" 72 "z@60:U")
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-f
+(js2-deftest get-variables-prop-get-initialized
   "function foo () { var x, y={}; y.a=x; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "x@23:N" 36 "y@26:I" 32)
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-g
+(js2-deftest get-variables-prop-get-uninitialized
   "function foo () { var x; if(x.foo) alert('boom'); }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "x@23:N" 29) (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-h
+(js2-deftest get-variables-let-declaration
   "function foo () { let x,y=1; return x; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "x@23:N" 37 "y@25:U")
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-i
+(js2-deftest get-variables-external-function-call
   "function foo (m) { console.log(m, arguments); }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "m@15:P" 32)
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-j
-  "function foo () { for(let x=1,y; x<y; y++) {} }"
-  (js2-mode)
-  (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "x@27:I" 34 "y@31:N" 36 39)
-                   (js2--variables-summary vars)))))
-
-(js2-deftest get-variables-k
-  "function foo () { var p; for(p in arguments) { return p; } }"
-  (js2-mode)
-  (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "p@23:I" 55)
-                   (js2--variables-summary vars)))))
-
-(js2-deftest get-variables-l
-  "function foo () { var x={y:{z:{}}}; x.y.z=42; }"
-  (js2-mode)
-  (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "x@23:I" 37)
-                   (js2--variables-summary vars)))))
-
-(js2-deftest get-variables-m
-  "function foo (a) { return 42; }"
-  (js2-mode)
-  (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "a@15:P")
-                   (js2--variables-summary vars)))))
-
-(js2-deftest get-variables-n
-  "function foo (a) { a=42; return a; }"
-  (js2-mode)
-  (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "a@15:P" 33)
-                   (js2--variables-summary vars)))))
-
-(js2-deftest get-variables-o
-  "function foo (a) { a=navigator.x||navigator.y; return a; }"
-  (js2-mode)
-  (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "a@15:P" 55)
-                   (js2--variables-summary vars)))))
-
-(js2-deftest get-variables-p
-  "function foo () { var d={}; for(var k in d) {var v=d[k]; } }"
-  (js2-mode)
-  (let* ((vars (js2-get-variables)))
-    (should (equal (list "foo@10:U" "d@23:I" 42 52 "k@37:I" 54 "v@50:U")
-                   (js2--variables-summary vars)))))
-
-(js2-deftest get-variables-q
+(js2-deftest get-variables-global-function-call
   "function bar () { return 42; } function foo (a) { return bar(); }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "bar@10:I" 58 "foo@41:U" "a@46:P")
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-r
+(js2-deftest get-variables-let-declaration-for-scope
+  "function foo () { for(let x=1,y; x<y; y++) {} }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "x@27:I" 34 "y@31:N" 36 39)
+                   (js2--variables-summary vars)))))
+
+(js2-deftest get-variables-arguments-implicit-var
+  "function foo () { var p; for(p in arguments) { return p; } }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "p@23:I" 55)
+                   (js2--variables-summary vars)))))
+
+(js2-deftest get-variables-prop-get-assignment
+  "function foo () { var x={y:{z:{}}}; x.y.z=42; }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "x@23:I" 37)
+                   (js2--variables-summary vars)))))
+
+(js2-deftest get-variables-unused-function-argument
+  "function foo (a) { return 42; }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "a@15:P")
+                   (js2--variables-summary vars)))))
+
+(js2-deftest get-variables-used-function-argument
+  "function foo (a) { a=42; return a; }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "a@15:P" 33)
+                   (js2--variables-summary vars)))))
+
+(js2-deftest get-variables-prop-get
+  "function foo (a) { a=navigator.x||navigator.y; return a; }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "a@15:P" 55)
+                   (js2--variables-summary vars)))))
+
+(js2-deftest get-variables-for-in-loop
+  "function foo () { var d={}; for(var k in d) {var v=d[k]; } }"
+  (js2-mode)
+  (let* ((vars (js2-get-variables)))
+    (should (equal (list "foo@10:U" "d@23:I" 42 52 "k@37:I" 54 "v@50:U")
+                   (js2--variables-summary vars)))))
+
+(js2-deftest get-variables-array-comprehension-legacy
   "function foo() { var j,a=[for (i of [1,2,3]) i*j]; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "j@22:N" 48 "a@24:U" "i@32:I" 46)
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-s
+(js2-deftest get-variables-array-comprehension
   "function foo() { var j,a=[[i,j] for (i of [1,2,3])]; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "j@22:N" 30 "a@24:U" "i@38:I" 28)
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-t
+(js2-deftest get-variables-return-named-function
   "function foo() { var a=42; return function bar() { return a; } }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
     (should (equal (list "foo@10:U" "a@22:I" 59 "bar@44:I" 28)
                    (js2--variables-summary vars)))))
 
-(js2-deftest get-variables-u
+(js2-deftest get-variables-named-wrapper-function
   "function foo() { var a; (function bar() { a=42; })(); return a; }"
   (js2-mode)
   (let* ((vars (js2-get-variables)))
