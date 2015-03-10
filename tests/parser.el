@@ -279,6 +279,13 @@ the test."
   (let* ((vars (js2--classify-variables)))
     (should (equal (list "foo@10:U" "x@23:N" 29) (js2--variables-summary vars)))))
 
+(js2-deftest classify-variables-prop-get-function-assignment
+  "(function(w) { w.f = function() { var a=42, m; return a; }; })(window);"
+  (js2-mode)
+  (let* ((vars (js2--classify-variables)))
+    (should (equal (list "w@11:P" 11 16 "a@39:I" 55 "m@45:U")
+                   (js2--variables-summary vars)))))
+
 (js2-deftest classify-variables-let-declaration
   "function foo () { let x,y=1; return x; }"
   (js2-mode)
@@ -367,7 +374,7 @@ the test."
   "function foo() { var a=42; return function bar() { return a; } }"
   (js2-mode)
   (let* ((vars (js2--classify-variables)))
-    (should (equal (list "foo@10:U" "a@22:I" 59 "bar@44:I" 28)
+    (should (equal (list "foo@10:U" "a@22:I" 59 "bar@44:I" 44)
                    (js2--variables-summary vars)))))
 
 (js2-deftest classify-variables-named-wrapper-function

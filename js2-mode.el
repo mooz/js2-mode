@@ -7071,7 +7071,7 @@ to the list stored in the cdr of the entry."
              (var (assq sym vars)))
         (if var
             (progn
-              (when (and inition (null (cadr var)))
+              (when (and inition (not (equal (cadr var) ?P)))
                 (setcar (cdr var) inition))
               (when used
                 (push symbol (cddr var))))
@@ -7086,96 +7086,69 @@ described by a tuple where the car is a flag indicating whether the variable
 has been initialized and the cdr is a possibly empty list of name nodes where
 it is used. External symbols, i.e. those not present in the whole scopes
 hierarchy, are ignored."
-  (let ((handled-elsewhere
-         (list js2-ASSIGN js2-FUNCTION js2-GETPROP js2-LET js2-VAR))
-        vars)
+  (let (vars)
     (js2-visit-ast
      js2-mode-ast
      (lambda (node end-p)
-       (when end-p
+       (when (null end-p)
          (cond
-          ((js2-scope-p node)
+          ((js2-var-init-node-p node)
            ;; take note about possibly initialized declarations
-           (dolist (entry (js2-scope-symbol-table node))
-             (let* ((symbol (cdr entry))
-                    (vin (js2-symbol-ast-node symbol))
-                    (pn (js2-node-parent vin))
-                    (var (assq symbol vars)))
-               (if (js2-var-init-node-p pn)
-                   ;; a variable declaration
-                   (let ((initializer (js2-var-init-node-initializer pn)))
-                     (if (not initializer)
-                         (unless var
-                           (push (cons symbol (cons nil nil)) vars))
-                       (if var
-                           (setcar (cdr var) t)
-                         (push (cons symbol (cons t nil)) vars))
-                       (js2-visit-ast
-                        initializer
-                        (lambda (initn inite-p)
-                          (when (and inite-p (js2-name-node-p initn))
-                            (setq vars (js2--add-or-update-symbol initn nil t vars))
-                            t)))))
-                 ;; either a function parameter or a inner function block
-                 (let ((inition (if (js2-function-node-p pn) ?P t)))
-                   (if var
-                       (setcar (cdr var) inition)
-                     (push (cons symbol (cons inition (if (js2-return-node-p pn)
-                                                          (list pn) ()))) vars))))))
-           ;; handle for(var x in array) loops, setting x to initialized
-           (when (and (js2-for-in-node-p node)
-                      (js2-var-decl-node-p (js2-for-in-node-iterator node)))
-             (dolist (k (js2-var-decl-node-kids (js2-for-in-node-iterator node)))
-               (let ((tn (js2-var-init-node-target k)))
-                 (cond
-                  ((js2-name-node-p tn)
-                   (setq vars (js2--add-or-update-symbol tn t nil vars)))
-                  ((js2-array-node-p tn) ; TODO: understand if this is possible
-                   (dolist (te (js2-array-node-elems tn))
-                     (setq vars (js2--add-or-update-symbol te t nil vars)))))))))
+           (let* ((target (js2-var-init-node-target node))
+                  (initializer (js2-var-init-node-initializer node))
+                  (parent (js2-node-parent node))
+                  (grandparent (if parent (js2-node-parent parent))))
+             (setq vars (js2--add-or-update-symbol
+                         target
+                         (or (not (null initializer))
+                             (and grandparent
+                                  (js2-for-in-node-p grandparent)
+                                  (memq target
+                                        (mapcar #'js2-var-init-node-target
+                                                (js2-var-decl-node-kids
+                                                 (js2-for-in-node-iterator grandparent))))))
+                         nil
+                         vars))))
 
           ((js2-assign-node-p node)
            ;; take note about assignments
            (let ((left (js2-assign-node-left node)))
              (when (js2-name-node-p left)
-               (setq vars (js2--add-or-update-symbol left t nil vars))))
-           (let ((right (js2-assign-node-right node)))
-             (js2-visit-ast
-              right
-              (lambda (rightn righte-p)
-                (when righte-p
-                  (cond
-                   ((js2-name-node-p rightn)
-                    (let ((parent (js2-node-parent rightn)))
-                      (when (and parent
-                                 (not (eq (js2-node-type parent) js2-GETPROP)))
-                        (setq vars (js2--add-or-update-symbol rightn nil t vars)))))
-                   ((js2-prop-get-node-p rightn)
-                    (let ((ln (js2-prop-get-node-left rightn)))
-                      (when (js2-name-node-p ln)
-                        (setq vars (js2--add-or-update-symbol ln nil t vars)))))))
-                t))))
+               (setq vars (js2--add-or-update-symbol left t nil vars)))))
 
           ((js2-prop-get-node-p node)
            ;; handle x.y.z nodes, considering only x
-           (let ((ln (js2-prop-get-node-left node)))
-             (when (js2-name-node-p ln)
-               (setq vars (js2--add-or-update-symbol ln nil t vars)))))
+           (let ((left (js2-prop-get-node-left node)))
+             (when (js2-name-node-p left)
+               (setq vars (js2--add-or-update-symbol left nil t vars)))))
 
           ((js2-name-node-p node)
            ;; take note about used variables
            (let ((parent (js2-node-parent node)))
              (when parent
-               (if (and (js2-function-node-p parent)
-                        (js2-wrapper-function-p parent))
-                   (setq vars (js2--add-or-update-symbol node t t vars))
-                 (when (not (member (js2-node-type parent) handled-elsewhere))
-                   (let ((iterator-p (and (js2-for-in-node-p parent)
-                                          (eq node (js2-for-in-node-iterator parent)))))
-                     (setq vars (js2--add-or-update-symbol
-                                 node iterator-p (not iterator-p) vars))))))))
+               (unless (or (and (js2-var-init-node-p parent) ; handled above
+                                (eq node (js2-var-init-node-target parent)))
+                           (and (js2-assign-node-p parent)
+                                (eq node (js2-assign-node-left parent)))
+                           (js2-prop-get-node-p parent))
+                 (let ((used t) inited)
+                   (cond
+                    ((and (js2-function-node-p parent)
+                          (js2-wrapper-function-p parent))
+                     (setq inited (if (memq node (js2-function-node-params parent)) ?P t)))
 
-          (t)))
+                    ((js2-for-in-node-p parent)
+                     (if (eq node (js2-for-in-node-iterator parent))
+                         (setq inited t used nil)))
+
+                    ((js2-function-node-p parent)
+                     (setq inited (if (memq node (js2-function-node-params parent)) ?P t)
+                           used nil)))
+
+                    (setq vars (js2--add-or-update-symbol
+                                node inited
+                                (or used (js2-return-node-p (js2-node-parent parent)))
+                                vars)))))))))
        t))
     vars))
 
