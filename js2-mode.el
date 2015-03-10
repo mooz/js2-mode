@@ -7057,11 +7057,12 @@ it is considered declared."
                               'js2-external-variable))))
     (setq js2-recorded-identifiers nil)))
 
-(defun js2--add-or-update-symbol (symbol inition vars &optional usage)
+(defun js2--add-or-update-symbol (symbol inition used vars)
   "Add or update SYMBOL entry in the alist VARS, returning it.
 SYMBOL is a js2-name-node, INITION either nil, t, or ?P, respectively meaning
-that SYMBOL was a mere declaration, an assignment or a function parameter.
-The optional USAGE is the node that uses the given symbol."
+that SYMBOL is a mere declaration, an assignment or a function parameter;
+when USED is t, the symbol node is assumed to be an usage and thus added
+to the list stored in the cdr of the entry."
   (let* ((nm (js2-name-node-name symbol))
          (es (js2-node-get-enclosing-scope symbol))
          (ds (js2-get-defining-scope es nm)))
@@ -7069,15 +7070,12 @@ The optional USAGE is the node that uses the given symbol."
       (let* ((sym (js2-scope-get-symbol ds nm))
              (var (assq sym vars)))
         (if var
-            (if inition
-                (when (null (cadr var))
-                  (setcar (cdr var) inition))
-              (push (or usage symbol) (cddr var)))
-          (if usage
-              (setq usage (list usage))
-            (unless inition
-              (setq usage (list symbol))))
-          (push (cons sym (cons inition usage)) vars)))))
+            (progn
+              (when (and inition (null (cadr var)))
+                (setcar (cdr var) inition))
+              (when used
+                (push symbol (cddr var))))
+          (push (cons sym (cons inition (if used (list symbol)))) vars)))))
   vars)
 
 (defun js2--classify-variables ()
@@ -7085,8 +7083,9 @@ The optional USAGE is the node that uses the given symbol."
 Traverse the whole ast tree returning an alist summarising variables
 usage, keyed by their corresponding symbol table entry. Each variable is
 described by a tuple where the car is a flag indicating whether the variable
-has been initialized and the cdr is a possibly empty list of references.
-The variables declared at the outer level are ignored."
+has been initialized and the cdr is a possibly empty list of name nodes where
+it is used. External symbols, i.e. those not present in the whole scopes
+hierarchy, are ignored."
   (let ((handled-elsewhere
          (list js2-ASSIGN js2-FUNCTION js2-GETPROP js2-LET js2-VAR))
         vars)
@@ -7115,7 +7114,7 @@ The variables declared at the outer level are ignored."
                         initializer
                         (lambda (initn inite-p)
                           (when (and inite-p (js2-name-node-p initn))
-                            (setq vars (js2--add-or-update-symbol initn nil vars))
+                            (setq vars (js2--add-or-update-symbol initn nil t vars))
                             t)))))
                  ;; either a function parameter or a inner function block
                  (let ((inition (if (js2-function-node-p pn) ?P t)))
@@ -7130,16 +7129,16 @@ The variables declared at the outer level are ignored."
                (let ((tn (js2-var-init-node-target k)))
                  (cond
                   ((js2-name-node-p tn)
-                   (setq vars (js2--add-or-update-symbol tn t vars)))
+                   (setq vars (js2--add-or-update-symbol tn t nil vars)))
                   ((js2-array-node-p tn) ; TODO: understand if this is possible
                    (dolist (te (js2-array-node-elems tn))
-                     (setq vars (js2--add-or-update-symbol te t vars)))))))))
+                     (setq vars (js2--add-or-update-symbol te t nil vars)))))))))
 
           ((js2-assign-node-p node)
            ;; take note about assignments
            (let ((left (js2-assign-node-left node)))
              (when (js2-name-node-p left)
-               (setq vars (js2--add-or-update-symbol left t vars))))
+               (setq vars (js2--add-or-update-symbol left t nil vars))))
            (let ((right (js2-assign-node-right node)))
              (js2-visit-ast
               right
@@ -7150,18 +7149,18 @@ The variables declared at the outer level are ignored."
                     (let ((parent (js2-node-parent rightn)))
                       (when (and parent
                                  (not (eq (js2-node-type parent) js2-GETPROP)))
-                        (setq vars (js2--add-or-update-symbol rightn nil vars)))))
+                        (setq vars (js2--add-or-update-symbol rightn nil t vars)))))
                    ((js2-prop-get-node-p rightn)
                     (let ((ln (js2-prop-get-node-left rightn)))
                       (when (js2-name-node-p ln)
-                        (setq vars (js2--add-or-update-symbol ln nil vars)))))))
+                        (setq vars (js2--add-or-update-symbol ln nil t vars)))))))
                 t))))
 
           ((js2-prop-get-node-p node)
            ;; handle x.y.z nodes, considering only x
            (let ((ln (js2-prop-get-node-left node)))
              (when (js2-name-node-p ln)
-               (setq vars (js2--add-or-update-symbol ln nil vars)))))
+               (setq vars (js2--add-or-update-symbol ln nil t vars)))))
 
           ((js2-name-node-p node)
            ;; take note about used variables
@@ -7169,13 +7168,12 @@ The variables declared at the outer level are ignored."
              (when parent
                (if (and (js2-function-node-p parent)
                         (js2-wrapper-function-p parent))
-                   (setq vars (js2--add-or-update-symbol node t vars node))
+                   (setq vars (js2--add-or-update-symbol node t t vars))
                  (when (not (member (js2-node-type parent) handled-elsewhere))
-                   (setq vars (js2--add-or-update-symbol
-                               node
-                               (and (js2-for-in-node-p parent)
-                                    (eq node (js2-for-in-node-iterator parent)))
-                               vars)))))))
+                   (let ((iterator-p (and (js2-for-in-node-p parent)
+                                          (eq node (js2-for-in-node-iterator parent)))))
+                     (setq vars (js2--add-or-update-symbol
+                                 node iterator-p (not iterator-p) vars))))))))
 
           (t)))
        t))
