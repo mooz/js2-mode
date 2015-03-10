@@ -216,14 +216,7 @@ the test."
              (inition (cadr v))
              (uses (cddr v))
              (symn (js2-symbol-ast-node symbol))
-             (namen (cond
-                     ((js2-function-node-p symn)
-                      (js2-function-node-name symn))
-                     ((js2-class-node-p symn)
-                      (js2-class-node-name symn))
-                     ((js2-comp-loop-node-p symn)
-                      (js2-comp-loop-node-iterator symn))
-                     (t symn))))
+             (namen (js2--get-name-node symn)))
         (push (format "%s@%s:%s"
                       (js2-symbol-name symbol)
                       (js2-node-abs-pos namen)

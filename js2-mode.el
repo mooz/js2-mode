@@ -7179,6 +7179,17 @@ hierarchy, are ignored."
        t))
     vars))
 
+(defun js2--get-name-node (node)
+  (cond
+   ((js2-name-node-p node) node)
+   ((js2-function-node-p node)
+    (js2-function-node-name node))
+   ((js2-class-node-p node)
+    (js2-class-node-name node))
+   ((js2-comp-loop-node-p node)
+    (js2-comp-loop-node-iterator node))
+   (t node)))
+
 (defun js2-highlight-problematic-variables ()
   "Highlight problematic variables."
   (let ((vars (js2--classify-variables)))
@@ -7198,14 +7209,7 @@ hierarchy, are ignored."
             (when (or js2-warn-about-unused-function-arguments
                       (not (eq inited ?P)))
               (let* ((symn (js2-symbol-ast-node sym))
-                     (namen (cond
-                            ((js2-function-node-p symn)
-                             (js2-function-node-name symn))
-                            ((js2-class-node-p symn)
-                             (js2-class-node-name symn))
-                            ((js2-comp-loop-node-p symn)
-                             (js2-comp-loop-node-iterator symn))
-                            (t symn))))
+                     (namen (js2--get-name-node symn)))
                 (unless (js2-node-top-level-decl-p namen)
                   (setq pos (js2-node-abs-pos namen))
                   (setq len (js2-name-node-len namen))
