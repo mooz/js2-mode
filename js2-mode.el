@@ -7094,21 +7094,21 @@ hierarchy, are ignored."
          (cond
           ((js2-var-init-node-p node)
            ;; take note about possibly initialized declarations
-           (let* ((target (js2-var-init-node-target node))
-                  (initializer (js2-var-init-node-initializer node))
-                  (parent (js2-node-parent node))
-                  (grandparent (if parent (js2-node-parent parent))))
-             (setq vars (js2--add-or-update-symbol
-                         target
-                         (or (not (null initializer))
-                             (and grandparent
-                                  (js2-for-in-node-p grandparent)
-                                  (memq target
-                                        (mapcar #'js2-var-init-node-target
-                                                (js2-var-decl-node-kids
-                                                 (js2-for-in-node-iterator grandparent))))))
-                         nil
-                         vars))))
+           (let ((target (js2-var-init-node-target node))
+                 (initializer (js2-var-init-node-initializer node)))
+             (when target
+               (let* ((parent (js2-node-parent node))
+                      (grandparent (if parent (js2-node-parent parent)))
+                      (inited (not (null initializer))))
+                 (unless inited
+                   (setq inited
+                         (and grandparent
+                              (js2-for-in-node-p grandparent)
+                              (memq target
+                                    (mapcar #'js2-var-init-node-target
+                                            (js2-var-decl-node-kids
+                                             (js2-for-in-node-iterator grandparent)))))))
+                 (setq vars (js2--add-or-update-symbol target inited nil vars))))))
 
           ((js2-assign-node-p node)
            ;; take note about assignments
@@ -7145,10 +7145,12 @@ hierarchy, are ignored."
                      (setq inited (if (memq node (js2-function-node-params parent)) ?P t)
                            used nil)))
 
-                    (setq vars (js2--add-or-update-symbol
-                                node inited
-                                (or used (js2-return-node-p (js2-node-parent parent)))
-                                vars)))))))))
+                   (unless used
+                     (let ((grandparent (js2-node-parent parent)))
+                       (when grandparent
+                         (setq used (js2-return-node-p grandparent)))))
+
+                   (setq vars (js2--add-or-update-symbol node inited used vars)))))))))
        t))
     vars))
 

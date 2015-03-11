@@ -230,6 +230,12 @@ the test."
           (push (js2-node-abs-pos u) r))))
     (reverse r)))
 
+(js2-deftest classify-variables-incomplete-var-statement
+  "var"
+  (js2-mode)
+  (let* ((vars (js2--classify-variables)))
+    (should (null vars))))
+
 (js2-deftest classify-variables-unused-variable
   "function foo () { var x; return 42; }"
   (js2-mode)
