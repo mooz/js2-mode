@@ -1775,7 +1775,7 @@ the correct number of ARGS must be provided."
          "Undeclared variable or function '%s'")
 
 (js2-msg "msg.unused.variable"  ; added by js2-mode
-         "Unused variable '%s'")
+         "Unused variable or function '%s'")
 
 (js2-msg "msg.uninitialized.variable"  ; added by js2-mode
          "Variable '%s' referenced but never initialized")
