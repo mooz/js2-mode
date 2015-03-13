@@ -7058,34 +7058,52 @@ it is considered declared."
     (setq js2-recorded-identifiers nil)))
 
 (defun js2--add-or-update-symbol (symbol inition used vars)
-  "Add or update SYMBOL entry in the alist VARS, returning it.
-SYMBOL is a js2-name-node, INITION either nil, t, or ?P, respectively meaning
-that SYMBOL is a mere declaration, an assignment or a function parameter;
-when USED is t, the symbol node is assumed to be an usage and thus added
-to the list stored in the cdr of the entry."
+  "Add or update SYMBOL entry in VARS, returning it.
+SYMBOL is a js2-name-node, INITION either nil, t, or ?P,
+respectively meaning that SYMBOL is a mere declaration, an
+assignment or a function parameter; when USED is t, the symbol
+node is assumed to be an usage and thus added to the list stored
+in the cdr of the entry.
+VARS is initially an alist, but when the number of entries becomes
+greater that 50 it is transposed into an hash-table.
+"
   (let* ((nm (js2-name-node-name symbol))
          (es (js2-node-get-enclosing-scope symbol))
          (ds (js2-get-defining-scope es nm)))
     (when (and ds (not (equal nm "arguments")))
       (let* ((sym (js2-scope-get-symbol ds nm))
-             (var (assq sym vars)))
+             (var (if (hash-table-p vars)
+                      (gethash sym vars)
+                    (let ((info (assoc sym vars)))
+                      (when info
+                        (cdr info))))))
         (if var
             (progn
-              (when (and inition (not (equal (cadr var) ?P)))
-                (setcar (cdr var) inition))
+              (when (and inition (not (equal (car var) ?P)))
+                (setcar var inition))
               (when used
-                (push symbol (cddr var))))
-          (push (cons sym (cons inition (if used (list symbol)))) vars)))))
+                (push symbol (cdr var))))
+          (if (hash-table-p vars)
+              (puthash sym (cons inition (if used (list symbol))) vars)
+            (push (cons sym (cons inition (if used (list symbol)))) vars)
+            (when (> (length vars) 50)
+              (setq vars (let ((ashash (make-hash-table :test #'eq :size 100)))
+                           (dolist (info vars)
+                             (puthash (car info) (cdr info) ashash))
+                           ashash))))))))
   vars)
 
 (defun js2--classify-variables ()
   "Collect and classify variables declared or used within js2-mode-ast.
-Traverse the whole ast tree returning an alist summarising variables
-usage, keyed by their corresponding symbol table entry. Each variable is
-described by a tuple where the car is a flag indicating whether the variable
-has been initialized and the cdr is a possibly empty list of name nodes where
-it is used. External symbols, i.e. those not present in the whole scopes
-hierarchy, are ignored."
+Traverse the whole ast tree returning a summary of the variables
+usage as either an alist or an hash-table, when the number of
+variables is greater than 50, keyed by their corresponding symbol
+table entry.
+Each variable is described by a tuple where the car is a flag
+indicating whether the variable has been initialized and the cdr
+is a possibly empty list of name nodes where it is used. External
+symbols, i.e. those not present in the whole scopes hierarchy,
+are ignored."
   (let (vars)
     (js2-visit-ast
      js2-mode-ast
@@ -7165,31 +7183,35 @@ hierarchy, are ignored."
     (js2-comp-loop-node-iterator node))
    (t node)))
 
+(defun js2--highlight-problematic-variable (symbol info)
+  (let ((name (js2-symbol-name symbol))
+        (inited (car info))
+        (refs (cdr info))
+        pos len)
+    (unless (and inited refs)
+      (if refs
+          (dolist (ref refs)
+            (setq pos (js2-node-abs-pos ref))
+            (setq len (js2-name-node-len ref))
+            (js2-report-warning "msg.uninitialized.variable" name pos len
+                                'js2-warning))
+        (when (or js2-warn-about-unused-function-arguments
+                  (not (eq inited ?P)))
+          (let* ((symn (js2-symbol-ast-node symbol))
+                 (namen (js2--get-name-node symn)))
+            (unless (js2-node-top-level-decl-p namen)
+              (setq pos (js2-node-abs-pos namen))
+              (setq len (js2-name-node-len namen))
+              (js2-report-warning "msg.unused.variable" name pos len
+                                  'js2-warning))))))))
+
 (defun js2-highlight-problematic-variables ()
   "Highlight problematic variables."
   (let ((vars (js2--classify-variables)))
-    (dolist (var vars)
-      (let* ((sym (car var))
-             (name (js2-symbol-name sym))
-             (inited (cadr var))
-             (refs (cddr var))
-             pos len)
-        (unless (and inited refs)
-          (if refs
-              (dolist (ref refs)
-                (setq pos (js2-node-abs-pos ref))
-                (setq len (js2-name-node-len ref))
-                (js2-report-warning "msg.uninitialized.variable" name pos len
-                                    'js2-warning))
-            (when (or js2-warn-about-unused-function-arguments
-                      (not (eq inited ?P)))
-              (let* ((symn (js2-symbol-ast-node sym))
-                     (namen (js2--get-name-node symn)))
-                (unless (js2-node-top-level-decl-p namen)
-                  (setq pos (js2-node-abs-pos namen))
-                  (setq len (js2-name-node-len namen))
-                  (js2-report-warning "msg.unused.variable" name pos len
-                                  'js2-warning))))))))))
+    (if (hash-table-p vars)
+        (maphash #'js2--highlight-problematic-variable vars)
+      (dolist (var vars)
+        (js2--highlight-problematic-variable (car var) (cdr var))))))
 
 ;;;###autoload
 (define-minor-mode js2-highlight-problematic-variables-mode

@@ -210,6 +210,10 @@ the test."
 
 (defun js2--variables-summary (vars)
   (let (r)
+    (when (hash-table-p vars)
+      (setq vars (let (aslist)
+                   (maphash (lambda (k v) (push (cons k v) aslist)) vars)
+                   aslist)))
     (dolist (v (sort vars (lambda (a b) (< (js2-node-abs-pos (js2-symbol-ast-node (car a)))
                                       (js2-node-abs-pos (js2-symbol-ast-node (car b)))))))
       (let* ((symbol (car v))
