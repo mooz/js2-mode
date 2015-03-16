@@ -210,10 +210,9 @@ the test."
 
 (defun js2--variables-summary (vars)
   (let (r)
-    (when (hash-table-p vars)
-      (setq vars (let (aslist)
-                   (maphash (lambda (k v) (push (cons k v) aslist)) vars)
-                   aslist)))
+    (setq vars (let (aslist)
+                 (maphash (lambda (k v) (push (cons k v) aslist)) vars)
+                 aslist))
     (dolist (v (sort vars (lambda (a b) (< (js2-node-abs-pos (js2-symbol-ast-node (car a)))
                                       (js2-node-abs-pos (js2-symbol-ast-node (car b)))))))
       (let* ((symbol (car v))
@@ -238,7 +237,7 @@ the test."
   "var"
   (js2-mode)
   (let* ((vars (js2--classify-variables)))
-    (should (null vars))))
+    (should (null (js2--variables-summary vars)))))
 
 (js2-deftest classify-variables-unused-variable
   "function foo () { var x; return 42; }"

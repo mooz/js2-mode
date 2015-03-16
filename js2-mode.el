@@ -7058,53 +7058,38 @@ it is considered declared."
     (setq js2-recorded-identifiers nil)))
 
 (defun js2--add-or-update-symbol (symbol inition used vars)
-  "Add or update SYMBOL entry in VARS, returning it.
+  "Add or update SYMBOL entry in VARS, an hash table.
 SYMBOL is a js2-name-node, INITION either nil, t, or ?P,
 respectively meaning that SYMBOL is a mere declaration, an
 assignment or a function parameter; when USED is t, the symbol
 node is assumed to be an usage and thus added to the list stored
 in the cdr of the entry.
-VARS is initially an alist, but when the number of entries becomes
-greater that 50 it is transposed into an hash-table.
 "
   (let* ((nm (js2-name-node-name symbol))
          (es (js2-node-get-enclosing-scope symbol))
          (ds (js2-get-defining-scope es nm)))
     (when (and ds (not (equal nm "arguments")))
       (let* ((sym (js2-scope-get-symbol ds nm))
-             (var (if (hash-table-p vars)
-                      (gethash sym vars)
-                    (let ((info (assoc sym vars)))
-                      (when info
-                        (cdr info))))))
+             (var (gethash sym vars)))
         (if var
             (progn
               (when (and inition (not (equal (car var) ?P)))
                 (setcar var inition))
               (when used
                 (push symbol (cdr var))))
-          (if (hash-table-p vars)
-              (puthash sym (cons inition (if used (list symbol))) vars)
-            (push (cons sym (cons inition (if used (list symbol)))) vars)
-            (when (> (length vars) 50)
-              (setq vars (let ((ashash (make-hash-table :test #'eq :size 100)))
-                           (dolist (info vars)
-                             (puthash (car info) (cdr info) ashash))
-                           ashash))))))))
-  vars)
+          (puthash sym (cons inition (if used (list symbol))) vars))))))
 
 (defun js2--classify-variables ()
   "Collect and classify variables declared or used within js2-mode-ast.
 Traverse the whole ast tree returning a summary of the variables
-usage as either an alist or an hash-table, when the number of
-variables is greater than 50, keyed by their corresponding symbol
-table entry.
+usage as an hash-table, keyed by their corresponding symbol table
+entry.
 Each variable is described by a tuple where the car is a flag
 indicating whether the variable has been initialized and the cdr
 is a possibly empty list of name nodes where it is used. External
 symbols, i.e. those not present in the whole scopes hierarchy,
 are ignored."
-  (let (vars)
+  (let ((vars (make-hash-table :test #'eq :size 100)))
     (js2-visit-ast
      js2-mode-ast
      (lambda (node end-p)
@@ -7126,19 +7111,19 @@ are ignored."
                                     (mapcar #'js2-var-init-node-target
                                             (js2-var-decl-node-kids
                                              (js2-for-in-node-iterator grandparent)))))))
-                 (setq vars (js2--add-or-update-symbol target inited nil vars))))))
+                 (js2--add-or-update-symbol target inited nil vars)))))
 
           ((js2-assign-node-p node)
            ;; take note about assignments
            (let ((left (js2-assign-node-left node)))
              (when (js2-name-node-p left)
-               (setq vars (js2--add-or-update-symbol left t nil vars)))))
+               (js2--add-or-update-symbol left t nil vars))))
 
           ((js2-prop-get-node-p node)
            ;; handle x.y.z nodes, considering only x
            (let ((left (js2-prop-get-node-left node)))
              (when (js2-name-node-p left)
-               (setq vars (js2--add-or-update-symbol left nil t vars)))))
+               (js2--add-or-update-symbol left nil t vars))))
 
           ((js2-name-node-p node)
            ;; take note about used variables
@@ -7168,7 +7153,7 @@ are ignored."
                        (when grandparent
                          (setq used (js2-return-node-p grandparent)))))
 
-                   (setq vars (js2--add-or-update-symbol node inited used vars)))))))))
+                   (js2--add-or-update-symbol node inited used vars))))))))
        t))
     vars))
 
@@ -7208,10 +7193,7 @@ are ignored."
 (defun js2-highlight-problematic-variables ()
   "Highlight problematic variables."
   (let ((vars (js2--classify-variables)))
-    (if (hash-table-p vars)
-        (maphash #'js2--highlight-problematic-variable vars)
-      (dolist (var vars)
-        (js2--highlight-problematic-variable (car var) (cdr var))))))
+    (maphash #'js2--highlight-problematic-variable vars)))
 
 ;;;###autoload
 (define-minor-mode js2-highlight-problematic-variables-mode
