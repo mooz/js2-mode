@@ -10453,6 +10453,16 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
       (js2-record-face 'font-lock-function-name-face)      ; for peeked name
       (setq name (js2-create-name-node)) ; discard get/set & use peeked name
       (js2-parse-getter-setter-prop ppos name prop))
+     ;; async method definition
+     ((and (>= js2-language-version 200)
+           (= tt js2-NAME)
+           (= (js2-peek-token) js2-NAME)
+           (string= prop "async"))
+      (js2-get-token)
+      (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; async
+      (js2-record-face 'font-lock-function-name-face)      ; for peeked name
+      (setq name (js2-create-name-node)) ; discard get/set & use peeked name
+      (js2-parse-getter-setter-prop ppos name prop))
      ;; method definition: {f() {...}}
      ((and (= (js2-peek-token) js2-LP)
            (>= js2-language-version 200))
@@ -10530,9 +10540,12 @@ GET-P is non-nil if the keyword was `get'."
   (let ((type (cond
                ((string= "get" type-string) js2-GET)
                ((string= "set" type-string) js2-SET)
+               ((string= "async" type-string) js2-FUNCTION)
                (t js2-FUNCTION)))
         result end
-        (fn (js2-parse-function-expr)))
+        (fn (js2-parse-function-expr
+             ;; async-p
+             (string= "async" type-string))))
     ;; it has to be an anonymous function, as we already parsed the name
     (if (/= (js2-node-type fn) js2-FUNCTION)
         (js2-report-error "msg.bad.prop")
