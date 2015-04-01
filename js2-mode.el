@@ -10443,23 +10443,14 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
         (name (js2-create-name-node))
         (prop (js2-current-token-string)))
     (cond
-     ;; getter/setter prop
+     ;; getter/setter prop or async method definition
      ((and (= tt js2-NAME)
            (= (js2-peek-token) js2-NAME)
            (or (string= prop "get")
-               (string= prop "set")))
+               (string= prop "set")
+               (string= prop "async")))
       (js2-get-token)
       (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; get/set
-      (js2-record-face 'font-lock-function-name-face)      ; for peeked name
-      (setq name (js2-create-name-node)) ; discard get/set & use peeked name
-      (js2-parse-getter-setter-prop ppos name prop))
-     ;; async method definition
-     ((and (>= js2-language-version 200)
-           (= tt js2-NAME)
-           (= (js2-peek-token) js2-NAME)
-           (string= prop "async"))
-      (js2-get-token)
-      (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; async
       (js2-record-face 'font-lock-function-name-face)      ; for peeked name
       (setq name (js2-create-name-node)) ; discard get/set & use peeked name
       (js2-parse-getter-setter-prop ppos name prop))
