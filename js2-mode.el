@@ -11114,22 +11114,24 @@ If so, we don't ever want to use bounce-indent."
           offset (- (point) (save-excursion
                               (back-to-indentation)
                               (point))))
-    (js2-with-underscore-as-word-syntax
-     (if (nth 4 parse-status)
-         (js2-lineup-comment parse-status)
-       (setq indent-col (js2-proper-indentation parse-status))
-       ;; See comments below about `js2-mode-last-indented-line'.
-       (cond
-        ;; bounce-indenting is disabled during electric-key indent.
-        ;; It doesn't work well on first line of buffer.
-        ((and js2-bounce-indent-p
-              (not (js2-same-line (point-min)))
-              (not (js2-1-line-comment-continuation-p)))
-         (js2-bounce-indent indent-col parse-status bounce-backwards))
-        ;; just indent to the guesser's likely spot
-        (t (indent-line-to indent-col))))
-     (when (cl-plusp offset)
-       (forward-char offset)))))
+    ;; Don't touch multiline strings.
+    (unless (nth 3 parse-status)
+      (js2-with-underscore-as-word-syntax
+        (if (nth 4 parse-status)
+            (js2-lineup-comment parse-status)
+          (setq indent-col (js2-proper-indentation parse-status))
+          ;; See comments below about `js2-mode-last-indented-line'.
+          (cond
+           ;; bounce-indenting is disabled during electric-key indent.
+           ;; It doesn't work well on first line of buffer.
+           ((and js2-bounce-indent-p
+                 (not (js2-same-line (point-min)))
+                 (not (js2-1-line-comment-continuation-p)))
+            (js2-bounce-indent indent-col parse-status bounce-backwards))
+           ;; just indent to the guesser's likely spot
+           (t (indent-line-to indent-col))))
+        (when (cl-plusp offset)
+          (forward-char offset))))))
 
 (defun js2-indent-region (start end)
   "Indent the region, but don't use bounce indenting."
