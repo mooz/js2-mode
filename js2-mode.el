@@ -2506,7 +2506,7 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                (:include js2-node)
                (:constructor nil)
                (:constructor make-js2-export-node (&key (type js2-EXPORT)
-                                                        (pos) (js2-current-token-beg)
+                                                        (pos (js2-current-token-beg))
                                                         len
                                                         exports-list
                                                         from-clause
@@ -2764,7 +2764,7 @@ different, visit the extern-name."
     (when (not (equal local-name extern-name))
       (js2-visit-ast extern-name v))))
 
-(defun js2-print-extern-binding (n i)
+(defun js2-print-extern-binding (n _i)
   "Print a representation of a single extern binding. E.g. 'foo' or
 'foo as bar'."
   (let ((local-name (js2-export-binding-node-local-name n))
@@ -5870,7 +5870,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
   (let (identifier-start
         is-unicode-escape-start c
         contains-escape escape-val str result base
-        quote-char look-for-slash continue tt
+        look-for-slash continue tt
         (token (js2-new-token 0)))
     (setq
      tt
@@ -6623,6 +6623,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
   (remove-text-properties beg end '(font-lock-face nil
                                     help-echo nil
                                     point-entered nil
+                                    cursor-sensor-functions nil
                                     c-in-sws nil)))
 
 (defconst js2-ecma-global-props
@@ -9934,8 +9935,7 @@ For instance, @[expr], @*::[expr], or ns::[expr]."
   "Parse a literal (leaf) expression of some sort.
 Includes complex literals such as functions, object-literals,
 array-literals, array comprehensions and regular expressions."
-  (let (pn      ; parent node  (usually return value)
-        tt)
+  (let (tt)
     (setq tt (js2-current-token-type))
     (cond
      ((= tt js2-CLASS)
@@ -10124,7 +10124,7 @@ EXPR is the first expression after the opening left-bracket.
 POS is the beginning of the LB token preceding EXPR.
 We should have just parsed the 'for' keyword before calling this function."
   (let ((current-scope js2-current-scope)
-        loops first filter result)
+        loops filter result)
     (unwind-protect
         (progn
           (while (js2-match-token js2-FOR)
@@ -10133,7 +10133,7 @@ We should have just parsed the 'for' keyword before calling this function."
               (push loop loops)
               (js2-parse-comp-loop loop)))
           ;; First loop takes expr scope's parent.
-          (setf (js2-scope-parent-scope (setq first (car (last loops))))
+          (setf (js2-scope-parent-scope (car (last loops)))
                 (js2-scope-parent-scope current-scope))
           ;; Set expr scope's parent to the last loop.
           (setf (js2-scope-parent-scope current-scope) (car loops))
@@ -11339,6 +11339,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (add-to-invisibility-spec '(js2-outline . t))
   (set (make-local-variable 'line-move-ignore-invisible) t)
   (set (make-local-variable 'forward-sexp-function) #'js2-mode-forward-sexp)
+  (when (fboundp 'cursor-sensor-mode) (cursor-sensor-mode 1))
 
   (setq js2-mode-functions-hidden nil
         js2-mode-comments-hidden nil
@@ -11476,25 +11477,35 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
           (setq js2-mode-node-overlay (make-overlay beg end))
           (overlay-put js2-mode-node-overlay 'font-lock-face 'highlight))
         (with-silent-modifications
-          (put-text-property beg end 'point-left #'js2-mode-hide-overlay))
+          (if (fboundp 'cursor-sensor-mode)
+              (put-text-property beg end 'cursor-sensor-functions
+                                 '(js2-mode-hide-overlay))
+            (put-text-property beg end 'point-left #'js2-mode-hide-overlay)))
         (message "%s, parent: %s"
                  (js2-node-short-name node)
                  (if (js2-node-parent node)
                      (js2-node-short-name (js2-node-parent node))
                    "nil"))))))
 
-(defun js2-mode-hide-overlay (&optional _p1 p2)
-  "Remove the debugging overlay when the point moves.
-P1 and P2 are the old and new values of point, respectively."
+(defun js2-mode-hide-overlay (&optional arg1 arg2 _arg3)
+  "Remove the debugging overlay when point moves.
+ARG1, ARG2 and ARG3 have different values depending on whether this function
+was found on `point-left' or in `cursor-sensor-functions'."
   (when js2-mode-node-overlay
     (let ((beg (overlay-start js2-mode-node-overlay))
-          (end (overlay-end js2-mode-node-overlay)))
+          (end (overlay-end js2-mode-node-overlay))
+          (p2 (if (windowp arg1)
+                  ;; Called from cursor-sensor-functions.
+                  (window-point arg1)
+                ;; Called from point-left.
+                arg2)))
       ;; Sometimes we're called spuriously.
       (unless (and p2
                    (>= p2 beg)
                    (<= p2 end))
         (with-silent-modifications
-          (remove-text-properties beg end '(point-left nil)))
+          (remove-text-properties beg end
+                                  '(point-left nil cursor-sensor-functions)))
         (delete-overlay js2-mode-node-overlay)
         (setq js2-mode-node-overlay nil)))))
 
@@ -11515,10 +11526,13 @@ The last element is optional.  When present, use instead of FACE."
          (beg (max (point-min) (min beg (point-max))))
          (end (max (point-min) (min end (point-max))))
          (ovl (make-overlay beg end)))
+    ;; FIXME: Why a mix of overlays and text-properties?
     (overlay-put ovl 'font-lock-face (or (cl-fourth e) face))
     (overlay-put ovl 'js2-error t)
     (put-text-property beg end 'help-echo (js2-get-msg key))
-    (put-text-property beg end 'point-entered #'js2-echo-error)))
+    (if (fboundp 'cursor-sensor-mode)
+        (put-text-property beg end 'cursor-sensor-functions '(js2-echo-error))
+      (put-text-property beg end 'point-entered #'js2-echo-error))))
 
 (defun js2-remove-overlays ()
   "Remove overlays from buffer that have a `js2-error' property."
@@ -11590,15 +11604,23 @@ This ensures that the counts and `next-error' are correct."
     (dolist (e (js2-ast-root-warnings js2-mode-ast))
       (js2-mode-show-warn-or-err e 'js2-warning))))
 
-(defun js2-echo-error (_old-point new-point)
-  "Called by point-motion hooks."
-  (let ((msg (get-text-property new-point 'help-echo)))
+(defun js2-echo-error (arg1 arg2 &optional _arg3)
+  "Called by point-motion hooks.
+ARG1, ARG2 and ARG3 have different values depending on whether this function
+was found on `point-entered' or in `cursor-sensor-functions'."
+  (let* ((new-point (if (windowp arg1)
+                        ;; Called from cursor-sensor-functions.
+                        (window-point arg1)
+                      ;; Called from point-left.
+                      arg2))
+         (msg (get-text-property new-point 'help-echo)))
     (when (and (stringp msg)
                (not (active-minibuffer-window))
                (not (current-message)))
       (message msg))))
 
-(defalias 'js2-echo-help #'js2-echo-error)
+;; FIXME: Why do we keep this?
+(define-obsolete-function-alias 'js2-echo-help #'js2-echo-error "forever")
 
 (defun js2-line-break (&optional _soft)
   "Break line at point and indent, continuing comment if within one.
@@ -11656,8 +11678,12 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
     ;; comment.
     (setq needs-close
           (or
-           (eq (get-text-property (1- (point)) 'point-entered)
-               'js2-echo-error)
+           ;; FIXME: Why not (get-char-property <pos> 'js2-error) instead?
+           (if (fboundp 'cursor-sensor-mode)
+               (equal (get-text-property (1- (point)) 'cursor-sensor-functions)
+                      '(js2-echo-error))
+             (eq (get-text-property (1- (point)) 'point-entered)
+                 'js2-echo-error))
            ;; The heuristic above doesn't work well when we're
            ;; creating a comment and there's another one downstream,
            ;; as our parser thinks this one ends at the end of the
