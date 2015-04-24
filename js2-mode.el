@@ -10165,7 +10165,7 @@ EXPR is the first expression after the opening left-bracket.
 POS is the beginning of the LB token preceding EXPR.
 We should have just parsed the 'for' keyword before calling this function."
   (let ((current-scope js2-current-scope)
-        loops filter result)
+        loops first filter result)
     (unwind-protect
         (progn
           (while (js2-match-token js2-FOR)
@@ -10174,7 +10174,7 @@ We should have just parsed the 'for' keyword before calling this function."
               (push loop loops)
               (js2-parse-comp-loop loop)))
           ;; First loop takes expr scope's parent.
-          (setf (js2-scope-parent-scope (car (last loops)))
+          (setf (js2-scope-parent-scope (setq first (car (last loops))))
                 (js2-scope-parent-scope current-scope))
           ;; Set expr scope's parent to the last loop.
           (setf (js2-scope-parent-scope current-scope) (car loops))
@@ -11626,13 +11626,6 @@ The last element is optional.  When present, use instead of FACE."
         (when (overlay-get o 'js2-error)
           (delete-overlay o))))))
 
-(defun js2-error-at-point (&optional pos)
-  "Return non-nil if there's an error overlay at POS.
-Defaults to point."
-  (cl-loop with pos = (or pos (point))
-           for o in (overlays-at pos)
-           thereis (overlay-get o 'js2-error)))
-
 (defun js2-mode-apply-deferred-properties ()
   "Apply fontifications and other text properties recorded during parsing."
   (when (cl-plusp js2-highlight-level)
@@ -11702,9 +11695,6 @@ was found on `point-entered' or in `cursor-sensor-functions'."
                (not (current-message)))
       (message msg))))
 
-;; FIXME: Why do we keep this?
-(define-obsolete-function-alias 'js2-echo-help #'js2-echo-error "forever")
-
 (defun js2-line-break (&optional _soft)
   "Break line at point and indent, continuing comment if within one.
 If inside a string, and `js2-concat-multiline-strings' is not
@@ -11761,12 +11751,7 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
     ;; comment.
     (setq needs-close
           (or
-           ;; FIXME: Why not (get-char-property <pos> 'js2-error) instead?
-           (if (fboundp 'cursor-sensor-mode)
-               (equal (get-text-property (1- (point)) 'cursor-sensor-functions)
-                      '(js2-echo-error))
-             (eq (get-text-property (1- (point)) 'point-entered)
-                 'js2-echo-error))
+           (get-char-property (1- (point)) 'js2-error)
            ;; The heuristic above doesn't work well when we're
            ;; creating a comment and there's another one downstream,
            ;; as our parser thinks this one ends at the end of the
