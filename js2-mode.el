@@ -3952,6 +3952,7 @@ and both fields have the same value.")
 
 (defun js2-print-object-prop-node (n i)
   (let* ((left (js2-object-prop-node-left n))
+         (right (js2-object-prop-node-right n))
          (computed (not (or (js2-string-node-p left)
                             (js2-number-node-p left)
                             (js2-name-node-p left)))))
@@ -3964,7 +3965,7 @@ and both fields have the same value.")
     (if (not (js2-node-get-prop n 'SHORTHAND))
         (progn
           (insert ": ")
-          (js2-print-ast (js2-object-prop-node-right n) 0)))))
+          (js2-print-ast right 0)))))
 
 (cl-defstruct (js2-getter-setter-node
                (:include js2-infix-node)
@@ -3981,13 +3982,23 @@ property `GETTER_SETTER' set to js2-GET, js2-SET, or js2-FUNCTION. ")
 (put 'cl-struct-js2-getter-setter-node 'js2-printer 'js2-print-getter-setter)
 
 (defun js2-print-getter-setter (n i)
-  (let ((pad (js2-make-pad i))
-        (left (js2-getter-setter-node-left n))
-        (right (js2-getter-setter-node-right n)))
+  (let* ((pad (js2-make-pad i))
+         (left (js2-getter-setter-node-left n))
+         (right (js2-getter-setter-node-right n))
+         (computed (not (or (js2-string-node-p left)
+                            (js2-number-node-p left)
+                            (js2-name-node-p left)))))
     (insert pad)
     (if (/= (js2-node-type n) js2-FUNCTION)
         (insert (if (= (js2-node-type n) js2-GET) "get " "set ")))
+    (when (and (js2-function-node-p right)
+               (eq 'STAR (js2-function-node-generator-type right)))
+      (insert "*"))
+    (when computed
+      (insert "["))
     (js2-print-ast left 0)
+    (when computed
+      (insert "]"))
     (js2-print-ast right 0)))
 
 (cl-defstruct (js2-prop-get-node
@@ -10344,38 +10355,41 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
   (let ((pos (js2-current-token-beg))
         (static nil)
         (continue t)
-        tt elems elem after-comma)
+        tt elems elem after-comma previous-token)
     (while continue
       (setq tt (js2-get-prop-name-token)
             static nil
-            elem nil)
+            elem nil
+            previous-token nil)
+      ;; Handle 'static' keyword only if we're in a class
       (when (and class-p (= js2-NAME tt)
                  (string= "static" (js2-current-token-string)))
         (js2-record-face 'font-lock-keyword-face)
         (setq static t
               tt (js2-get-prop-name-token)))
+      ;; Handle generator * before the property name for in-line functions
+      (when (and (>= js2-language-version 200)
+                 (= js2-MUL tt))
+        (setq previous-token (js2-current-token)
+              tt (js2-get-prop-name-token)))
+      ;; Handle 'get' or 'set' keywords
+      (let ((prop (js2-current-token-string)))
+        (when (and (>= js2-language-version 200)
+                   (= js2-NAME tt)
+                   (or (string= prop "get")
+                       (string= prop "set"))
+                   (member (js2-peek-token)
+                           (list js2-NAME js2-STRING js2-NUMBER js2-LB)))
+          (setq previous-token (js2-current-token)
+                tt (js2-get-prop-name-token))))
       (cond
-       ;; {foo: ...}, {'foo': ...}, {foo, bar, ...},
-       ;; {get foo() {...}}, {set foo(x) {...}}, or {foo(x) {...}}
-       ;; TODO(sdh): support *foo() {...}
-       ((or (= js2-NAME tt)
-            (= tt js2-STRING))
+       ;; Found a property (of any sort)
+       ((member tt (list js2-NAME js2-STRING js2-NUMBER js2-LB))
         (setq after-comma nil
-              elem (js2-parse-named-prop tt))
+              elem (js2-parse-named-prop tt pos previous-token))
         (if (and (null elem)
                  (not js2-recover-from-parse-errors))
             (setq continue nil)))
-       ;; {[Symbol.iterator]: ...}
-       ((and (= tt js2-LB)
-             (>= js2-language-version 200))
-        (let ((expr (js2-parse-expr)))
-          (js2-must-match js2-RB "msg.missing.computed.rb")
-          (setq after-comma nil
-                elem (js2-parse-plain-property expr))))
-       ;; {12: x} or {10.7: x}
-       ((= tt js2-NUMBER)
-        (setq after-comma nil
-              elem (js2-parse-plain-property (make-js2-number-node))))
        ;; Break out of loop, and handle trailing commas.
        ((or (= tt js2-RC)
             (= tt js2-EOF))
@@ -10405,42 +10419,55 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
     (js2-must-match js2-RC "msg.no.brace.prop")
     (nreverse elems)))
 
-(defun js2-parse-named-prop (tt)
+(defun js2-parse-named-prop (tt pos previous-token)
   "Parse a name, string, or getter/setter object property.
 When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
-  (let ((string-prop (and (= tt js2-STRING)
-                          (make-js2-string-node)))
+  (let ((key (cond
+              ;; Literal string keys: {'foo': 'bar'}
+              ((= tt js2-STRING)
+               (make-js2-string-node))
+              ;; Handle computed keys: {[Symbol.iterator]: ...}, *[1+2]() {...}},
+              ;; {[foo + bar]() { ... }}, {[get ['x' + 1]() {...}}
+              ((and (= tt js2-LB)
+                    (>= js2-language-version 200))
+               (prog1 (js2-parse-expr)
+                 (js2-must-match js2-RB "msg.missing.computed.rb")))
+              ;; Numeric keys: {12: 'foo'}, {10.7: 'bar'}
+              ((= tt js2-NUMBER)
+               (make-js2-number-node))
+              ;; Unquoted names: {foo: 12}
+              ((= tt js2-NAME)
+               (js2-create-name-node))
+              ;; Anything else is an error
+              (t (js2-report-error "msg.bad.prop"))))
         expr
-        (ppos (js2-current-token-beg))
-        (pend (js2-current-token-end))
-        (name (js2-create-name-node))
-        (prop (js2-current-token-string)))
+        (prop (and previous-token (js2-token-string previous-token)))
+        (property-type (when previous-token
+                             (if (= (js2-token-type previous-token) js2-MUL)
+                                 "*"
+                               (js2-token-string previous-token)))))
+    (when (or (string= prop "get")
+              (string= prop "set"))
+      (js2-set-face (js2-token-beg previous-token)
+                    (js2-token-end previous-token)
+                    'font-lock-keyword-face 'record))  ; get/set
     (cond
-     ;; getter/setter prop
-     ((and (= tt js2-NAME)
-           (= (js2-peek-token) js2-NAME)
-           (or (string= prop "get")
-               (string= prop "set")))
-      (js2-get-token)
-      (js2-set-face ppos pend 'font-lock-keyword-face 'record)  ; get/set
-      (js2-record-face 'font-lock-function-name-face)      ; for peeked name
-      (setq name (js2-create-name-node)) ; discard get/set & use peeked name
-      (js2-parse-getter-setter-prop ppos name prop))
      ;; method definition: {f() {...}}
      ((and (= (js2-peek-token) js2-LP)
            (>= js2-language-version 200))
-      (js2-record-face 'font-lock-function-name-face)      ; name
-      (js2-parse-getter-setter-prop ppos name ""))
+      (when (js2-name-node-p key)  ; highlight function name properties
+        (js2-record-face 'font-lock-function-name-face))
+      (js2-parse-getter-setter-prop pos key property-type))
      ;; regular prop
      (t
       (prog1
-          (setq expr (js2-parse-plain-property (or string-prop name)))
-        (when (and (not string-prop)
+          (setq expr (js2-parse-plain-property key))
+        (when (and (= tt js2-NAME)
                    (not js2-is-in-destructuring)
                    js2-highlight-external-variables
                    (js2-node-get-prop expr 'SHORTHAND))
-          (js2-record-name-node name))
-        (js2-set-face ppos pend
+          (js2-record-name-node key))
+        (js2-set-face (js2-current-token-beg) (js2-current-token-end)
                       (if (js2-function-node-p
                            (js2-object-prop-node-right expr))
                           'font-lock-function-name-face
@@ -10499,7 +10526,7 @@ and expression closure style is also supported
 
 POS is the start position of the `get' or `set' keyword.
 PROP is the `js2-name-node' representing the property name.
-GET-P is non-nil if the keyword was `get'."
+TYPE-STRING is a string `get', `set', `*', or nil, indicating a found keyword."
   (let ((type (cond
                ((string= "get" type-string) js2-GET)
                ((string= "set" type-string) js2-SET)
@@ -10512,6 +10539,8 @@ GET-P is non-nil if the keyword was `get'."
       (if (cl-plusp (length (js2-function-name fn)))
           (js2-report-error "msg.bad.prop")))
     (js2-node-set-prop fn 'GETTER_SETTER type)  ; for codegen
+    (when (string= type-string "*")
+      (setf (js2-function-node-generator-type fn) 'STAR))
     (setq end (js2-node-end fn)
           result (make-js2-getter-setter-node :type type
                                               :pos pos

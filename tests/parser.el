@@ -198,6 +198,18 @@ the test."
 (js2-deftest-parse object-literal-computed-keys
   "var x = {[Symbol.iterator]: function() {}};")
 
+(js2-deftest-parse object-literal-computed-function-keys
+  "var x = {[foo + bar](y) {  return y;\n}};")
+
+(js2-deftest-parse object-literal-computed-getter-key
+  "var x = {get [foo + bar]() {  return 42;\n}};")
+
+(js2-deftest-parse object-literal-generator
+  "var x = {*foo() {  yield 42;\n}};")
+
+(js2-deftest-parse object-literal-computed-generator-key
+  "var x = {*[foo + bar]() {  yield 42;\n}};")
+
 ;;; Function definition
 
 (js2-deftest function-redeclaring-var "var gen = 3; function gen() {};"
