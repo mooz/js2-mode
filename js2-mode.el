@@ -7079,8 +7079,7 @@ it is considered declared."
                     (member name js2-additional-externs)
                     (js2-get-defining-scope scope name pos))
           (js2-report-warning "msg.undeclared.variable" name pos (- end pos)
-                              'js2-external-variable))))
-    (setq js2-recorded-identifiers nil)))
+                              'js2-external-variable))))))
 
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
