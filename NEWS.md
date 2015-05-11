@@ -1,5 +1,9 @@
 # History of user-visible changes
 
+## Next
+
+* `js2-pretty-multiline-declarations` can take the value `dynamic` now.
+
 ## 20150202
 
 Support for:
