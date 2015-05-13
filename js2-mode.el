@@ -10439,7 +10439,6 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
                (js2-create-name-node))
               ;; Anything else is an error
               (t (js2-report-error "msg.bad.prop"))))
-        expr
         (prop (and previous-token (js2-token-string previous-token)))
         (property-type (when previous-token
                              (if (= (js2-token-type previous-token) js2-MUL)
@@ -10459,19 +10458,21 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
       (js2-parse-getter-setter-prop pos key property-type))
      ;; regular prop
      (t
-      (prog1
-          (setq expr (js2-parse-plain-property key))
+      (let ((beg (js2-current-token-beg))
+            (end (js2-current-token-end))
+            (expr (js2-parse-plain-property key)))
         (when (and (= tt js2-NAME)
                    (not js2-is-in-destructuring)
                    js2-highlight-external-variables
                    (js2-node-get-prop expr 'SHORTHAND))
           (js2-record-name-node key))
-        (js2-set-face (js2-current-token-beg) (js2-current-token-end)
+        (js2-set-face beg end
                       (if (js2-function-node-p
                            (js2-object-prop-node-right expr))
                           'font-lock-function-name-face
                         'font-lock-variable-name-face)
-                      'record))))))
+                      'record)
+        expr)))))
 
 (defun js2-parse-plain-property (prop)
   "Parse a non-getter/setter property in an object literal.
