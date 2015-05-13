@@ -7174,7 +7174,7 @@ are ignored."
     (js2-comp-loop-node-iterator node))
    (t node)))
 
-(defun js2--highlight-problematic-variable (symbol info)
+(defun js2--highlight-unused-variable (symbol info)
   (let ((name (js2-symbol-name symbol))
         (inited (car info))
         (refs (cdr info))
@@ -7196,20 +7196,20 @@ are ignored."
               (js2-report-warning "msg.unused.variable" name pos len
                                   'js2-warning))))))))
 
-(defun js2-highlight-problematic-variables ()
-  "Highlight problematic variables."
+(defun js2-highlight-unused-variables ()
+  "Highlight unused variables."
   (let ((vars (js2--classify-variables)))
-    (maphash #'js2--highlight-problematic-variable vars)))
+    (maphash #'js2--highlight-unused-variable vars)))
 
 ;;;###autoload
-(define-minor-mode js2-highlight-problematic-variables-mode
-  "Toggle highlight of problematic variables."
+(define-minor-mode js2-highlight-unused-variables-mode
+  "Toggle highlight of unused variables."
   :lighter ""
-  (if js2-highlight-problematic-variables-mode
+  (if js2-highlight-unused-variables-mode
       (add-hook 'js2-post-parse-callbacks
-                #'js2-highlight-problematic-variables nil t)
+                #'js2-highlight-unused-variables nil t)
     (remove-hook 'js2-post-parse-callbacks
-                 #'js2-highlight-problematic-variables t)))
+                 #'js2-highlight-unused-variables t)))
 
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
