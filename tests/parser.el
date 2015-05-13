@@ -911,6 +911,10 @@ the test."
   "function foo () { var p; for(p in arguments) { return p; } }"
   '("foo@10:U" "p@23:I" 55))
 
+(js2-deftest-classify-variables catch-error-variable
+  "function foo () { try { throw 'Foo'; } catch (e) { console.log(e); }"
+  '("foo@10:U" "e@47:I" 64))
+
 (js2-deftest-classify-variables prop-get-assignment
   "function foo () { var x={y:{z:{}}}; x.y.z=42; }"
   '("foo@10:U" "x@23:I" 37))

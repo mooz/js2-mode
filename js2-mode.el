@@ -7070,13 +7070,19 @@ in the cdr of the entry.
          (ds (js2-get-defining-scope es nm)))
     (when (and ds (not (equal nm "arguments")))
       (let* ((sym (js2-scope-get-symbol ds nm))
-             (var (gethash sym vars)))
+             (var (gethash sym vars))
+             (err-var-p (js2-catch-node-p ds)))
+        (unless inition
+          (setq inition err-var-p))
         (if var
             (progn
               (when (and inition (not (equal (car var) ?P)))
                 (setcar var inition))
               (when used
                 (push symbol (cdr var))))
+          ;; do not consider the declaration of catch parameter as an usage
+          (when (and err-var-p used)
+            (setq used nil))
           (puthash sym (cons inition (if used (list symbol))) vars))))))
 
 (defun js2--classify-variables ()
