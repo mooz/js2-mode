@@ -1155,6 +1155,11 @@ another file, or you've got a potential bug."
   :type 'boolean
   :group 'js2-mode)
 
+(defcustom js2-warn-about-unused-function-arguments nil
+  "Non-nil to treat function arguments like declared-but-unused variables."
+  :type 'booleanp
+  :group 'js2-mode)
+
 (defcustom js2-include-jslint-globals t
   "Non-nil to include the identifiers from JSLint global
 declaration (see http://www.jslint.com/lint.html#global) in the
@@ -1792,6 +1797,12 @@ the correct number of ARGS must be provided."
 
 (js2-msg "msg.undeclared.variable"  ; added by js2-mode
          "Undeclared variable or function '%s'")
+
+(js2-msg "msg.unused.variable"  ; added by js2-mode
+         "Unused variable or function '%s'")
+
+(js2-msg "msg.uninitialized.variable"  ; added by js2-mode
+         "Variable '%s' referenced but never initialized")
 
 (js2-msg "msg.ref.undefined.prop"
          "Reference to undefined property '%s'")
@@ -7081,6 +7092,160 @@ it is considered declared."
           (js2-report-warning "msg.undeclared.variable" name pos (- end pos)
                               'js2-external-variable))))))
 
+(defun js2--add-or-update-symbol (symbol inition used vars)
+  "Add or update SYMBOL entry in VARS, an hash table.
+SYMBOL is a js2-name-node, INITION either nil, t, or ?P,
+respectively meaning that SYMBOL is a mere declaration, an
+assignment or a function parameter; when USED is t, the symbol
+node is assumed to be an usage and thus added to the list stored
+in the cdr of the entry.
+"
+  (let* ((nm (js2-name-node-name symbol))
+         (es (js2-node-get-enclosing-scope symbol))
+         (ds (js2-get-defining-scope es nm)))
+    (when (and ds (not (equal nm "arguments")))
+      (let* ((sym (js2-scope-get-symbol ds nm))
+             (var (gethash sym vars))
+             (err-var-p (js2-catch-node-p ds)))
+        (unless inition
+          (setq inition err-var-p))
+        (if var
+            (progn
+              (when (and inition (not (equal (car var) ?P)))
+                (setcar var inition))
+              (when used
+                (push symbol (cdr var))))
+          ;; do not consider the declaration of catch parameter as an usage
+          (when (and err-var-p used)
+            (setq used nil))
+          (puthash sym (cons inition (if used (list symbol))) vars))))))
+
+(defun js2--classify-variables ()
+  "Collect and classify variables declared or used within js2-mode-ast.
+Traverse the whole ast tree returning a summary of the variables
+usage as an hash-table, keyed by their corresponding symbol table
+entry.
+Each variable is described by a tuple where the car is a flag
+indicating whether the variable has been initialized and the cdr
+is a possibly empty list of name nodes where it is used. External
+symbols, i.e. those not present in the whole scopes hierarchy,
+are ignored."
+  (let ((vars (make-hash-table :test #'eq :size 100)))
+    (js2-visit-ast
+     js2-mode-ast
+     (lambda (node end-p)
+       (when (null end-p)
+         (cond
+          ((js2-var-init-node-p node)
+           ;; take note about possibly initialized declarations
+           (let ((target (js2-var-init-node-target node))
+                 (initializer (js2-var-init-node-initializer node)))
+             (when target
+               (let* ((parent (js2-node-parent node))
+                      (grandparent (if parent (js2-node-parent parent)))
+                      (inited (not (null initializer))))
+                 (unless inited
+                   (setq inited
+                         (and grandparent
+                              (js2-for-in-node-p grandparent)
+                              (memq target
+                                    (mapcar #'js2-var-init-node-target
+                                            (js2-var-decl-node-kids
+                                             (js2-for-in-node-iterator grandparent)))))))
+                 (js2--add-or-update-symbol target inited nil vars)))))
+
+          ((js2-assign-node-p node)
+           ;; take note about assignments
+           (let ((left (js2-assign-node-left node)))
+             (when (js2-name-node-p left)
+               (js2--add-or-update-symbol left t nil vars))))
+
+          ((js2-prop-get-node-p node)
+           ;; handle x.y.z nodes, considering only x
+           (let ((left (js2-prop-get-node-left node)))
+             (when (js2-name-node-p left)
+               (js2--add-or-update-symbol left nil t vars))))
+
+          ((js2-name-node-p node)
+           ;; take note about used variables
+           (let ((parent (js2-node-parent node)))
+             (when parent
+               (unless (or (and (js2-var-init-node-p parent) ; handled above
+                                (eq node (js2-var-init-node-target parent)))
+                           (and (js2-assign-node-p parent)
+                                (eq node (js2-assign-node-left parent)))
+                           (js2-prop-get-node-p parent))
+                 (let ((used t) inited)
+                   (cond
+                    ((and (js2-function-node-p parent)
+                          (js2-wrapper-function-p parent))
+                     (setq inited (if (memq node (js2-function-node-params parent)) ?P t)))
+
+                    ((js2-for-in-node-p parent)
+                     (if (eq node (js2-for-in-node-iterator parent))
+                         (setq inited t used nil)))
+
+                    ((js2-function-node-p parent)
+                     (setq inited (if (memq node (js2-function-node-params parent)) ?P t)
+                           used nil)))
+
+                   (unless used
+                     (let ((grandparent (js2-node-parent parent)))
+                       (when grandparent
+                         (setq used (js2-return-node-p grandparent)))))
+
+                   (js2--add-or-update-symbol node inited used vars))))))))
+       t))
+    vars))
+
+(defun js2--get-name-node (node)
+  (cond
+   ((js2-name-node-p node) node)
+   ((js2-function-node-p node)
+    (js2-function-node-name node))
+   ((js2-class-node-p node)
+    (js2-class-node-name node))
+   ((js2-comp-loop-node-p node)
+    (js2-comp-loop-node-iterator node))
+   (t node)))
+
+(defun js2--highlight-unused-variable (symbol info)
+  (let ((name (js2-symbol-name symbol))
+        (inited (car info))
+        (refs (cdr info))
+        pos len)
+    (unless (and inited refs)
+      (if refs
+          (dolist (ref refs)
+            (setq pos (js2-node-abs-pos ref))
+            (setq len (js2-name-node-len ref))
+            (js2-report-warning "msg.uninitialized.variable" name pos len
+                                'js2-warning))
+        (when (or js2-warn-about-unused-function-arguments
+                  (not (eq inited ?P)))
+          (let* ((symn (js2-symbol-ast-node symbol))
+                 (namen (js2--get-name-node symn)))
+            (unless (js2-node-top-level-decl-p namen)
+              (setq pos (js2-node-abs-pos namen))
+              (setq len (js2-name-node-len namen))
+              (js2-report-warning "msg.unused.variable" name pos len
+                                  'js2-warning))))))))
+
+(defun js2-highlight-unused-variables ()
+  "Highlight unused variables."
+  (let ((vars (js2--classify-variables)))
+    (maphash #'js2--highlight-unused-variable vars)))
+
+;;;###autoload
+(define-minor-mode js2-highlight-unused-variables-mode
+  "Toggle highlight of unused variables."
+  :lighter ""
+  (if js2-highlight-unused-variables-mode
+      (add-hook 'js2-post-parse-callbacks
+                #'js2-highlight-unused-variables nil t)
+    (remove-hook 'js2-post-parse-callbacks
+                 #'js2-highlight-unused-variables t)))
+
 (defun js2-set-default-externs ()
   "Set the value of `js2-default-externs' based on the various
 `js2-include-?-externs' variables."
@@ -10224,7 +10389,7 @@ We should have just parsed the 'for' keyword before calling this function."
     pn))
 
 (defun js2-parse-comprehension (pos form)
-  (let (loops filters expr result)
+  (let (loops filters expr result last)
     (unwind-protect
         (progn
           (js2-unget-token)
@@ -10235,7 +10400,8 @@ We should have just parsed the 'for' keyword before calling this function."
               (js2-parse-comp-loop loop)))
           (while (js2-match-token js2-IF)
             (push (car (js2-parse-condition)) filters))
-          (setq expr (js2-parse-assign-expr)))
+          (setq expr (js2-parse-assign-expr))
+          (setq last (car loops)))
       (dolist (_ loops)
         (js2-pop-scope)))
     (setq result (make-js2-comp-node :pos pos
@@ -10246,6 +10412,7 @@ We should have just parsed the 'for' keyword before calling this function."
                                      :form form))
     (apply #'js2-node-add-children result (js2-comp-node-loops result))
     (apply #'js2-node-add-children result expr (js2-comp-node-filters result))
+    (setf (js2-scope-parent-scope result) last)
     result))
 
 (defun js2-parse-comp-loop (pn &optional only-of-p)
