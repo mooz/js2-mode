@@ -9431,7 +9431,9 @@ If NODE is non-nil, it is the AST node associated with the symbol."
         (t "msg.parm.redecl"))
        name pos len))
      ((or (= decl-type js2-LET)
-          (= decl-type js2-CONST))
+          ;; strict mode const is scoped to the current LexicalEnvironment
+          (and js2-compiler-strict-mode
+               (= decl-type js2-CONST)))
       (if (and (= decl-type js2-LET)
                (not ignore-not-in-block)
                (or (= (js2-node-type js2-current-scope) js2-IF)
@@ -9439,7 +9441,10 @@ If NODE is non-nil, it is the AST node associated with the symbol."
           (js2-report-error "msg.let.decl.not.in.block")
         (js2-define-new-symbol decl-type name node)))
      ((or (= decl-type js2-VAR)
-          (= decl-type js2-FUNCTION))
+          (= decl-type js2-FUNCTION)
+          ;; sloppy mode const is scoped to the current VariableEnvironment
+          (and (not js2-compiler-strict-mode)
+               (= decl-type js2-CONST)))
       (if symbol
           (if (and js2-strict-var-redeclaration-warning (= sdt js2-VAR))
               (js2-add-strict-warning "msg.var.redecl" name)
