@@ -833,6 +833,9 @@ Will only be used when we finish implementing the interpreter.")
 (js2-deflocal js2-is-in-destructuring nil
   "True while parsing destructuring expression.")
 
+(js2-deflocal js2-in-use-strict-directive nil
+  "True while inside a script or function under strict mode.")
+
 (defcustom js2-global-externs nil
   "A list of any extern names you'd like to consider always declared.
 This list is global and is used by all `js2-mode' files.
@@ -2446,11 +2449,12 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                      len
                                                      buffer)))
   "The root node of a js2 AST."
-  buffer         ; the source buffer from which the code was parsed
-  comments       ; a Lisp list of comments, ordered by start position
-  errors         ; a Lisp list of errors found during parsing
-  warnings       ; a Lisp list of warnings found during parsing
-  node-count)    ; number of nodes in the tree, including the root
+  buffer           ; the source buffer from which the code was parsed
+  comments         ; a Lisp list of comments, ordered by start position
+  errors           ; a Lisp list of errors found during parsing
+  warnings         ; a Lisp list of warnings found during parsing
+  node-count       ; number of nodes in the tree, including the root
+  in-strict-mode)  ; t if the script is running under strict mode
 
 (put 'cl-struct-js2-ast-root 'js2-visitor 'js2-visit-ast-root)
 (put 'cl-struct-js2-ast-root 'js2-printer 'js2-print-script)
@@ -3327,7 +3331,8 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
   ignore-dynamic   ; ignore value of the dynamic-scope flag (interpreter only)
   needs-activation ; t if we need an activation object for this frame
   generator-type   ; STAR, LEGACY, COMPREHENSION or nil
-  member-expr)     ; nonstandard Ecma extension from Rhino
+  member-expr      ; nonstandard Ecma extension from Rhino
+  in-strict-mode)  ; t if the function is running under strict mode
 
 (put 'cl-struct-js2-function-node 'js2-visitor 'js2-visit-function-node)
 (put 'cl-struct-js2-function-node 'js2-printer 'js2-print-function-node)
@@ -7862,6 +7867,15 @@ Returns t on match, nil if no match."
 (defsubst js2-exit-switch ()
   (pop js2-loop-and-switch-set))
 
+(defsubst js2-get-directive (node)
+  "Return NODE's value if it is a directive, nil otherwise.
+
+A directive is an otherwise-meaningless expression statement
+consisting of a string literal, such as \"use strict\"."
+  (and (js2-expr-stmt-node-p node)
+       (js2-string-node-p (setq node (js2-expr-stmt-node-expr node)))
+       (js2-string-node-value node)))
+
 (defun js2-parse (&optional buf cb)
   "Tell the js2 parser to parse a region of JavaScript.
 
@@ -7923,14 +7937,18 @@ leaving a statement, an expression, or a function definition."
 Scanner should be initialized."
   (let ((pos js2-ts-cursor)
         (end js2-ts-cursor)  ; in case file is empty
-        root n tt)
+        root n tt
+        (in-directive-prologue t)
+        (saved-strict-mode js2-in-use-strict-directive)
+        directive)
     ;; initialize buffer-local parsing vars
     (setf root (make-js2-ast-root :buffer (buffer-name) :pos pos)
           js2-current-script-or-fn root
           js2-current-scope root
           js2-nesting-of-function 0
           js2-labeled-stmt nil
-          js2-recorded-identifiers nil)  ; for js2-highlight
+          js2-recorded-identifiers nil  ; for js2-highlight
+          js2-in-use-strict-directive nil)
     (while (/= (setq tt (js2-get-token)) js2-EOF)
       (if (= tt js2-FUNCTION)
           (progn
@@ -7939,10 +7957,19 @@ Scanner should be initialized."
                       (js2-parse-function-stmt))))
         ;; not a function - parse a statement
         (js2-unget-token)
-        (setq n (js2-parse-statement)))
+        (setq n (js2-parse-statement))
+        (when in-directive-prologue
+          (setq directive (js2-get-directive n))
+          (cond
+           ((null directive)
+            (setq in-directive-prologue nil))
+           ((string= directive "use strict")
+            (setq js2-in-use-strict-directive t)
+            (setf (js2-ast-root-in-strict-mode root) t)))))
       ;; add function or statement to script
       (setq end (js2-node-end n))
       (js2-block-node-push root n))
+    (setq js2-in-use-strict-directive saved-strict-mode)
     ;; add comments to root in lexical order
     (when js2-scanned-comments
       ;; if we find a comment beyond end of normal kids, use its end
@@ -7977,17 +8004,34 @@ Scanner should be initialized."
   (let ((pos (js2-current-token-beg))         ; LC position
         (pn (make-js2-block-node))  ; starts at LC position
         tt
-        end)
+        end
+        not-in-directive-prologue
+        (saved-strict-mode js2-in-use-strict-directive)
+        node
+        directive)
     (cl-incf js2-nesting-of-function)
     (unwind-protect
         (while (not (or (= (setq tt (js2-peek-token)) js2-ERROR)
                         (= tt js2-EOF)
                         (= tt js2-RC)))
-          (js2-block-node-push pn (if (/= tt js2-FUNCTION)
-                                      (js2-parse-statement)
-                                    (js2-get-token)
-                                    (js2-parse-function-stmt))))
-      (cl-decf js2-nesting-of-function))
+          (js2-block-node-push
+           pn
+           (if (/= tt js2-FUNCTION)
+               (if not-in-directive-prologue
+                   (js2-parse-statement)
+                 (setq node (js2-parse-statement)
+                       directive (js2-get-directive node))
+                 (cond
+                  ((null directive)
+                   (setq not-in-directive-prologue t))
+                  ((string= directive "use strict")
+                   (setq js2-in-use-strict-directive t)
+                   (setf (js2-function-node-in-strict-mode fn-node) t)))
+                 node)
+             (js2-get-token)
+             (js2-parse-function-stmt))))
+      (cl-decf js2-nesting-of-function)
+      (setq js2-in-use-strict-directive saved-strict-mode))
     (setq end (js2-current-token-end))  ; assume no curly and leave at current token
     (if (js2-must-match js2-RC "msg.no.brace.after.body" pos)
         (setq end (js2-current-token-end)))
@@ -9432,7 +9476,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
        name pos len))
      ((or (= decl-type js2-LET)
           ;; strict mode const is scoped to the current LexicalEnvironment
-          (and js2-compiler-strict-mode
+          (and js2-in-use-strict-directive
                (= decl-type js2-CONST)))
       (if (and (= decl-type js2-LET)
                (not ignore-not-in-block)
@@ -9443,7 +9487,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
      ((or (= decl-type js2-VAR)
           (= decl-type js2-FUNCTION)
           ;; sloppy mode const is scoped to the current VariableEnvironment
-          (and (not js2-compiler-strict-mode)
+          (and (not js2-in-use-strict-directive)
                (= decl-type js2-CONST)))
       (if symbol
           (if (and js2-strict-var-redeclaration-warning (= sdt js2-VAR))
