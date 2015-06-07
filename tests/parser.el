@@ -721,19 +721,40 @@ the test."
     (should (= (js2-symbol-decl-type var-entry) js2-VAR))
     (should (js2-name-node-p (js2-symbol-ast-node var-entry)))))
 
-(js2-deftest for-node-is-declaration-scope "for (let i = 0; i; ++i) {};"
-  (js2-mode)
-  (search-forward "i")
+(defun js2-test-scope-of-nth-variable-satisifies-predicate (variable nth predicate)
+  (goto-char (point-min))
+  (dotimes (n (1+ nth)) (search-forward variable))
   (forward-char -1)
   (let ((scope (js2-node-get-enclosing-scope (js2-node-at-point))))
-    (should (js2-for-node-p (js2-get-defining-scope scope "i")))))
+    (should (funcall predicate (js2-get-defining-scope scope variable)))))
+
+(js2-deftest for-node-is-declaration-scope "for (let i = 0; i; ++i) {};"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "i" 0 #'js2-for-node-p))
+
+(js2-deftest const-scope-sloppy-script "{const a;} a;"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-script-node-p)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'js2-script-node-p))
+
+(js2-deftest const-scope-strict-script "'use strict'; { const a; } a;"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-block-node-p)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'null))
+
+(js2-deftest const-scope-sloppy-function "function f() { { const a; } a; }"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-function-node-p)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'js2-function-node-p))
+
+(js2-deftest const-scope-strict-function "function f() { 'use strict'; { const a; } a; }"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-block-node-p)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'null))
 
 (js2-deftest array-comp-is-result-scope "[x * 2 for (x in y)];"
   (js2-mode)
-  (search-forward "x")
-  (forward-char -1)
-  (let ((scope (js2-node-get-enclosing-scope (js2-node-at-point))))
-    (should (js2-comp-loop-node-p (js2-get-defining-scope scope "x")))))
+  (js2-test-scope-of-nth-variable-satisifies-predicate "x" 0 #'js2-comp-loop-node-p))
 
 (js2-deftest array-comp-has-parent-scope
              "var a,b=[for (i of [[1,2]]) for (j of i) j * a];"
