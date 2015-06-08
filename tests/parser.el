@@ -247,7 +247,7 @@ the test."
 (js2-deftest-parse function-with-rest-after-default-parameter
   "function foo(a = 1, ...rest) {\n}")
 
-;;; Strict identifiers
+;;; Strict mode errors
 
 (js2-deftest-parse function-bad-strict-parameters
   "'use strict';\nfunction foo(eval, {arguments}, bar) {\n}"
@@ -281,8 +281,6 @@ the test."
   "'use strict';\narguments = 'fufufu';"
   :syntax-error "arguments" :errors-count 1)
 
-;;; Strict syntax errors
-
 (js2-deftest-parse function-strict-with
   "'use strict';\nwith ({}) {}"
   :syntax-error "with" :errors-count 1)
@@ -294,6 +292,10 @@ the test."
 (js2-deftest-parse function-strict-duplicate-keys
   "'use strict';\nvar object = {a: 1, a: 2, 'a': 3, ['a']: 4, 1: 5, '1': 6, [1 + 1]: 7};"
   :syntax-error "a" :errors-count 4) ; "a" has 3 dupes, "1" has 1 dupe.
+
+;; errors... or lackthereof.
+(js2-deftest-parse function-strict-const-scope
+  "'use strict';\nconst a;\nif (1) {\n  const a;\n}")
 
 ;;; Spread operator
 

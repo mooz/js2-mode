@@ -9559,8 +9559,12 @@ If NODE is non-nil, it is the AST node associated with the symbol."
          (len (if node (js2-node-len node))))
     (cond
      ((and symbol ; already defined
-           (or (= sdt js2-CONST) ; old version is const
-               (= decl-type js2-CONST) ; new version is const
+           (or (if js2-in-use-strict-directive
+                   ;; two const-bound vars in this block have same name
+                   (and (= sdt js2-CONST)
+                        (eq defining-scope js2-current-scope))
+                 (or (= sdt js2-CONST)          ; old version is const
+                     (= decl-type js2-CONST)))  ; new version is const
                ;; two let-bound vars in this block have same name
                (and (= sdt js2-LET)
                     (eq defining-scope js2-current-scope))))
