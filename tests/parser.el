@@ -281,6 +281,12 @@ the test."
   "'use strict';\narguments = 'fufufu';"
   :syntax-error "arguments" :errors-count 1)
 
+;;; Strict syntax errors
+
+(js2-deftest-parse function-strict-with
+  "'use strict';\nwith ({}) {}"
+  :syntax-error "with" :errors-count 1)
+
 ;;; Spread operator
 
 (js2-deftest-parse spread-in-array-literal

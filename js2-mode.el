@@ -1671,6 +1671,9 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.no.paren.after.with"
          "missing ) after with-statement object")
 
+(js2-msg "msg.no.with.strict"
+         "with statements not allowed in strict mode")
+
 (js2-msg "msg.no.paren.after.let"
          "missing ( after let")
 
@@ -9141,6 +9144,8 @@ does not match an existing label, reports an error and returns nil."
 
 (defun js2-parse-with ()
   "Parser for with-statement.  Last matched token must be js2-WITH."
+  (when js2-in-use-strict-directive
+    (js2-report-error "msg.no.with.strict"))
   (let ((pos (js2-current-token-beg))
         obj body pn lp rp)
     (if (js2-must-match js2-LP "msg.no.paren.with")
