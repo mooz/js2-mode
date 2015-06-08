@@ -291,6 +291,10 @@ the test."
   "'use strict';\nvar number = 0644;"
   :syntax-error "0644" :errors-count 1)
 
+(js2-deftest-parse function-strict-duplicate-keys
+  "'use strict';\nvar object = {a: 1, a: 2, 'a': 3, ['a']: 4, 1: 5, '1': 6, [1 + 1]: 7};"
+  :syntax-error "a" :errors-count 4) ; "a" has 3 dupes, "1" has 1 dupe.
+
 ;;; Spread operator
 
 (js2-deftest-parse spread-in-array-literal

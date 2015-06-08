@@ -1793,6 +1793,9 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.no.octal.strict"
          "Octal numbers prohibited in strict mode.")
 
+(js2-msg "msg.dup.obj.lit.prop.strict"
+         "Property '%s' already defined in this object literal.")
+
 (js2-msg "msg.dup.param.strict"
          "Parameter '%s' already declared in this function.")
 
@@ -3975,10 +3978,11 @@ optional `js2-expr-node'"
                                                              len left
                                                              right op-pos)))
   "AST node for an object literal prop:value entry.
-The `left' field is the property:  a name node, string node or number node.
-The `right' field is a `js2-node' representing the initializer value.
-If the property is abbreviated, the node's `SHORTHAND' property is non-nil
-and both fields have the same value.")
+The `left' field is the property: a name node, string node,
+number node or expression node.  The `right' field is a
+`js2-node' representing the initializer value.  If the property
+is abbreviated, the node's `SHORTHAND' property is non-nil and
+both fields have the same value.")
 
 (put 'cl-struct-js2-object-prop-node 'js2-visitor 'js2-visit-infix-node)
 (put 'cl-struct-js2-object-prop-node 'js2-printer 'js2-print-object-prop-node)
@@ -10663,11 +10667,27 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
     (apply #'js2-node-add-children result (js2-object-node-elems result))
     result))
 
+(defun js2-property-key-string (property-node)
+  "Return the key of PROPERTY-NODE (a `js2-object-prop-node' or
+`js2-getter-setter-node') as a string, or nil if it can't be
+represented as a string (e.g., the key is computed by an
+expression)."
+  (let ((key (js2-infix-node-left property-node)))
+    (cond
+     ((js2-name-node-p key)
+      (js2-name-node-name key))
+     ((js2-string-node-p key)
+      (js2-string-node-value key))
+     ((js2-number-node-p key)
+      (js2-number-node-value key)))))
+
 (defun js2-parse-object-literal-elems (&optional class-p)
   (let ((pos (js2-current-token-beg))
         (static nil)
         (continue t)
-        tt elems elem after-comma previous-token)
+        tt elems elem
+        elem-key-string previous-elem-key-string
+        after-comma previous-token)
     (while continue
       (setq tt (js2-get-prop-name-token)
             static nil
@@ -10726,8 +10746,22 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
               (setq after-comma (js2-current-token-end)))
           (js2-unget-token)
           (unless class-p (setq continue nil))))
-      ;; Append any parsed element.
-      (if elem (push elem elems)))       ; end loop
+      (when elem
+        (setq elem-key-string (js2-property-key-string elem))
+        (when (and js2-in-use-strict-directive
+                   elem-key-string
+                   (cl-some
+                    (lambda (previous-elem)
+                      (and (setq previous-elem-key-string
+                                 (js2-property-key-string previous-elem))
+                           (string= previous-elem-key-string elem-key-string)))
+                    elems))
+          (js2-report-error "msg.dup.obj.lit.prop.strict"
+                            elem-key-string
+                            (js2-node-abs-pos (js2-infix-node-left elem))
+                            (js2-node-len (js2-infix-node-left elem))))
+        ;; Append any parsed element.
+        (push elem elems)))       ; end loop
     (js2-must-match js2-RC "msg.no.brace.prop")
     (nreverse elems)))
 
@@ -10789,7 +10823,8 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
 
 (defun js2-parse-plain-property (prop)
   "Parse a non-getter/setter property in an object literal.
-PROP is the node representing the property:  a number, name or string."
+PROP is the node representing the property: a number, name,
+string or expression."
   (let* ((tt (js2-get-token))
          (pos (js2-node-pos prop))
          colon expr result)
