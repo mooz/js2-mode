@@ -10329,7 +10329,7 @@ array-literals, array comprehensions and regular expressions."
       (setq node (make-js2-number-node))
       (when (and js2-in-use-strict-directive
                  (= (js2-number-node-num-base node) 8))
-        (js2-report-error "msg.no.octal.literal"))
+        (js2-report-error "msg.no.octal.strict"))
       node)
      ((or (= tt js2-STRING) (= tt js2-NO_SUBS_TEMPLATE))
       (make-js2-string-node :type tt))
