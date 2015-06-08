@@ -736,6 +736,7 @@ List of chars built up while scanning various tokens.")
   (end -1)
   (string "")
   number
+  number-base
   regexp-flags
   comment-type
   follows-eol-p)
@@ -1788,6 +1789,9 @@ the correct number of ARGS must be provided."
 
 (js2-msg "msg.destruct.assign.no.init"
          "Missing = in destructuring declaration")
+
+(js2-msg "msg.no.octal.strict"
+         "Octal numbers prohibited in strict mode.")
 
 (js2-msg "msg.dup.param.strict"
          "Parameter '%s' already declared in this function.")
@@ -3768,10 +3772,13 @@ Returns 0 if NODE is nil or its identifier field is nil."
                                                                 (js2-current-token-beg)))
                                                         (value (js2-current-token-string))
                                                         (num-value (js2-token-number
-                                                                    (js2-current-token))))))
+                                                                    (js2-current-token)))
+                                                        (num-base (js2-token-number-base
+                                                                   (js2-current-token))))))
   "AST node for a number literal."
   value      ; the original string, e.g. "6.02e23"
-  num-value) ; the parsed number value
+  num-value  ; the parsed number value
+  num-base)  ; the number's base
 
 (put 'cl-struct-js2-number-node 'js2-visitor 'js2-visit-none)
 (put 'cl-struct-js2-number-node 'js2-printer 'js2-print-number-node)
@@ -6115,8 +6122,8 @@ its relevant fields and puts it into `js2-ti-tokens'."
                         while (js2-digit-p c))))
            (js2-unget-char)
            (let ((str (js2-set-string-from-buffer token)))
-             (setf (js2-token-number token)
-                   (js2-string-to-number str base)))
+             (setf (js2-token-number token) (js2-string-to-number str base)
+                   (js2-token-number-base token) base))
            (throw 'return js2-NUMBER))
          ;; is it a string?
          (when (or (memq c '(?\" ?\'))
@@ -10286,7 +10293,7 @@ For instance, @[expr], @*::[expr], or ns::[expr]."
   "Parse a literal (leaf) expression of some sort.
 Includes complex literals such as functions, object-literals,
 array-literals, array comprehensions and regular expressions."
-  (let (tt)
+  (let (tt node)
     (setq tt (js2-current-token-type))
     (cond
      ((= tt js2-CLASS)
@@ -10307,7 +10314,11 @@ array-literals, array comprehensions and regular expressions."
      ((= tt js2-NAME)
       (js2-parse-name tt))
      ((= tt js2-NUMBER)
-      (make-js2-number-node))
+      (setq node (make-js2-number-node))
+      (when (and js2-in-use-strict-directive
+                 (= (js2-number-node-num-base node) 8))
+        (js2-report-error "msg.no.octal.literal"))
+      node)
      ((or (= tt js2-STRING) (= tt js2-NO_SUBS_TEMPLATE))
       (make-js2-string-node :type tt))
      ((= tt js2-TEMPLATE_HEAD)

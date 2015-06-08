@@ -287,6 +287,10 @@ the test."
   "'use strict';\nwith ({}) {}"
   :syntax-error "with" :errors-count 1)
 
+(js2-deftest-parse function-strict-octal
+  "'use strict';\nvar number = 0644;"
+  :syntax-error "0644" :errors-count 1)
+
 ;;; Spread operator
 
 (js2-deftest-parse spread-in-array-literal
