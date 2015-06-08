@@ -1786,6 +1786,12 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.destruct.assign.no.init"
          "Missing = in destructuring declaration")
 
+(js2-msg "msg.dup.param.strict"
+         "Parameter '%s' already declared in this function.")
+
+(js2-msg "msg.bad.id.strict"
+         "'%s' is not a valid identifier for this use in strict mode.")
+
 ;; ScriptRuntime
 (js2-msg "msg.no.properties"
          "%s has no properties.")
@@ -8009,6 +8015,8 @@ Scanner should be initialized."
         (saved-strict-mode js2-in-use-strict-directive)
         node
         directive)
+    ;; Inherit strict mode.
+    (setf (js2-function-node-in-strict-mode fn-node) js2-in-use-strict-directive)
     (cl-incf js2-nesting-of-function)
     (unwind-protect
         (while (not (or (= (setq tt (js2-peek-token)) js2-ERROR)
@@ -8041,9 +8049,13 @@ Scanner should be initialized."
     (js2-node-add-children fn-node pn)
     pn))
 
-(defun js2-define-destruct-symbols (node decl-type face &optional ignore-not-in-block)
+(defun js2-define-destruct-symbols
+    (node decl-type face &optional ignore-not-in-block name-nodes)
   "Declare and fontify destructuring parameters inside NODE.
-NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
+NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
+
+Return a list of `js2-name-node' nodes representing the symbols
+declared; probably to check them for errors."
   (cond
    ((js2-name-node-p node)
     (let (leftpos)
@@ -8052,26 +8064,70 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
       (when face
         (js2-set-face (setq leftpos (js2-node-abs-pos node))
                       (+ leftpos (js2-node-len node))
-                      face 'record))))
+                      face 'record))
+      (setq name-nodes (append name-nodes (list node)))))
    ((js2-object-node-p node)
     (dolist (elem (js2-object-node-elems node))
-      (js2-define-destruct-symbols
-       ;; In abbreviated destructuring {a, b}, right == left.
-       (js2-object-prop-node-right elem)
-       decl-type face ignore-not-in-block)))
+      (setq name-nodes
+            (append name-nodes
+                    (js2-define-destruct-symbols
+                     ;; In abbreviated destructuring {a, b}, right == left.
+                     (js2-object-prop-node-right elem)
+                     decl-type face ignore-not-in-block name-nodes)))))
    ((js2-array-node-p node)
     (dolist (elem (js2-array-node-elems node))
       (when elem
-        (js2-define-destruct-symbols elem decl-type face ignore-not-in-block))))
+        (setq name-nodes
+              (append name-nodes
+                      (js2-define-destruct-symbols
+                       elem decl-type face ignore-not-in-block name-nodes))))))
    (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
-                        (js2-node-len node)))))
+                        (js2-node-len node))))
+  name-nodes)
+
+(defun js2-check-strict-identifier (name-node)
+  "Check that NAME-NODE makes a legal strict mode identifier."
+  (when js2-in-use-strict-directive
+    (let ((param-name (js2-name-node-name name-node)))
+      (when (or (string= param-name "eval")
+                (string= param-name "arguments"))
+        (js2-report-error "msg.bad.id.strict" param-name
+                          (js2-node-abs-pos name-node) (js2-node-len name-node))))))
+
+(defun js2-check-strict-function-params (preceding-params params)
+  "Given PRECEDING-PARAMS in a function's parameter list, check
+for strict mode errors caused by PARAMS."
+  (when js2-in-use-strict-directive
+    (dolist (param params)
+      (let ((param-name (js2-name-node-name param)))
+        (js2-check-strict-identifier param)
+        (when (cl-some (lambda (param)
+                         (string= (js2-name-node-name param)
+                                  param-name))
+                       preceding-params)
+          (js2-report-error "msg.dup.param.strict" param-name
+                            (js2-node-abs-pos param) (js2-node-len param)))))))
 
 (defun js2-parse-function-params (function-type fn-node pos)
+  "Parse the parameters of a function of FUNCTION-TYPE
+represented by FN-NODE at POS.
+
+Return a list of lists of arguments to apply many times to
+`js2-check-strict-function-params' to retroactively check for
+strict mode errors that occurred.  Because the function body is
+parsed after its parameters, and the body might activate strict
+mode for that function, the check has to occur after the body is
+parsed."
   (if (js2-match-token js2-RP)
-      (setf (js2-function-node-rp fn-node) (- (js2-current-token-beg) pos))
+      (progn (setf (js2-function-node-rp fn-node) (- (js2-current-token-beg) pos))
+             ;; Return an empty list for consistency.
+             '())
     (let ((paren-free-arrow (and (eq function-type 'FUNCTION_ARROW)
                                  (eq (js2-current-token-type) js2-NAME)))
-          params param default-found rest-param-at)
+          params param
+          param-name-nodes new-param-name-nodes
+          deferred-error-checking-arguments
+          default-found rest-param-at)
       (when paren-free-arrow
         (js2-unget-token))
       (cl-loop for tt = (js2-peek-token)
@@ -8084,9 +8140,13 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
                  (when default-found
                    (js2-report-error "msg.no.default.after.default.param"))
                  (setq param (js2-parse-destruct-primary-expr))
-                 (js2-define-destruct-symbols param
-                                              js2-LP
-                                              'js2-function-param)
+                 (setq new-param-name-nodes (js2-define-destruct-symbols
+                                             param js2-LP 'js2-function-param))
+                 (setq deferred-error-checking-arguments
+                       (append deferred-error-checking-arguments
+                               (list (list param-name-nodes
+                                           new-param-name-nodes))))
+                 (setq param-name-nodes (append param-name-nodes new-param-name-nodes))
                  (push param params))
                 ;; variable name
                 (t
@@ -8100,6 +8160,11 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
                  (js2-record-face 'js2-function-param)
                  (setq param (js2-create-name-node))
                  (js2-define-symbol js2-LP (js2-current-token-string) param)
+                 (setq deferred-error-checking-arguments
+                       (append deferred-error-checking-arguments
+                               (list (list param-name-nodes
+                                           (list param)))))
+                 (setq param-name-nodes (append param-name-nodes (list param)))
                  ;; default parameter value
                  (when (or (and default-found
                                 (not rest-param-at)
@@ -8134,7 +8199,8 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
         (setf (js2-function-node-rest-p fn-node) t))
       (dolist (p params)
         (js2-node-add-children fn-node p)
-        (push p (js2-function-node-params fn-node))))))
+        (push p (js2-function-node-params fn-node)))
+      deferred-error-checking-arguments)))
 
 (defun js2-check-inconsistent-return-warning (fn-node name)
   "Possibly show inconsistent-return warning.
@@ -8216,14 +8282,24 @@ arrow function), NAME is js2-name-node."
           (js2-end-flags 0)
           js2-label-set
           js2-loop-set
-          js2-loop-and-switch-set)
-      (js2-parse-function-params function-type fn-node pos)
+          js2-loop-and-switch-set
+          deferred-error-checking-arguments)
+      (setq deferred-error-checking-arguments
+            (js2-parse-function-params function-type fn-node pos))
       (when (eq function-type 'FUNCTION_ARROW)
         (js2-must-match js2-ARROW "msg.bad.arrow.args"))
       (if (and (>= js2-language-version 180)
                (/= (js2-peek-token) js2-LC))
           (js2-parse-function-closure-body fn-node)
         (js2-parse-function-body fn-node))
+      (when (js2-function-node-in-strict-mode fn-node)
+        ;; Pretend that we're inside the function again.  It cleans up its
+        ;; `js2-in-use-strict-directive' binding.
+        (let ((js2-in-use-strict-directive t))
+          (when name
+            (js2-check-strict-identifier name))
+          (dolist (arguments deferred-error-checking-arguments)
+            (apply #'js2-check-strict-function-params arguments))))
       (js2-check-inconsistent-return-warning fn-node name)
 
       (when name
@@ -8934,7 +9010,8 @@ Last matched token must be js2-FOR."
              (t
               (js2-must-match-name "msg.bad.catchcond")
               (setq param (js2-create-name-node))
-              (js2-define-symbol js2-LET (js2-current-token-string) param))))
+              (js2-define-symbol js2-LET (js2-current-token-string) param)
+              (js2-check-strict-identifier param))))
           ;; Catch condition.
           (if (js2-match-token js2-IF)
               (setq guard-kwd (- (js2-current-token-beg) catch-pos)
@@ -9380,7 +9457,8 @@ Returns the parsed `js2-var-decl-node' expression node."
                 nbeg (js2-current-token-beg)
                 nend (js2-current-token-end)
                 end nend)
-          (js2-define-symbol decl-type (js2-current-token-string) name js2-in-for-init)))
+          (js2-define-symbol decl-type (js2-current-token-string) name js2-in-for-init)
+          (js2-check-strict-identifier name)))
       (when (js2-match-token js2-ASSIGN)
         (setq init (js2-parse-assign-expr)
               end (js2-node-end init))
@@ -9573,6 +9651,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
         ;; tt express assignment (=, |=, ^=, ..., %=)
         (setq op-pos (- (js2-current-token-beg) pos)  ; relative
               left pn)
+        (js2-check-strict-identifier left)
         (setq right (js2-parse-assign-expr)
               pn (make-js2-assign-node :type tt
                                        :pos pos

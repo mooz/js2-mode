@@ -247,6 +247,40 @@ the test."
 (js2-deftest-parse function-with-rest-after-default-parameter
   "function foo(a = 1, ...rest) {\n}")
 
+;;; Strict identifiers
+
+(js2-deftest-parse function-bad-strict-parameters
+  "'use strict';\nfunction foo(eval, {arguments}, bar) {\n}"
+  :syntax-error "eval" :errors-count 2)
+
+(js2-deftest-parse function-retroactive-bad-strict-parameters
+  "function foo(arguments) {'use strict';}"
+  :syntax-error "arguments" :errors-count 1)
+
+(js2-deftest-parse function-duplicate-strict-parameters
+  "'use strict';\nfunction foo(a, a) {\n}"
+  :syntax-error "a" :errors-count 1)
+
+(js2-deftest-parse function-bad-strict-function-name
+  "'use strict';\nfunction eval() {\n}"
+  :syntax-error "eval" :errors-count 1)
+
+(js2-deftest-parse function-bad-retroactive-strict-function-name
+  "function arguments() {'use strict';}"
+  :syntax-error "arguments" :errors-count 1)
+
+(js2-deftest-parse function-bad-strict-catch-name
+  "'use strict';\ntry {} catch (eval) {}"
+  :syntax-error "eval" :errors-count 1)
+
+(js2-deftest-parse function-bad-strict-variable-name
+  "'use strict';\nvar eval = 'kekeke';"
+  :syntax-error "eval" :errors-count 1)
+
+(js2-deftest-parse function-bad-strict-assignment
+  "'use strict';\narguments = 'fufufu';"
+  :syntax-error "arguments" :errors-count 1)
+
 ;;; Spread operator
 
 (js2-deftest-parse spread-in-array-literal
