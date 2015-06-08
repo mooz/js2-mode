@@ -8295,15 +8295,15 @@ arrow function), NAME is js2-name-node."
         ;;    of the with object.
         (setf (js2-function-node-ignore-dynamic fn-node) t))
     ;; dynamically bind all the per-function variables
-    (let ((js2-current-script-or-fn fn-node)
-          (js2-current-scope fn-node)
-          (js2-nesting-of-with 0)
-          (js2-end-flags 0)
-          js2-label-set
-          js2-loop-set
-          js2-loop-and-switch-set
-          (error-checking-arguments (js2-parse-function-params
-                                     function-type fn-node pos)))
+    (let* ((js2-current-script-or-fn fn-node)
+           (js2-current-scope fn-node)
+           (js2-nesting-of-with 0)
+           (js2-end-flags 0)
+           js2-label-set
+           js2-loop-set
+           js2-loop-and-switch-set
+           (error-checking-arguments (js2-parse-function-params
+                                      function-type fn-node pos)))
       (when (eq function-type 'FUNCTION_ARROW)
         (js2-must-match js2-ARROW "msg.bad.arrow.args"))
       (if (and (>= js2-language-version 180)
