@@ -2465,12 +2465,12 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                      len
                                                      buffer)))
   "The root node of a js2 AST."
-  buffer           ; the source buffer from which the code was parsed
-  comments         ; a Lisp list of comments, ordered by start position
-  errors           ; a Lisp list of errors found during parsing
-  warnings         ; a Lisp list of warnings found during parsing
-  node-count       ; number of nodes in the tree, including the root
-  in-strict-mode)  ; t if the script is running under strict mode
+  buffer             ; the source buffer from which the code was parsed
+  comments           ; a Lisp list of comments, ordered by start position
+  errors             ; a Lisp list of errors found during parsing
+  warnings           ; a Lisp list of warnings found during parsing
+  node-count         ; number of nodes in the tree, including the root
+  in-strict-mode)    ; t if the script is running under strict mode
 
 (put 'cl-struct-js2-ast-root 'js2-visitor 'js2-visit-ast-root)
 (put 'cl-struct-js2-ast-root 'js2-printer 'js2-print-script)
@@ -8099,12 +8099,15 @@ declared; probably to check them for errors."
                         (js2-node-len node))))
   name-nodes)
 
+(defvar js2-illegal-strict-identifiers
+  '("eval" "arguments")
+  "Identifiers not allowed as variables in strict mode.")
+
 (defun js2-check-strict-identifier (name-node)
   "Check that NAME-NODE makes a legal strict mode identifier."
   (when js2-in-use-strict-directive
     (let ((param-name (js2-name-node-name name-node)))
-      (when (or (string= param-name "eval")
-                (string= param-name "arguments"))
+      (when (member param-name js2-illegal-strict-identifiers)
         (js2-report-error "msg.bad.id.strict" param-name
                           (js2-node-abs-pos name-node) (js2-node-len name-node))))))
 
@@ -8116,8 +8119,7 @@ for strict mode errors caused by PARAMS."
       (let ((param-name (js2-name-node-name param)))
         (js2-check-strict-identifier param)
         (when (cl-some (lambda (param)
-                         (string= (js2-name-node-name param)
-                                  param-name))
+                         (string= (js2-name-node-name param) param-name))
                        preceding-params)
           (js2-report-error "msg.dup.param.strict" param-name
                             (js2-node-abs-pos param) (js2-node-len param)))))))
@@ -8140,7 +8142,7 @@ parsed."
                                  (eq (js2-current-token-type) js2-NAME)))
           params param
           param-name-nodes new-param-name-nodes
-          deferred-error-checking-arguments
+          error-checking-arguments
           default-found rest-param-at)
       (when paren-free-arrow
         (js2-unget-token))
@@ -8153,14 +8155,16 @@ parsed."
                  (js2-get-token)
                  (when default-found
                    (js2-report-error "msg.no.default.after.default.param"))
-                 (setq param (js2-parse-destruct-primary-expr))
-                 (setq new-param-name-nodes (js2-define-destruct-symbols
-                                             param js2-LP 'js2-function-param))
-                 (setq deferred-error-checking-arguments
-                       (append deferred-error-checking-arguments
-                               (list (list param-name-nodes
-                                           new-param-name-nodes))))
-                 (setq param-name-nodes (append param-name-nodes new-param-name-nodes))
+                 (setq param (js2-parse-destruct-primary-expr)
+                       new-param-name-nodes (js2-define-destruct-symbols
+                                             param js2-LP 'js2-function-param)
+                       error-checking-arguments (append
+                                                 error-checking-arguments
+                                                 (list
+                                                  (list
+                                                   param-name-nodes
+                                                   new-param-name-nodes)))
+                       param-name-nodes (append param-name-nodes new-param-name-nodes))
                  (push param params))
                 ;; variable name
                 (t
@@ -8174,11 +8178,12 @@ parsed."
                  (js2-record-face 'js2-function-param)
                  (setq param (js2-create-name-node))
                  (js2-define-symbol js2-LP (js2-current-token-string) param)
-                 (setq deferred-error-checking-arguments
-                       (append deferred-error-checking-arguments
-                               (list (list param-name-nodes
-                                           (list param)))))
-                 (setq param-name-nodes (append param-name-nodes (list param)))
+                 (setq error-checking-arguments (append
+                                                 error-checking-arguments
+                                                 (list
+                                                  (list param-name-nodes
+                                                        (list param))))
+                       param-name-nodes (append param-name-nodes (list param)))
                  ;; default parameter value
                  (when (or (and default-found
                                 (not rest-param-at)
@@ -8214,7 +8219,7 @@ parsed."
       (dolist (p params)
         (js2-node-add-children fn-node p)
         (push p (js2-function-node-params fn-node)))
-      deferred-error-checking-arguments)))
+      error-checking-arguments)))
 
 (defun js2-check-inconsistent-return-warning (fn-node name)
   "Possibly show inconsistent-return warning.
@@ -8297,9 +8302,8 @@ arrow function), NAME is js2-name-node."
           js2-label-set
           js2-loop-set
           js2-loop-and-switch-set
-          deferred-error-checking-arguments)
-      (setq deferred-error-checking-arguments
-            (js2-parse-function-params function-type fn-node pos))
+          (error-checking-arguments (js2-parse-function-params
+                                     function-type fn-node pos)))
       (when (eq function-type 'FUNCTION_ARROW)
         (js2-must-match js2-ARROW "msg.bad.arrow.args"))
       (if (and (>= js2-language-version 180)
@@ -8312,7 +8316,7 @@ arrow function), NAME is js2-name-node."
         (let ((js2-in-use-strict-directive t))
           (when name
             (js2-check-strict-identifier name))
-          (dolist (arguments deferred-error-checking-arguments)
+          (dolist (arguments error-checking-arguments)
             (apply #'js2-check-strict-function-params arguments))))
       (js2-check-inconsistent-return-warning fn-node name)
 
