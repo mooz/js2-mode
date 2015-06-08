@@ -8063,13 +8063,10 @@ Scanner should be initialized."
     (js2-node-add-children fn-node pn)
     pn))
 
-(defun js2-define-destruct-symbols
+(defun js2-define-destruct-symbols-internal
     (node decl-type face &optional ignore-not-in-block name-nodes)
-  "Declare and fontify destructuring parameters inside NODE.
-NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
-
-Return a list of `js2-name-node' nodes representing the symbols
-declared; probably to check them for errors."
+  "Internal version of `js2-define-destruct-symbols'.  The only
+difference is that NAME-NODES is passed down recursively."
   (cond
    ((js2-name-node-p node)
     (let (leftpos)
@@ -8084,7 +8081,7 @@ declared; probably to check them for errors."
     (dolist (elem (js2-object-node-elems node))
       (setq name-nodes
             (append name-nodes
-                    (js2-define-destruct-symbols
+                    (js2-define-destruct-symbols-internal
                      ;; In abbreviated destructuring {a, b}, right == left.
                      (js2-object-prop-node-right elem)
                      decl-type face ignore-not-in-block name-nodes)))))
@@ -8093,11 +8090,20 @@ declared; probably to check them for errors."
       (when elem
         (setq name-nodes
               (append name-nodes
-                      (js2-define-destruct-symbols
+                      (js2-define-destruct-symbols-internal
                        elem decl-type face ignore-not-in-block name-nodes))))))
    (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
                         (js2-node-len node))))
   name-nodes)
+
+(defun js2-define-destruct-symbols (node decl-type face &optional ignore-not-in-block)
+  "Declare and fontify destructuring parameters inside NODE.
+NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
+
+Return a list of `js2-name-node' nodes representing the symbols
+declared; probably to check them for errors."
+  (funcall #'js2-define-destruct-symbols-internal
+           node decl-type face ignore-not-in-block))
 
 (defvar js2-illegal-strict-identifiers
   '("eval" "arguments")
@@ -10755,9 +10761,8 @@ expression)."
           (js2-unget-token)
           (unless class-p (setq continue nil))))
       (when elem
-        (setq elem-key-string (js2-property-key-string elem))
         (when (and js2-in-use-strict-directive
-                   elem-key-string
+                   (setq elem-key-string (js2-property-key-string elem))
                    (cl-some
                     (lambda (previous-elem)
                       (and (setq previous-elem-key-string
