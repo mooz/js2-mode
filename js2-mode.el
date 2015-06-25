@@ -8097,8 +8097,7 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
 
 Return a list of `js2-name-node' nodes representing the symbols
 declared; probably to check them for errors."
-  (funcall #'js2-define-destruct-symbols-internal
-           node decl-type face ignore-not-in-block))
+  (js2-define-destruct-symbols-internal node decl-type face ignore-not-in-block))
 
 (defvar js2-illegal-strict-identifiers
   '("eval" "arguments")
@@ -8127,14 +8126,7 @@ for strict mode errors caused by PARAMS."
 
 (defun js2-parse-function-params (function-type fn-node pos)
   "Parse the parameters of a function of FUNCTION-TYPE
-represented by FN-NODE at POS.
-
-Return a list of lists of arguments to apply many times to
-`js2-check-strict-function-params' to retroactively check for
-strict mode errors that occurred.  Because the function body is
-parsed after its parameters, and the body might activate strict
-mode for that function, the check has to occur after the body is
-parsed."
+represented by FN-NODE at POS."
   (if (js2-match-token js2-RP)
       (setf (js2-function-node-rp fn-node) (- (js2-current-token-beg) pos))
     (let ((paren-free-arrow (and (eq function-type 'FUNCTION_ARROW)
