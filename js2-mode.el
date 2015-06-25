@@ -7959,7 +7959,7 @@ Scanner should be initialized."
         (end js2-ts-cursor)  ; in case file is empty
         root n tt
         (in-directive-prologue t)
-        (saved-strict-mode js2-in-use-strict-directive)
+        (js2-in-use-strict-directive js2-in-use-strict-directive)
         directive)
     ;; initialize buffer-local parsing vars
     (setf root (make-js2-ast-root :buffer (buffer-name) :pos pos)
@@ -7989,7 +7989,6 @@ Scanner should be initialized."
       ;; add function or statement to script
       (setq end (js2-node-end n))
       (js2-block-node-push root n))
-    (setq js2-in-use-strict-directive saved-strict-mode)
     ;; add comments to root in lexical order
     (when js2-scanned-comments
       ;; if we find a comment beyond end of normal kids, use its end
@@ -8026,7 +8025,6 @@ Scanner should be initialized."
         tt
         end
         not-in-directive-prologue
-        (saved-strict-mode js2-in-use-strict-directive)
         node
         directive)
     ;; Inherit strict mode.
@@ -8047,13 +8045,16 @@ Scanner should be initialized."
                   ((null directive)
                    (setq not-in-directive-prologue t))
                   ((string= directive "use strict")
-                   (setq js2-in-use-strict-directive t)
+                   ;; Back up and reparse the function, because new rules apply
+                   ;; to the function name and parameters.
+                   (when (not js2-in-use-strict-directive)
+                     (setq js2-in-use-strict-directive t)
+                     (throw 'reparse t))
                    (setf (js2-function-node-in-strict-mode fn-node) t)))
                  node)
              (js2-get-token)
              (js2-parse-function-stmt))))
-      (cl-decf js2-nesting-of-function)
-      (setq js2-in-use-strict-directive saved-strict-mode))
+      (cl-decf js2-nesting-of-function))
     (setq end (js2-current-token-end))  ; assume no curly and leave at current token
     (if (js2-must-match js2-RC "msg.no.brace.after.body" pos)
         (setq end (js2-current-token-end)))
@@ -8141,14 +8142,11 @@ parsed after its parameters, and the body might activate strict
 mode for that function, the check has to occur after the body is
 parsed."
   (if (js2-match-token js2-RP)
-      (progn (setf (js2-function-node-rp fn-node) (- (js2-current-token-beg) pos))
-             ;; Return an empty list for consistency.
-             '())
+      (setf (js2-function-node-rp fn-node) (- (js2-current-token-beg) pos))
     (let ((paren-free-arrow (and (eq function-type 'FUNCTION_ARROW)
                                  (eq (js2-current-token-type) js2-NAME)))
           params param
           param-name-nodes new-param-name-nodes
-          error-checking-arguments
           default-found rest-param-at)
       (when paren-free-arrow
         (js2-unget-token))
@@ -8163,14 +8161,9 @@ parsed."
                    (js2-report-error "msg.no.default.after.default.param"))
                  (setq param (js2-parse-destruct-primary-expr)
                        new-param-name-nodes (js2-define-destruct-symbols
-                                             param js2-LP 'js2-function-param)
-                       error-checking-arguments (append
-                                                 error-checking-arguments
-                                                 (list
-                                                  (list
-                                                   param-name-nodes
-                                                   new-param-name-nodes)))
-                       param-name-nodes (append param-name-nodes new-param-name-nodes))
+                                             param js2-LP 'js2-function-param))
+                 (js2-check-strict-function-params param-name-nodes new-param-name-nodes)
+                 (setq param-name-nodes (append param-name-nodes new-param-name-nodes))
                  (push param params))
                 ;; variable name
                 (t
@@ -8184,12 +8177,8 @@ parsed."
                  (js2-record-face 'js2-function-param)
                  (setq param (js2-create-name-node))
                  (js2-define-symbol js2-LP (js2-current-token-string) param)
-                 (setq error-checking-arguments (append
-                                                 error-checking-arguments
-                                                 (list
-                                                  (list param-name-nodes
-                                                        (list param))))
-                       param-name-nodes (append param-name-nodes (list param)))
+                 (js2-check-strict-function-params param-name-nodes (list param))
+                 (setq param-name-nodes (append param-name-nodes (list param)))
                  ;; default parameter value
                  (when (or (and default-found
                                 (not rest-param-at)
@@ -8224,8 +8213,7 @@ parsed."
         (setf (js2-function-node-rest-p fn-node) t))
       (dolist (p params)
         (js2-node-add-children fn-node p)
-        (push p (js2-function-node-params fn-node)))
-      error-checking-arguments)))
+        (push p (js2-function-node-params fn-node))))))
 
 (defun js2-check-inconsistent-return-warning (fn-node name)
   "Possibly show inconsistent-return warning.
@@ -8274,10 +8262,7 @@ Last token scanned is the close-curly for the function body."
     (js2-must-match js2-LP "msg.no.paren.parms")
     (js2-parse-function 'FUNCTION_EXPRESSION pos star-p name)))
 
-(defun js2-parse-function (function-type pos star-p &optional name)
-  "Function parser.  FUNCTION-TYPE is a symbol, POS is the
-beginning of the first token (function keyword, unless it's an
-arrow function), NAME is js2-name-node."
+(defun js2-parse-function-internal (function-type pos star-p &optional name)
   (let (fn-node lp)
     (if (= (js2-current-token-type) js2-LP) ; eventually matched LP?
         (setq lp (js2-current-token-beg)))
@@ -8292,7 +8277,9 @@ arrow function), NAME is js2-name-node."
       (when (and (eq function-type 'FUNCTION_STATEMENT)
                  (cl-plusp (js2-name-node-length name)))
         ;; Function statements define a symbol in the enclosing scope
-        (js2-define-symbol js2-FUNCTION (js2-name-node-name name) fn-node)))
+        (js2-define-symbol js2-FUNCTION (js2-name-node-name name) fn-node))
+      (when js2-in-use-strict-directive
+        (js2-check-strict-identifier name)))
     (if (or (js2-inside-function) (cl-plusp js2-nesting-of-with))
         ;; 1. Nested functions are not affected by the dynamic scope flag
         ;;    as dynamic scope is already a parent of their scope.
@@ -8301,29 +8288,20 @@ arrow function), NAME is js2-name-node."
         ;;    of the with object.
         (setf (js2-function-node-ignore-dynamic fn-node) t))
     ;; dynamically bind all the per-function variables
-    (let* ((js2-current-script-or-fn fn-node)
-           (js2-current-scope fn-node)
-           (js2-nesting-of-with 0)
-           (js2-end-flags 0)
-           js2-label-set
-           js2-loop-set
-           js2-loop-and-switch-set
-           (error-checking-arguments (js2-parse-function-params
-                                      function-type fn-node pos)))
+    (let ((js2-current-script-or-fn fn-node)
+          (js2-current-scope fn-node)
+          (js2-nesting-of-with 0)
+          (js2-end-flags 0)
+          js2-label-set
+          js2-loop-set
+          js2-loop-and-switch-set)
+      (js2-parse-function-params function-type fn-node pos)
       (when (eq function-type 'FUNCTION_ARROW)
         (js2-must-match js2-ARROW "msg.bad.arrow.args"))
       (if (and (>= js2-language-version 180)
                (/= (js2-peek-token) js2-LC))
           (js2-parse-function-closure-body fn-node)
         (js2-parse-function-body fn-node))
-      (when (js2-function-node-in-strict-mode fn-node)
-        ;; Pretend that we're inside the function again.  It cleans up its
-        ;; `js2-in-use-strict-directive' binding.
-        (let ((js2-in-use-strict-directive t))
-          (when name
-            (js2-check-strict-identifier name))
-          (dolist (arguments error-checking-arguments)
-            (apply #'js2-check-strict-function-params arguments))))
       (js2-check-inconsistent-return-warning fn-node name)
 
       (when name
@@ -8345,6 +8323,29 @@ arrow function), NAME is js2-name-node."
     ;; since `js2-define-symbol' needs the defining-scope check to stop
     ;; at the function boundary when checking for redeclarations.
     (setf (js2-scope-parent-scope fn-node) js2-current-scope)
+    fn-node))
+
+(defun js2-parse-function (function-type pos star-p &optional name)
+  "Function parser.  FUNCTION-TYPE is a symbol, POS is the
+beginning of the first token (function keyword, unless it's an
+arrow function), NAME is js2-name-node."
+  (let ((continue t)
+        ts-state
+        fn-node
+        ;; Preserve strict state outside this function.
+        (js2-in-use-strict-directive js2-in-use-strict-directive))
+    ;; Parse multiple times if a new strict mode directive is discovered in the
+    ;; function body, as new rules will be retroactively applied to the legality
+    ;; of function names and parameters.
+    (while continue
+      (setq ts-state (make-js2-ts-state))
+      (setq continue (catch 'reparse
+                       (setq fn-node (js2-parse-function-internal
+                                      function-type pos star-p name))
+                       ;; Don't continue.
+                       nil))
+      (when continue
+        (js2-ts-seek ts-state)))
     fn-node))
 
 (defun js2-parse-statements (&optional parent)
