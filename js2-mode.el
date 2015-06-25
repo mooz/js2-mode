@@ -2465,12 +2465,11 @@ NAME can be a Lisp symbol or string.  SYMBOL is a `js2-symbol'."
                                                      len
                                                      buffer)))
   "The root node of a js2 AST."
-  buffer             ; the source buffer from which the code was parsed
-  comments           ; a Lisp list of comments, ordered by start position
-  errors             ; a Lisp list of errors found during parsing
-  warnings           ; a Lisp list of warnings found during parsing
-  node-count         ; number of nodes in the tree, including the root
-  in-strict-mode)    ; t if the script is running under strict mode
+  buffer         ; the source buffer from which the code was parsed
+  comments       ; a Lisp list of comments, ordered by start position
+  errors         ; a Lisp list of errors found during parsing
+  warnings       ; a Lisp list of warnings found during parsing
+  node-count)    ; number of nodes in the tree, including the root
 
 (put 'cl-struct-js2-ast-root 'js2-visitor 'js2-visit-ast-root)
 (put 'cl-struct-js2-ast-root 'js2-printer 'js2-print-script)
@@ -3347,8 +3346,7 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
   ignore-dynamic   ; ignore value of the dynamic-scope flag (interpreter only)
   needs-activation ; t if we need an activation object for this frame
   generator-type   ; STAR, LEGACY, COMPREHENSION or nil
-  member-expr      ; nonstandard Ecma extension from Rhino
-  in-strict-mode)  ; t if the function is running under strict mode
+  member-expr)     ; nonstandard Ecma extension from Rhino
 
 (put 'cl-struct-js2-function-node 'js2-visitor 'js2-visit-function-node)
 (put 'cl-struct-js2-function-node 'js2-printer 'js2-print-function-node)
@@ -7984,8 +7982,7 @@ Scanner should be initialized."
            ((null directive)
             (setq in-directive-prologue nil))
            ((string= directive "use strict")
-            (setq js2-in-use-strict-directive t)
-            (setf (js2-ast-root-in-strict-mode root) t)))))
+            (setq js2-in-use-strict-directive t)))))
       ;; add function or statement to script
       (setq end (js2-node-end n))
       (js2-block-node-push root n))
@@ -8027,8 +8024,6 @@ Scanner should be initialized."
         not-in-directive-prologue
         node
         directive)
-    ;; Inherit strict mode.
-    (setf (js2-function-node-in-strict-mode fn-node) js2-in-use-strict-directive)
     (cl-incf js2-nesting-of-function)
     (unwind-protect
         (while (not (or (= (setq tt (js2-peek-token)) js2-ERROR)
@@ -8049,8 +8044,7 @@ Scanner should be initialized."
                    ;; to the function name and parameters.
                    (when (not js2-in-use-strict-directive)
                      (setq js2-in-use-strict-directive t)
-                     (throw 'reparse t))
-                   (setf (js2-function-node-in-strict-mode fn-node) t)))
+                     (throw 'reparse t))))
                  node)
              (js2-get-token)
              (js2-parse-function-stmt))))
