@@ -9668,7 +9668,10 @@ If NODE is non-nil, it is the AST node associated with the symbol."
         ;; tt express assignment (=, |=, ^=, ..., %=)
         (setq op-pos (- (js2-current-token-beg) pos)  ; relative
               left pn)
-        (js2-check-strict-identifier left)
+        ;; The assigned node could be a js2-prop-get-node (foo.bar = 0), we only
+        ;; care about assignment to strict variable names.
+        (when (js2-name-node-p left)
+          (js2-check-strict-identifier left))
         (setq right (js2-parse-assign-expr)
               pn (make-js2-assign-node :type tt
                                        :pos pos

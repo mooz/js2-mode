@@ -281,6 +281,9 @@ the test."
   "'use strict';\narguments = 'fufufu';"
   :syntax-error "arguments" :errors-count 1)
 
+(js2-deftest-parse function-property-strict-assignment
+  "'use strict';\narguments.okay = 'alright';")
+
 (js2-deftest-parse function-strict-with
   "'use strict';\nwith ({}) {}"
   :syntax-error "with" :errors-count 1)
