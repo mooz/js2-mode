@@ -247,6 +247,59 @@ the test."
 (js2-deftest-parse function-with-rest-after-default-parameter
   "function foo(a = 1, ...rest) {\n}")
 
+;;; Strict mode errors
+
+(js2-deftest-parse function-bad-strict-parameters
+  "'use strict';\nfunction foo(eval, {arguments}, bar) {\n}"
+  :syntax-error "eval" :errors-count 2)
+
+(js2-deftest-parse function-retroactive-bad-strict-parameters
+  "function foo(arguments) {'use strict';}"
+  :syntax-error "arguments" :errors-count 1)
+
+(js2-deftest-parse function-duplicate-strict-parameters
+  "'use strict';\nfunction foo(a, a) {\n}"
+  :syntax-error "a" :errors-count 1)
+
+(js2-deftest-parse function-bad-strict-function-name
+  "'use strict';\nfunction eval() {\n}"
+  :syntax-error "eval" :errors-count 1)
+
+(js2-deftest-parse function-bad-retroactive-strict-function-name
+  "function arguments() {'use strict';}"
+  :syntax-error "arguments" :errors-count 1)
+
+(js2-deftest-parse function-bad-strict-catch-name
+  "'use strict';\ntry {} catch (eval) {}"
+  :syntax-error "eval" :errors-count 1)
+
+(js2-deftest-parse function-bad-strict-variable-name
+  "'use strict';\nvar eval = 'kekeke';"
+  :syntax-error "eval" :errors-count 1)
+
+(js2-deftest-parse function-bad-strict-assignment
+  "'use strict';\narguments = 'fufufu';"
+  :syntax-error "arguments" :errors-count 1)
+
+(js2-deftest-parse function-property-strict-assignment
+  "'use strict';\narguments.okay = 'alright';")
+
+(js2-deftest-parse function-strict-with
+  "'use strict';\nwith ({}) {}"
+  :syntax-error "with" :errors-count 1)
+
+(js2-deftest-parse function-strict-octal
+  "'use strict';\nvar number = 0644;"
+  :syntax-error "0644" :errors-count 1)
+
+(js2-deftest-parse function-strict-duplicate-keys
+  "'use strict';\nvar object = {a: 1, a: 2, 'a': 3, ['a']: 4, 1: 5, '1': 6, [1 + 1]: 7};"
+  :syntax-error "a" :errors-count 4) ; "a" has 3 dupes, "1" has 1 dupe.
+
+;; errors... or lackthereof.
+(js2-deftest-parse function-strict-const-scope
+  "'use strict';\nconst a;\nif (1) {\n  const a;\n}")
+
 ;;; Spread operator
 
 (js2-deftest-parse spread-in-array-literal
@@ -721,19 +774,40 @@ the test."
     (should (= (js2-symbol-decl-type var-entry) js2-VAR))
     (should (js2-name-node-p (js2-symbol-ast-node var-entry)))))
 
-(js2-deftest for-node-is-declaration-scope "for (let i = 0; i; ++i) {};"
-  (js2-mode)
-  (search-forward "i")
+(defun js2-test-scope-of-nth-variable-satisifies-predicate (variable nth predicate)
+  (goto-char (point-min))
+  (dotimes (n (1+ nth)) (search-forward variable))
   (forward-char -1)
   (let ((scope (js2-node-get-enclosing-scope (js2-node-at-point))))
-    (should (js2-for-node-p (js2-get-defining-scope scope "i")))))
+    (should (funcall predicate (js2-get-defining-scope scope variable)))))
+
+(js2-deftest for-node-is-declaration-scope "for (let i = 0; i; ++i) {};"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "i" 0 #'js2-for-node-p))
+
+(js2-deftest const-scope-sloppy-script "{const a;} a;"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-script-node-p)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'js2-script-node-p))
+
+(js2-deftest const-scope-strict-script "'use strict'; { const a; } a;"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-block-node-p)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'null))
+
+(js2-deftest const-scope-sloppy-function "function f() { { const a; } a; }"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-function-node-p)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'js2-function-node-p))
+
+(js2-deftest const-scope-strict-function "function f() { 'use strict'; { const a; } a; }"
+  (js2-mode)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-block-node-p)
+  (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'null))
 
 (js2-deftest array-comp-is-result-scope "[x * 2 for (x in y)];"
   (js2-mode)
-  (search-forward "x")
-  (forward-char -1)
-  (let ((scope (js2-node-get-enclosing-scope (js2-node-at-point))))
-    (should (js2-comp-loop-node-p (js2-get-defining-scope scope "x")))))
+  (js2-test-scope-of-nth-variable-satisifies-predicate "x" 0 #'js2-comp-loop-node-p))
 
 (js2-deftest array-comp-has-parent-scope
              "var a,b=[for (i of [[1,2]]) for (j of i) j * a];"
