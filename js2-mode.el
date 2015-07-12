@@ -2204,17 +2204,6 @@ Returns nil if element is not found in the list."
 (defsubst js2-flag-not-set-p (flags flag)
   (zerop (logand flags flag)))
 
-(defmacro js2-with-underscore-as-word-syntax (&rest body)
-  "Evaluate BODY with the _ character set to be word-syntax."
-  (declare (indent 0) (debug t))
-  (let ((old-syntax (make-symbol "old-syntax")))
-  `(let ((,old-syntax (string (char-syntax ?_))))
-     (unwind-protect
-         (progn
-           (modify-syntax-entry ?_ "w" js2-mode-syntax-table)
-           ,@body)
-       (modify-syntax-entry ?_ ,old-syntax js2-mode-syntax-table)))))
-
 ;;; AST struct and function definitions
 
 ;; flags for ast node property 'member-type (used for e4x operators)
