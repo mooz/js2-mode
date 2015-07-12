@@ -11305,15 +11305,6 @@ indentation is aligned to that column."
   (interactive)
   (while (forward-comment 1)))
 
-(defun js2-current-indent (&optional pos)
-  "Return column of indentation on current line.
-If POS is non-nil, go to that point and return indentation for that line."
-  (save-excursion
-    (if pos
-        (goto-char pos))
-    (back-to-indentation)
-    (current-column)))
-
 (defun js2-arglist-close ()
   "Return non-nil if we're on a line beginning with a close-paren/brace."
   (save-excursion
@@ -11368,7 +11359,7 @@ of the buffer to the current point.  NORMAL-COL is the indentation
 column computed by the heuristic guesser based on current paren,
 bracket, brace and statement nesting.  If BACKWARDS, cycle positions
 in reverse."
-  (let ((cur-indent (js2-current-indent))
+  (let ((cur-indent (current-indentation))
         (old-buffer-undo-list buffer-undo-list)
         ;; Emacs 21 only has `count-lines', not `line-number-at-pos'
         (current-line (save-excursion
