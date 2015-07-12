@@ -6914,7 +6914,7 @@ of a simple name.  Called before EXPR has a parent node."
           "\\)"
           "\\s-*\\({[^}]+}\\)?"         ; optional type
           "\\s-*\\[?\\([[:alnum:]_$\.]+\\)?\\]?"  ; name
-          "\\>")
+          "\\_>")
   "Matches jsdoc tags with optional type and optional param name.")
 
 (defconst js2-jsdoc-typed-tag-regexp
@@ -11044,7 +11044,7 @@ and comments have been removed."
   (and (looking-at js2-indent-operator-re)
        (or (not (looking-at ":"))
            (save-excursion
-             (and (js2-re-search-backward "[?:{]\\|\\<case\\>" nil t)
+             (and (js2-re-search-backward "[?:{]\\|\\_<case\\_>" nil t)
                   (looking-at "?"))))))
 
 (defun js2-continued-expression-p ()
@@ -11073,20 +11073,20 @@ spanning several lines requires that the start of the loop is
 indented to the same column as the current line."
   (interactive)
   (save-excursion
-    (when (looking-at "\\s-*\\<while\\>")
+    (when (looking-at "\\s-*\\_<while\\_>")
       (if (save-excursion
             (skip-chars-backward "[ \t\n]*}")
             (looking-at "[ \t\n]*}"))
           (save-excursion
-            (backward-list) (backward-word 1) (looking-at "\\<do\\>"))
-        (js2-re-search-backward "\\<do\\>" (point-at-bol) t)
-        (or (looking-at "\\<do\\>")
+            (backward-list) (backward-word 1) (looking-at "\\_<do\\_>"))
+        (js2-re-search-backward "\\_<do\\_>" (point-at-bol) t)
+        (or (looking-at "\\_<do\\_>")
             (let ((saved-indent (current-indentation)))
-              (while (and (js2-re-search-backward "^[ \t]*\\<" nil t)
+              (while (and (js2-re-search-backward "^[ \t]*\\_<" nil t)
                           (/= (current-indentation) saved-indent)))
-              (and (looking-at "[ \t]*\\<do\\>")
+              (and (looking-at "[ \t]*\\_<do\\_>")
                    (not (js2-re-search-forward
-                         "\\<while\\>" (point-at-eol) t))
+                         "\\_<while\\_>" (point-at-eol) t))
                    (= (current-indentation) saved-indent))))))))
 
 (defun js2-multiline-decl-indentation ()
@@ -11224,8 +11224,8 @@ indentation is aligned to that column."
     (let* ((ctrl-stmt-indent (js2-ctrl-statement-indentation))
            (at-closing-bracket (looking-at "[]})]"))
            (same-indent-p (or at-closing-bracket
-                              (looking-at "\\<case\\>[^:]")
-                              (and (looking-at "\\<default:")
+                              (looking-at "\\_<case\\_>[^:]")
+                              (and (looking-at "\\_<default:")
                                    (save-excursion
                                      (js2-backward-sws)
                                      (not (memq (char-before) '(?, ?{)))))))
@@ -11542,22 +11542,21 @@ If so, we don't ever want to use bounce-indent."
                               (point))))
     ;; Don't touch multiline strings.
     (unless (nth 3 parse-status)
-      (js2-with-underscore-as-word-syntax
-        (if (nth 4 parse-status)
-            (js2-lineup-comment parse-status)
-          (setq indent-col (js2-proper-indentation parse-status))
-          ;; See comments below about `js2-mode-last-indented-line'.
-          (cond
-           ;; bounce-indenting is disabled during electric-key indent.
-           ;; It doesn't work well on first line of buffer.
-           ((and js2-bounce-indent-p
-                 (not (js2-same-line (point-min)))
-                 (not (js2-1-line-comment-continuation-p)))
-            (js2-bounce-indent indent-col parse-status bounce-backwards))
-           ;; just indent to the guesser's likely spot
-           (t (indent-line-to indent-col))))
-        (when (cl-plusp offset)
-          (forward-char offset))))))
+      (if (nth 4 parse-status)
+          (js2-lineup-comment parse-status)
+        (setq indent-col (js2-proper-indentation parse-status))
+        ;; See comments below about `js2-mode-last-indented-line'.
+        (cond
+         ;; bounce-indenting is disabled during electric-key indent.
+         ;; It doesn't work well on first line of buffer.
+         ((and js2-bounce-indent-p
+               (not (js2-same-line (point-min)))
+               (not (js2-1-line-comment-continuation-p)))
+          (js2-bounce-indent indent-col parse-status bounce-backwards))
+         ;; just indent to the guesser's likely spot
+         (t (indent-line-to indent-col))))
+      (when (cl-plusp offset)
+        (forward-char offset)))))
 
 (defun js2-indent-region (start end)
   "Indent the region, but don't use bounce indenting."
@@ -12668,17 +12667,15 @@ destroying the region selection."
   "Replacement for `find-tag-default'.
 `find-tag-default' returns a ridiculous answer inside comments."
   (let (beg end)
-    (js2-with-underscore-as-word-syntax
-      (save-excursion
-        (if (and (not (looking-at "[[:alnum:]_$]"))
-                 (looking-back "[[:alnum:]_$]"))
-            (setq beg (progn (forward-word -1) (point))
-                  end (progn (forward-word 1) (point)))
-          (setq beg (progn (forward-word 1) (point))
-                end (progn (forward-word -1) (point))))
-        (replace-regexp-in-string
-         "[\"']" ""
-         (buffer-substring-no-properties beg end))))))
+    (save-excursion
+      (if (looking-at "\\_>")
+          (setq beg (progn (forward-symbol -1) (point))
+                end (progn (forward-symbol 1) (point)))
+        (setq beg (progn (forward-symbol 1) (point))
+              end (progn (forward-symbol -1) (point))))
+      (replace-regexp-in-string
+       "[\"']" ""
+       (buffer-substring-no-properties beg end)))))
 
 (defun js2-mode-forward-sibling ()
   "Move to the end of the sibling following point in parent.
