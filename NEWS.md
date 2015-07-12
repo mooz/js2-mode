@@ -1,7 +1,8 @@
 # History of user-visible changes
 
-## Next
+## 20150713
 
+* More comprehensive strict mode warnings and syntax errors.
 * New minor mode: `js2-highlight-unused-variables-mode`.
 * `js2-pretty-multiline-declarations` can take the value `dynamic` now.
 
