@@ -1,5 +1,3 @@
-# https://github.com/rolandwalker/emacs-travis
-
 language: emacs-lisp
 
 sudo: false
