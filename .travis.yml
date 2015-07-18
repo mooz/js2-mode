@@ -24,4 +24,4 @@ matrix:
             - emacs-snapshot-gtk
 
 script:
-  make test
+  make test EMACS=${EMACS}
