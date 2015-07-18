@@ -87,14 +87,7 @@
 
 (require 'cl-lib)
 (require 'imenu)
-(require 'cc-cmds)  ; for `c-fill-paragraph'
 (require 'js)
-
-(eval-and-compile
-  (require 'cc-mode)     ; (only) for `c-populate-syntax-table'
-  (require 'cc-engine))  ; for `c-paragraph-start' et. al.
-
-(defvar electric-layout-rules)
 
 (eval-and-compile
   (if (version< emacs-version "25.0")
@@ -1222,32 +1215,6 @@ First match-group is the leading whitespace.")
 (js2-deflocal js2-mode-deferred-properties nil "Private variable")
 (js2-deflocal js2-imenu-recorder nil "Private variable")
 (js2-deflocal js2-imenu-function-map nil "Private variable")
-
-(defvar js2-paragraph-start
-  "\\(@[[:alpha:]]+\\>\\|$\\)")
-
-;; Note that we also set a 'c-in-sws text property in html comments,
-;; so that `c-forward-sws' and `c-backward-sws' work properly.
-(defvar js2-syntactic-ws-start
-  "\\s \\|/[*/]\\|[\n\r]\\|\\\\[\n\r]\\|\\s!\\|<!--\\|^\\s-*-->")
-
-(defvar js2-syntactic-ws-end
-  "\\s \\|[\n\r/]\\|\\s!")
-
-(defvar js2-syntactic-eol
-  (concat "\\s *\\(/\\*[^*\n\r]*"
-          "\\(\\*+[^*\n\r/][^*\n\r]*\\)*"
-          "\\*+/\\s *\\)*"
-          "\\(//\\|/\\*[^*\n\r]*"
-          "\\(\\*+[^*\n\r/][^*\n\r]*\\)*$"
-          "\\|\\\\$\\|$\\)")
-  "Copied from `java-mode'.  Needed for some cc-engine functions.")
-
-(defvar js2-comment-prefix-regexp
-  "//+\\|\\**")
-
-(defvar js2-comment-start-skip
-  "\\(//+\\|/\\*+\\)\\s *")
 
 (defvar js2-mode-verbose-parse-p js2-mode-dev-mode-p
   "Non-nil to emit status messages during parsing.")
@@ -11309,19 +11276,14 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (message msg))))))
 
 ;;;###autoload
-(define-derived-mode js2-mode prog-mode "Javascript-IDE"
-  ;; FIXME: Should derive from js-mode.
+(define-derived-mode js2-mode js-mode "Javascript-IDE"
   "Major mode for editing JavaScript code."
   ;; Used by comment-region; don't change it.
-  (set (make-local-variable 'comment-start) "//")
-  (set (make-local-variable 'comment-end) "")
-  (set (make-local-variable 'comment-start-skip) js2-comment-start-skip)
   (set (make-local-variable 'max-lisp-eval-depth)
        (max max-lisp-eval-depth 3000))
-  (when (fboundp 'js2-indent-line)
-    (set (make-local-variable 'indent-line-function) #'js2-indent-line))
+  (set (make-local-variable 'indent-line-function) #'js2-indent-line)
   (set (make-local-variable 'indent-region-function) #'js2-indent-region)
-  (set (make-local-variable 'fill-paragraph-function) #'c-fill-paragraph)
+  (set (make-local-variable 'syntax-propertize-function) nil)
   (set (make-local-variable 'comment-line-break-function) #'js2-line-break)
   (set (make-local-variable 'beginning-of-defun-function) #'js2-beginning-of-defun)
   (set (make-local-variable 'end-of-defun-function) #'js2-end-of-defun)
@@ -11332,30 +11294,6 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (set (make-local-variable 'parse-sexp-ignore-comments) t)
   ;; needed for M-x rgrep, among other things
   (put 'js2-mode 'find-tag-default-function #'js2-mode-find-tag)
-
-  (set (make-local-variable 'electric-indent-chars)
-       (append "{}()[]:;,*." electric-indent-chars))
-  (set (make-local-variable 'electric-layout-rules)
-       '((?\; . after) (?\{ . after) (?\} . before)))
-
-  ;; some variables needed by cc-engine for paragraph-fill, etc.
-  (setq c-comment-prefix-regexp js2-comment-prefix-regexp
-        c-comment-start-regexp "/[*/]\\|\\s|"
-        c-line-comment-starter "//"
-        c-paragraph-start js2-paragraph-start
-        c-paragraph-separate "$"
-        c-syntactic-ws-start js2-syntactic-ws-start
-        c-syntactic-ws-end js2-syntactic-ws-end
-        c-syntactic-eol js2-syntactic-eol)
-
-  (let ((c-buffer-is-cc-mode t))
-    ;; Copied from `js-mode'.  Also see Bug#6071.
-    (make-local-variable 'paragraph-start)
-    (make-local-variable 'paragraph-separate)
-    (make-local-variable 'paragraph-ignore-fill-prefix)
-    (make-local-variable 'adaptive-fill-mode)
-    (make-local-variable 'adaptive-fill-regexp)
-    (c-setup-paragraph-variables))
 
   (setq font-lock-defaults '(nil t))
 
