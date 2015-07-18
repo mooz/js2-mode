@@ -9,21 +9,20 @@ addons:
     sources:
       - cassou-emacs
 
-env:
-  matrix:
-    - env: EMACS=emacs24
-      addons:
-        apt:
-          packages:
-            - emacs24
-            - emacs24-el
-    - env: EMACS=emacs-snapshot
-      addons:
-        apt:
-          packages:
-            - emacs-snapshot
-            - emacs-snapshot-el
-            - emacs-snapshot-gtk
+matrix:
+  - env: EMACS=emacs24
+    addons:
+      apt:
+        packages:
+          - emacs24
+          - emacs24-el
+   - env: EMACS=emacs-snapshot
+     addons:
+       apt:
+         packages:
+           - emacs-snapshot
+           - emacs-snapshot-el
+           - emacs-snapshot-gtk
 
 script:
   make test EMACS=${EMACS}
