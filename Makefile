@@ -22,5 +22,5 @@ js2-imenu-extras.elc: js2-mode.elc
 	${EMACS} $(BATCHFLAGS) -l ./js2-mode.elc -f batch-byte-compile $*.el
 
 test:
-	${EMACS} $(BATCHFLAGS) -l js2-mode.el -l tests/parser.el\
+	${EMACS} $(BATCHFLAGS) -l js2-mode.el -l js2-old-indent.el -l tests/parser.el\
 	  -l tests/indent.el -l tests/externs.el -f ert-run-tests-batch-and-exit

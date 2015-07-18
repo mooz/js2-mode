@@ -22,6 +22,7 @@
 (require 'ert)
 (require 'js2-mode)
 (require 'cl-lib)
+(require 'js2-old-indent)
 
 (defun js2-test-indent (content keep-indent)
   (let ((s (replace-regexp-in-string "^ *|" "" content)))
