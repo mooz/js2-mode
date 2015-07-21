@@ -396,7 +396,7 @@ indentation is aligned to that column."
   (save-excursion
     (back-to-indentation)
     (when (nth 4 parse-status)
-      (cl-return (js2-lineup-comment parse-status)))
+      (cl-return-from js2-proper-indentation (js2--comment-indent parse-status)))
     (let* ((at-closing-bracket (looking-at "[]})]"))
            (same-indent-p (or at-closing-bracket
                               (looking-at "\\_<case\\_>[^:]")
@@ -458,17 +458,13 @@ indentation is aligned to that column."
 
        (t 0)))))
 
-(defun js2-lineup-comment (parse-status)
-  "Indent a multi-line block comment continuation line."
-  (let* ((beg (nth 8 parse-status))
-         (first-line (js2-same-line beg))
-         (offset (save-excursion
-                   (goto-char beg)
-                   (if (looking-at "/\\*")
-                       (+ 1 (current-column))
-                     0))))
-    (unless first-line
-      (indent-line-to offset))))
+(defun js2--comment-indent (parse-status)
+  "Indentation inside a multi-line block comment continuation line."
+  (save-excursion
+    (goto-char (nth 8 parse-status))
+    (if (looking-at "/\\*")
+        (+ 1 (current-column))
+      0)))
 
 (defun js2-indent-line (&optional bounce-backwards)
   "Indent the current line as JavaScript source text."
