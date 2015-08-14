@@ -94,7 +94,8 @@
       (require 'js2-old-indent)
     (defvaralias 'js2-basic-offset 'js-indent-level nil)
     (defalias 'js2-proper-indentation 'js--proper-indentation)
-    (defalias 'js2-indent-line 'js-indent-line)))
+    (defalias 'js2-indent-line 'js-indent-line)
+    (defalias 'js2-re-search-forward 'js--re-search-forward)))
 
 ;;; Externs (variables presumed to be defined by the host system)
 
