@@ -226,12 +226,10 @@ the test."
   "function foo(a = 1, b = a + 1) {\n}")
 
 (js2-deftest-parse function-with-no-default-after-default
-  "function foo(a = 1, b) {\n}"
-  :syntax-error "b")
+  "function foo(a = 1, b) {\n}")
 
 (js2-deftest-parse function-with-destruct-after-default
-  "function foo(a = 1, {b, c}) {\n}"
-  :syntax-error "{")
+  "function foo(a = 1, {b, c}) {\n}")
 
 (js2-deftest-parse function-with-rest-parameter
   "function foo(a, b, ...rest) {\n}")

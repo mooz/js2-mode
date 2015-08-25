@@ -8041,7 +8041,7 @@ represented by FN-NODE at POS."
                                  (eq (js2-current-token-type) js2-NAME)))
           params param
           param-name-nodes new-param-name-nodes
-          default-found rest-param-at)
+          rest-param-at)
       (when paren-free-arrow
         (js2-unget-token))
       (cl-loop for tt = (js2-peek-token)
@@ -8051,8 +8051,6 @@ represented by FN-NODE at POS."
                 ((and (not paren-free-arrow)
                       (or (= tt js2-LB) (= tt js2-LC)))
                  (js2-get-token)
-                 (when default-found
-                   (js2-report-error "msg.no.default.after.default.param"))
                  (setq param (js2-parse-destruct-primary-expr)
                        new-param-name-nodes (js2-define-destruct-symbols
                                              param js2-LP 'js2-function-param))
@@ -8074,14 +8072,8 @@ represented by FN-NODE at POS."
                  (js2-check-strict-function-params param-name-nodes (list param))
                  (setq param-name-nodes (append param-name-nodes (list param)))
                  ;; default parameter value
-                 (when (or (and default-found
-                                (not rest-param-at)
-                                (js2-must-match js2-ASSIGN
-                                                "msg.no.default.after.default.param"
-                                                (js2-node-pos param)
-                                                (js2-node-len param)))
-                           (and (>= js2-language-version 200)
-                                (js2-match-token js2-ASSIGN)))
+                 (when (and (>= js2-language-version 200)
+                            (js2-match-token js2-ASSIGN))
                    (cl-assert (not paren-free-arrow))
                    (let* ((pos (js2-node-pos param))
                           (tt (js2-current-token-type))
@@ -8091,8 +8083,7 @@ represented by FN-NODE at POS."
                           (len (- (js2-node-end right) pos)))
                      (setq param (make-js2-assign-node
                                   :type tt :pos pos :len len :op-pos op-pos
-                                  :left left :right right)
-                           default-found t)
+                                  :left left :right right))
                      (js2-node-add-children param left right)))
                  (push param params)))
                (when (and rest-param-at (> (length params) (1+ rest-param-at)))
