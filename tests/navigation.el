@@ -22,13 +22,15 @@
 (require 'ert)
 (require 'js2-mode)
 
-(cl-defun js2-navigation-helper (buffer-content expected-point &optional (point-offset 1))
+(cl-defun js2-navigation-helper (buffer-content &optional expected-point (point-offset 1))
   (with-temp-buffer
     (insert buffer-content)
-    (js2-mode)
-    (goto-char (or (- (point) point-offset)))
-    (js2-jump-to-definition)
-    (should (= (point) expected-point))))
+    (let ((start-point (or (- (point) point-offset))))
+      (js2-mode)
+      (goto-char start-point)
+      (js2-jump-to-definition)
+      (print (format "%d %d" (point) start-point))
+      (should (= (point) (or expected-point start-point))))))
 
 (ert-deftest js2-jump-to-var ()
   (js2-navigation-helper "var soup = 2; soup" 5))
@@ -41,3 +43,6 @@
 
 (ert-deftest js2-jump-to-object-property ()
   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; aObject.prop1" 16))
+
+;; (ert-deftest js2-jump-to-object-property ()
+;;   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; anotherObject.dprop1"))

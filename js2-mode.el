@@ -12354,16 +12354,14 @@ Supports navigation to 'foo.bar = 3' and 'foo = {bar: 3}'."
        (let ((parent (js2-node-parent node))
              matching-node)
          (unless endp
-           (if (or (and (js2-prop-get-node-p node)
-		     (not (or (js2-elem-get-node-p parent) (js2-call-node-p parent)))
-		     (setq matching-node (js2-build-prop-name-list node list-names)))
-		  (and (js2-name-node-p node)
-		     (js2-object-prop-node-p parent)
-		     (string= (js2-name-node-name node)
-			      (first list-names))))
+           (if (and (js2-name-node-p node)(setq matching-node (or
+                (js2-build-prop-name-list node list-names)
+                  (and (js2-object-prop-node-p parent)
+	             (string= (js2-name-node-name node)
+	                      (first list-names))
+                     node))))
                (throw 'prop-found matching-node))
            t))))))
-
 
 (defun js2-name-declaration (name)
   "Return the declaration node for node named NAME."
@@ -12392,22 +12390,21 @@ the function."
         node
       (js2-node-get-enclosing-scope node))))
 
-(defun js2-build-prop-name-list (prop-node list-names)
-  "Compare the names in PROP-NODE to the ones in LIST-NAMES.
+(defun js2-build-prop-name-list (name-node list-names)
+  "Compare the names in NAME-NODE to the ones in LIST-NAMES.
 Returns the matching node to jump to or nil."
-  (let* (temp-node
-         match-node)
-    (unless (js2-prop-get-node-p prop-node)
-      (error "Node is not a property prop-node"))
-    (catch 'not-a-match
-      (while (js2-prop-get-node-p prop-node)
-        (setq temp-node (js2-prop-get-node-right prop-node))
-        (unless (string= (car list-names) (js2-name-node-name temp-node))
-          (throw 'not-a-match match-node))
-        (unless match-node
-          (setq match-node temp-node))
-        (pop list-names)
-        (setq prop-node (js2-node-parent prop-node))))))
+  (let ((list-names (reverse list-names))
+        (next-prop (js2-node-parent name-node)))
+    ;; check right side properties
+    (when (string= (pop list-names)
+                   (js2-name-node-name name-node))
+      ;; check left side properties
+      (while (and list-names
+                (js2-prop-get-node-p next-prop)
+                (string= (pop list-names)
+                         (js2-name-node-name
+                          (setq next-prop (js2-prop-get-node-right next-prop)))))))
+    (unless list-names name-node)))
 
 (defun js2-get-function-node (name scope)
   "Return node of function named NAME in SCOPE."
