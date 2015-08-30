@@ -12299,41 +12299,57 @@ it marks the next defun after the ones already marked."
     (unless (js2-ast-root-p fn)
       (narrow-to-region beg (+ beg (js2-node-len fn))))))
 
-(defun js2-jump-to-definition ()
+(defun js2-jump-to-definition (&optional arg)
   "Jump to the definition of an object's property, variable or function."
-  (interactive)
+  (interactive "P")
   (ring-insert find-tag-marker-ring (point-marker))
   (let* ((node (js2-node-at-point))
          (parent (js2-node-parent node))
-         (prop-names (if (js2-prop-get-node-p parent)(reverse (js2-prop-names-left node))))
-         (name (or (and prop-names (pop prop-names))
-                  (unless (and (js2-object-prop-node-p parent)
-                    (eq node (js2-object-prop-node-left parent)))
-                    (js2-name-node-name node))
-                  (error "Node is not a supported jump node")))
+         (names (if (js2-prop-get-node-p parent)(reverse (js2-prop-names-left node))))
          node-init)
-    (ignore-errors
-      (setq node-init (js2-symbol-ast-node (js2-get-symbol-declaration node name)))
-      (when prop-names
-        (let ((found-node (js2-var-init-node-initializer (js2-node-parent node-init))))
-          (setq node-init nil)
-          (when (js2-object-node-p found-node)
-            (js2-visit-ast
-             found-node
-             (lambda (node endp)
-               (unless endp
-                 (when (and (js2-object-prop-node-p node)
-                          (string= (car prop-names)
-                                   (js2-name-node-name (js2-object-prop-node-left node))))
-                   (pop prop-names)
-                   (unless prop-names (setq node-init node)))
-                 t)))))))
+    (push (or (and names (pop names))
+             (unless (and (js2-object-prop-node-p parent)
+                        (eq node (js2-object-prop-node-left parent)))
+               (js2-name-node-name node))
+             (error "Node is not a supported jump node")) names)
+    (setq node-init (js2-search-scope node names))
+    (unless node-init
+      (switch-to-buffer (catch 'found
+                          (unless arg
+                            (mapc (lambda (b) (if (derived-mode-p 'js2-mode)
+                                             (with-current-buffer b
+                                               (setq node-init (js2-search-scope js2-mode-ast names))
+                                               (if node-init
+                                                   (throw 'found b)))))
+                                  (buffer-list)))
+                          nil)))
     (unless node-init
       (pop-tag-mark)
       (error "No jump location found"))
     (goto-char (js2-node-abs-pos node-init))))
 
-(defun js2-prop-names-left (name-node)
+(defun js2-search-scope (scope names)
+  "Searches SCOPE for jump location in NAMES."
+  (let (node-init)
+    (ignore-errors
+    (setq node-init (js2-symbol-ast-node (js2-get-symbol-declaration scope (pop names))))
+    (when names
+      (let ((found-node (js2-var-init-node-initializer (js2-node-parent node-init))))
+        (setq node-init nil)
+        (when (js2-object-node-p found-node)
+          (js2-visit-ast
+           found-node
+           (lambda (node endp)
+             (unless endp
+               (when (and (js2-object-prop-node-p node)
+                        (string= (car names)
+                                 (js2-name-node-name (js2-object-prop-node-left node))))
+                 (pop names)
+                 (unless names (setq node-init node)))
+               t)))))))
+    node-init))
+
+(defun js2-names-left (name-node)
   "Create a list of all of the names in the property NAME-NODE.
 NAME-NODE must have a js2-prop-get-node as parent.  Only adds
 properties to the left of point.  This is so individual jump
