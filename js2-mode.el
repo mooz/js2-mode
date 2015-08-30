@@ -12312,8 +12312,8 @@ it marks the next defun after the ones already marked."
                    (js2-name-node-name node)
                  (error "Node is not a supported jump node")))
          (node-init (if (and prop-names (listp prop-names))
-                         (js2-find-property prop-names)
-                      (js2-name-declaration name))))
+                         (js2-find-property prop-names node)
+                      (js2-symbol-ast-node (js2-get-symbol-declaration node name)))))
     (unless node-init
       (pop-tag-mark)
       (error "No jump location found"))
@@ -12344,51 +12344,34 @@ points can be found for each property in the chain."
              t))))
       names)))
 
-(defun js2-find-property (list-names)
+(defun js2-get-symbol-declaration (node name)
+  "Find definition for NAME from NODE."
+  (js2-scope-get-symbol (js2-get-defining-scope
+                         (or (js2-node-get-enclosing-scope node)
+                            node) name) name))
+
+(defun js2-find-property (list-names node)
   "Find the property definition that consists of LIST-NAMES.
-Supports navigation to 'foo.bar = 3' and 'foo = {bar: 3}'."
+Supports navigation to 'foo.bar = 3' and 'foo = {bar: 3}'. NODE
+is the node at point."
   (catch 'prop-found
     (js2-visit-ast-root
-     js2-mode-ast
+     js2-mode-ast                       ; todo: check for scope
      (lambda (node endp)
        (let ((parent (js2-node-parent node))
              matching-node)
          (unless endp
-           (if (and (js2-name-node-p node)(setq matching-node (or
-                (js2-build-prop-name-list node list-names)
-                  (and (js2-object-prop-node-p parent)
-	             (string= (js2-name-node-name node)
-	                      (first list-names))
-                     node))))
+           (if (and (js2-name-node-p node)
+                  (setq matching-node (or
+                                       (js2-build-prop-name-list node list-names)
+                                       (and (js2-object-prop-node-p parent)
+                                          (string= (js2-name-node-name node)
+                                                   (first list-names))
+                                          node))))
                (throw 'prop-found matching-node))
-           t))))))
-
-(defun js2-name-declaration (name)
-  "Return the declaration node for node named NAME."
-  (let* ((node (js2-root-or-node))
-         (scope-def (js2-get-defining-scope node name))
-         (scope (if scope-def (js2-scope-get-symbol scope-def name) nil))
-         (symbol (if scope (js2-symbol-ast-node scope) nil)))
-    (if (not symbol)
-        (js2-get-function-node name scope-def)
-      symbol)))
-
-(defun js2-get-function-name (fn-node)
-  "Return the name of the function FN-NODE.
-Value may be either function name or the variable name that holds
-the function."
-  (let ((parent (js2-node-parent fn-node)))
-    (if (js2-function-node-p fn-node)
-        (or (js2-function-name fn-node)
-	   (if (js2-var-init-node-p parent)
-	       (js2-name-node-name (js2-var-init-node-target parent)))))))
-
-(defun js2-root-or-node ()
-  "Return the current node or js2-ast-root node."
-  (let ((node (js2-node-at-point)))
-    (if (js2-ast-root-p node)
-        node
-      (js2-node-get-enclosing-scope node))))
+           t))
+       )))
+  )
 
 (defun js2-build-prop-name-list (name-node list-names)
   "Compare the names in NAME-NODE to the ones in LIST-NAMES.
@@ -12405,18 +12388,6 @@ Returns the matching node to jump to or nil."
                          (js2-name-node-name
                           (setq next-prop (js2-prop-get-node-right next-prop)))))))
     (unless list-names name-node)))
-
-(defun js2-get-function-node (name scope)
-  "Return node of function named NAME in SCOPE."
-  (catch 'function-found
-    (js2-visit-ast
-     scope
-     (lambda (node end-p)
-       (when (and (not end-p)
-		(string= name (js2-get-function-name node)))
-         (throw 'function-found node))
-       t))
-    nil))
 
 (provide 'js2-mode)
 
