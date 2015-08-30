@@ -12305,15 +12305,29 @@ it marks the next defun after the ones already marked."
   (ring-insert find-tag-marker-ring (point-marker))
   (let* ((node (js2-node-at-point))
          (parent (js2-node-parent node))
-         (prop-names (if (js2-prop-get-node-p parent)
-                         (js2-prop-names-left node)))
-         (name (if (and (js2-name-node-p node)
-		      (not (js2-object-prop-node-p parent)))
-                   (js2-name-node-name node)
-                 (error "Node is not a supported jump node")))
-         (node-init (if (and prop-names (listp prop-names))
-                         (js2-find-property prop-names node)
-                      (js2-symbol-ast-node (js2-get-symbol-declaration node name)))))
+         (prop-names (if (js2-prop-get-node-p parent)(reverse (js2-prop-names-left node))))
+         (name (or (and prop-names (pop prop-names))
+                  (unless (and (js2-object-prop-node-p parent)
+                    (eq node (js2-object-prop-node-left parent)))
+                    (js2-name-node-name node))
+                  (error "Node is not a supported jump node")))
+         node-init)
+    (ignore-errors
+      (setq node-init (js2-symbol-ast-node (js2-get-symbol-declaration node name)))
+      (when prop-names
+        (let ((found-node (js2-var-init-node-initializer (js2-node-parent node-init))))
+          (setq node-init nil)
+          (when (js2-object-node-p found-node)
+            (js2-visit-ast
+             found-node
+             (lambda (node endp)
+               (unless endp
+                 (when (and (js2-object-prop-node-p node)
+                          (string= (car prop-names)
+                                   (js2-name-node-name (js2-object-prop-node-left node))))
+                   (pop prop-names)
+                   (unless prop-names (setq node-init node)))
+                 t)))))))
     (unless node-init
       (pop-tag-mark)
       (error "No jump location found"))
@@ -12342,52 +12356,14 @@ points can be found for each property in the chain."
            (if (js2-name-node-p node)
                (push (js2-name-node-name node) names)
              t))))
-      names)))
+      names)
+    (if (listp names) names (list names))))
 
 (defun js2-get-symbol-declaration (node name)
   "Find definition for NAME from NODE."
   (js2-scope-get-symbol (js2-get-defining-scope
                          (or (js2-node-get-enclosing-scope node)
                             node) name) name))
-
-(defun js2-find-property (list-names node)
-  "Find the property definition that consists of LIST-NAMES.
-Supports navigation to 'foo.bar = 3' and 'foo = {bar: 3}'. NODE
-is the node at point."
-  (catch 'prop-found
-    (js2-visit-ast-root
-     js2-mode-ast                       ; todo: check for scope
-     (lambda (node endp)
-       (let ((parent (js2-node-parent node))
-             matching-node)
-         (unless endp
-           (if (and (js2-name-node-p node)
-                  (setq matching-node (or
-                                       (js2-build-prop-name-list node list-names)
-                                       (and (js2-object-prop-node-p parent)
-                                          (string= (js2-name-node-name node)
-                                                   (first list-names))
-                                          node))))
-               (throw 'prop-found matching-node))
-           t))
-       )))
-  )
-
-(defun js2-build-prop-name-list (name-node list-names)
-  "Compare the names in NAME-NODE to the ones in LIST-NAMES.
-Returns the matching node to jump to or nil."
-  (let ((list-names (reverse list-names))
-        (next-prop (js2-node-parent name-node)))
-    ;; check right side properties
-    (when (string= (pop list-names)
-                   (js2-name-node-name name-node))
-      ;; check left side properties
-      (while (and list-names
-                (js2-prop-get-node-p next-prop)
-                (string= (pop list-names)
-                         (js2-name-node-name
-                          (setq next-prop (js2-prop-get-node-right next-prop)))))))
-    (unless list-names name-node)))
 
 (provide 'js2-mode)
 

@@ -28,7 +28,7 @@
     (let ((start-point (or (- (point) point-offset))))
       (js2-mode)
       (goto-char start-point)
-      (js2-jump-to-definition)
+      (ignore-errors (js2-jump-to-definition))
       (print (format "%d %d" (point) start-point))
       (should (= (point) (or expected-point start-point))))))
 
@@ -44,5 +44,11 @@
 (ert-deftest js2-jump-to-object-property ()
   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; aObject.prop1" 16))
 
-;; (ert-deftest js2-no-jump-to-object-property ()
-;;   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; anotherObject.dprop1"))
+(ert-deftest js2-no-jump-to-object-property ()
+  (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; anotherObject.prop1"))
+
+(ert-deftest js2-jump-to-nested-property ()
+  (js2-navigation-helper "var aObject = {prop1: {prop2: { prop3: 4}}}; aObject.prop3" 33))
+
+(ert-deftest js2-jump-to-object ()
+  (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; aObject.prop1" 5 13))
