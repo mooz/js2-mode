@@ -48,7 +48,13 @@
   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; anotherObject.prop1"))
 
 (ert-deftest js2-jump-to-nested-property ()
-  (js2-navigation-helper "var aObject = {prop1: {prop2: { prop3: 4}}}; aObject.prop3" 33))
+  (js2-navigation-helper "var aObject = {prop1: {prop2: { prop3: 4}}}; aObject.prop1.prop2.prop3" 33))
 
 (ert-deftest js2-jump-to-object ()
   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; aObject.prop1" 5 13))
+
+(ert-deftest js2-jump-to-property ()
+  (js2-navigation-helper "aObject.func = functon(){};aObject.func" 9))
+
+(ert-deftest js2-jump-to-property-object-property ()
+  (js2-navigation-helper "aObject.value = {prop:1};aObject.value.prop" 18))

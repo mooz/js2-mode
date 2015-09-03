@@ -12305,61 +12305,129 @@ it marks the next defun after the ones already marked."
   (ring-insert find-tag-marker-ring (point-marker))
   (let* ((node (js2-node-at-point))
          (parent (js2-node-parent node))
-         (names (if (js2-prop-get-node-p parent)(reverse (js2-prop-names-left node))))
+         (names (if (js2-prop-get-node-p parent)(reverse (js2-names-left node))))
          node-init)
+    (unless (js2-name-node-p node)
+      (error "Node is not a supported jump node"))
     (push (or (and names (pop names))
              (unless (and (js2-object-prop-node-p parent)
                         (eq node (js2-object-prop-node-left parent)))
-               (js2-name-node-name node))
-             (error "Node is not a supported jump node")) names)
+               (js2-name-node-name node))) names)
     (setq node-init (js2-search-scope node names))
+
+    ;; todo: display list of results in buffer
+    ;; todo: group found references by buffer
     (unless node-init
-      (switch-to-buffer (catch 'found
-                          (unless arg
-                            (mapc (lambda (b) (if (derived-mode-p 'js2-mode)
-                                             (with-current-buffer b
-                                               (setq node-init (js2-search-scope js2-mode-ast names))
-                                               (if node-init
-                                                   (throw 'found b)))))
-                                  (buffer-list)))
-                          nil)))
+      (switch-to-buffer
+       (catch 'found
+         (unless arg
+           (mapc (lambda (b)
+                   (with-current-buffer b
+                     (when (derived-mode-p 'js2-mode)
+                       (setq node-init (js2-search-scope js2-mode-ast names))
+                       (if node-init
+                           (throw 'found b)))))
+                 (buffer-list)))
+         nil)))
+    (setq node-init (if (listp node-init) (first node-init) node-init))
     (unless node-init
       (pop-tag-mark)
       (error "No jump location found"))
     (goto-char (js2-node-abs-pos node-init))))
 
-(defun js2-search-scope (scope names)
+(defun js2-build-prop-name-list (prop-node)
+  "Build a list of names from a PROP-NODE."
+  (let* (names
+         left
+         left-node)
+    (unless (js2-prop-get-node-p prop-node)
+      (error "Node is not a property prop-node"))
+    (while (js2-prop-get-node-p prop-node)
+      (let ((node (js2-prop-get-node-right prop-node)))
+        (push `(,(js2-name-node-name node) . ,node) names)
+        (setq left-node (js2-prop-get-node-left prop-node))
+        (when (js2-name-node-p left-node)
+          (setq left `(,(js2-name-node-name left-node) . ,left-node)))
+        (setq prop-node left-node)))
+    (push left names)))
+
+(defun js2-search-object (node name)
+  "Check if object NODE contains element with NAME."
+  (unless (js2-object-node-p node)
+    (error "Only run depth search on `js2-object-node'"))
+  ;; Only support name and nodes for the time being
+  (cl-loop for elem in (js2-object-node-elems node)
+           for left = (js2-object-prop-node-left elem)
+           if (or (and (js2-name-node-p left)
+                    (string= name (js2-name-node-name left)))
+                 (and (js2-string-node-p left)
+                    (string= name (js2-string-node-value left))))
+           return elem))
+
+(defun js2-search-object-for-prop (object prop-names)
+  "Return node in OBJECT that matches PROP-NAMES or nil.
+PROP-NAMES is a list of values representing a path to a value in OBJECT.
+i.e. ('name' 'value') = {name : { value: 3}}"
+  (let (node
+        (temp-object object)
+        (temp t) ;temporay node
+        (names prop-names))
+    (while (and temp names (js2-object-node-p temp-object))
+      (setq temp (js2-search-object temp-object (pop names)))
+      (and (setq node temp)
+         (setq temp-object (js2-object-prop-node-right temp) )))
+    (unless names node)))
+
+(defun js2-search-scope (node names)
   "Searches SCOPE for jump location in NAMES."
-  (let (node-init)
-    (ignore-errors
-    (setq node-init (js2-symbol-ast-node (js2-get-symbol-declaration scope (pop names))))
-    (when names
-      (let ((found-node (js2-var-init-node-initializer (js2-node-parent node-init))))
-        (setq node-init nil)
-        (when (js2-object-node-p found-node)
-          (js2-visit-ast
-           found-node
-           (lambda (node endp)
-             (unless endp
-               (when (and (js2-object-prop-node-p node)
-                        (string= (car names)
-                                 (js2-name-node-name (js2-object-prop-node-left node))))
-                 (pop names)
-                 (unless names (setq node-init node)))
-               t)))))))
+  (let (node-init
+        (val (first names)))
+    (setq node-init (js2-get-symbol-declaration node val))
+
+    (when (> (length names) 1)
+
+      ;; Check var declarations
+      (when (and node-init (string= val (js2-name-node-name node-init)))
+        (let ((parent (js2-node-parent node-init))
+              (temp-names names))
+          (pop temp-names) ;; First element is var name
+          (setq node-init (when (js2-var-init-node-p parent)
+                            (js2-search-object-for-prop (js2-var-init-node-initializer parent)
+                                                        temp-names)))))
+
+      ;; Check all assign nodes
+      (js2-visit-ast
+       js2-mode-ast
+       (lambda (node endp)
+         (unless endp
+           (if (js2-assign-node-p node)
+               (let ((left (js2-assign-node-left node))
+                     (right (js2-assign-node-right node))
+                     (temp-names names))
+                 (when (js2-prop-get-node-p left)
+                   (let* ((prop-list (js2-build-prop-name-list left))
+                          (prop-names (mapcar 'car prop-list))
+                          (found (loop for prop in prop-names
+                                       until (not (string= (pop temp-names) prop))
+                                       if (not temp-names) return prop)))
+
+                     ;; todo: clean this up!
+                     (if found (push (cdr (assoc found prop-list)) node-init)
+                       (when (js2-object-node-p right)
+                         (setq found (js2-search-object-for-prop right temp-names)))
+                       (if found (push found node-init))))))
+             t)))))
     node-init))
 
 (defun js2-names-left (name-node)
-  "Create a list of all of the names in the property NAME-NODE.
-NAME-NODE must have a js2-prop-get-node as parent.  Only adds
-properties to the left of point.  This is so individual jump
-points can be found for each property in the chain."
+"Returns a list of names for a `js2-prop-get-node'.
+NAME-NODE is a node that forms part of the `js2-prop-get-node'."
   (let* (name
          (parent (js2-node-parent name-node))
          left
          names)
-    (unless (or (js2-prop-get-node-p parent) (js2-name-node-p name-node))
-      (error "Not a name node or doesn't have a prop-get-node as parent"))
+    (unless  (js2-prop-get-node-p parent)
+      (error "Parent is not a prop-get-node"))
     (setq name (js2-name-node-name name-node)
           left (js2-prop-get-node-left parent))
     (if (and (js2-name-node-p left)
@@ -12376,10 +12444,11 @@ points can be found for each property in the chain."
     (if (listp names) names (list names))))
 
 (defun js2-get-symbol-declaration (node name)
-  "Find definition for NAME from NODE."
-  (js2-scope-get-symbol (js2-get-defining-scope
-                         (or (js2-node-get-enclosing-scope node)
-                            node) name) name))
+  "Find scope for NAME from NODE."
+  (let ((scope (js2-get-defining-scope
+          (or (js2-node-get-enclosing-scope node)
+             node) name)))
+    (if scope (js2-symbol-ast-node (js2-scope-get-symbol scope name)))))
 
 (provide 'js2-mode)
 
