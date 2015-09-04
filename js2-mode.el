@@ -12381,7 +12381,9 @@ i.e. ('name' 'value') = {name : { value: 3}}"
     (unless names node)))
 
 (defun js2-search-scope (node names)
-  "Searches SCOPE for jump location in NAMES."
+  "Searches NODE scope for jump location matching NAMES.
+NAMES is a list of property values to search for. For functions
+and variables NAMES will contain one element."
   (let (node-init
         (val (first names)))
     (setq node-init (js2-get-symbol-declaration node val))
