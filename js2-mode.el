@@ -12413,15 +12413,13 @@ and variables NAMES will contain one element."
                           (prop-names (mapcar 'car prop-list))
                           (found (loop for prop in prop-names
                                        until (not (string= (pop temp-names) prop))
-                                       if (not temp-names) return prop)))
-
-                     ;; todo: clean this up!
-                     (if found (push (cdr (assoc found prop-list)) node-init)
-                       (when (js2-object-node-p right)
-                         (setq found (js2-search-object-for-prop right temp-names)))
-                       (if found (push found node-init))))))
-             t)))))
-    node-init))
+                                       if (not temp-names) return prop))
+                          (found-node (if found (cdr (assoc found prop-list))
+                                        (when (js2-object-node-p right)
+                                          (js2-search-object-for-prop right temp-names)))))
+                     (if found-node (push found-node node-init))))))
+           t))))
+  node-init))
 
 (defun js2-names-left (name-node)
 "Returns a list of names for a `js2-prop-get-node'.
