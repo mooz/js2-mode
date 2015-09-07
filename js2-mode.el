@@ -7967,38 +7967,39 @@ Scanner should be initialized."
     pn))
 
 (defun js2-define-destruct-symbols-internal
-    (node decl-type face &optional ignore-not-in-block name-nodes)
+    (node decl-type face &optional ignore-not-in-block)
   "Internal version of `js2-define-destruct-symbols'.  The only
 difference is that NAME-NODES is passed down recursively."
-  (cond
-   ((js2-name-node-p node)
-    (let (leftpos)
-      (js2-define-symbol decl-type (js2-name-node-name node)
-                         node ignore-not-in-block)
-      (when face
-        (js2-set-face (setq leftpos (js2-node-abs-pos node))
-                      (+ leftpos (js2-node-len node))
-                      face 'record))
-      (setq name-nodes (append name-nodes (list node)))))
-   ((js2-object-node-p node)
-    (dolist (elem (js2-object-node-elems node))
-      (when (js2-object-prop-node-p elem)
-        (setq name-nodes
-              (append name-nodes
-                      (js2-define-destruct-symbols-internal
-                       ;; In abbreviated destructuring {a, b}, right == left.
-                       (js2-object-prop-node-right elem)
-                       decl-type face ignore-not-in-block name-nodes))))))
-   ((js2-array-node-p node)
-    (dolist (elem (js2-array-node-elems node))
-      (when elem
-        (setq name-nodes
-              (append name-nodes
-                      (js2-define-destruct-symbols-internal
-                       elem decl-type face ignore-not-in-block name-nodes))))))
-   (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
-                        (js2-node-len node))))
-  name-nodes)
+  (let (name-nodes)
+    (cond
+     ((js2-name-node-p node)
+      (let (leftpos)
+        (js2-define-symbol decl-type (js2-name-node-name node)
+                           node ignore-not-in-block)
+        (when face
+          (js2-set-face (setq leftpos (js2-node-abs-pos node))
+                        (+ leftpos (js2-node-len node))
+                        face 'record))
+        (setq name-nodes (list node))))
+     ((js2-object-node-p node)
+      (dolist (elem (js2-object-node-elems node))
+        (when (js2-object-prop-node-p elem)
+          (setq name-nodes
+                (append name-nodes
+                        (js2-define-destruct-symbols-internal
+                         ;; In abbreviated destructuring {a, b}, right == left.
+                         (js2-object-prop-node-right elem)
+                         decl-type face ignore-not-in-block))))))
+     ((js2-array-node-p node)
+      (dolist (elem (js2-array-node-elems node))
+        (when elem
+          (setq name-nodes
+                (append name-nodes
+                        (js2-define-destruct-symbols-internal
+                         elem decl-type face ignore-not-in-block))))))
+     (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
+                          (js2-node-len node))))
+    name-nodes))
 
 (defun js2-define-destruct-symbols (node decl-type face &optional ignore-not-in-block)
   "Declare and fontify destructuring parameters inside NODE.
