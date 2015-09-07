@@ -12368,7 +12368,7 @@ i.e. ('name' 'value') = {name : { value: 3}}"
     (while (and temp names (js2-object-node-p temp-object))
       (setq temp (js2-search-object temp-object (pop names)))
       (and (setq node temp)
-         (setq temp-object (js2-object-prop-node-right temp) )))
+         (setq temp-object (js2-object-prop-node-right temp))))
     (unless names node)))
 
 (defun js2-search-scope (node names)
