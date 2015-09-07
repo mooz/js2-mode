@@ -12307,19 +12307,19 @@ it marks the next defun after the ones already marked."
          (parent (js2-node-parent node))
          (names (if (js2-prop-get-node-p parent)
                     (reverse (let ((temp (js2-compute-nested-prop-get parent)))
-                               (loop for n in temp
-                                     with result = '()
-                                     do (push n result)
-                                     until (equal node n)
-                                     finally return result)))))
+                               (cl-loop for n in temp
+                                        with result = '()
+                                        do (push n result)
+                                        until (equal node n)
+                                        finally return result)))))
          node-init)
     (unless (and (js2-name-node-p node)
-               (not (js2-var-init-node-p parent))
-               (not (js2-function-node-p parent)))
+                 (not (js2-var-init-node-p parent))
+                 (not (js2-function-node-p parent)))
       (error "Node is not a supported jump node"))
     (push (or (and names (pop names))
-             (unless (and (js2-object-prop-node-p parent)
-                        (eq node (js2-object-prop-node-left parent)))
+              (unless (and (js2-object-prop-node-p parent)
+                           (eq node (js2-object-prop-node-left parent)))
                 node)) names)
     (setq node-init (js2-search-scope node names))
 
@@ -12337,7 +12337,7 @@ it marks the next defun after the ones already marked."
                            (throw 'found b)))))
                  (buffer-list)))
          nil)))
-    (setq node-init (if (listp node-init) (first node-init) node-init))
+    (setq node-init (if (listp node-init) (car node-init) node-init))
     (unless node-init
       (pop-tag-mark)
       (error "No jump location found"))
@@ -12351,9 +12351,11 @@ it marks the next defun after the ones already marked."
   (cl-loop for elem in (js2-object-node-elems node)
            for left = (js2-object-prop-node-left elem)
            if (or (and (js2-name-node-p left)
-                    (equal (js2-name-node-name name-node) (js2-name-node-name left)))
-                 (and (js2-string-node-p left)
-                    (string= (js2-name-node-name name-node) (js2-string-node-value left))))
+                       (equal (js2-name-node-name name-node)
+                              (js2-name-node-name left)))
+                  (and (js2-string-node-p left)
+                       (string= (js2-name-node-name name-node)
+                                (js2-string-node-value left))))
            return elem))
 
 (defun js2-search-object-for-prop (object prop-names)
@@ -12375,7 +12377,7 @@ i.e. ('name' 'value') = {name : { value: 3}}"
 NAMES is a list of property values to search for. For functions
 and variables NAMES will contain one element."
   (let (node-init
-        (val (js2-name-node-name (first names))))
+        (val (js2-name-node-name (car names))))
     (setq node-init (js2-get-symbol-declaration node val))
 
     (when (> (length names) 1)
@@ -12386,8 +12388,9 @@ and variables NAMES will contain one element."
               (temp-names names))
           (pop temp-names) ;; First element is var name
           (setq node-init (when (js2-var-init-node-p parent)
-                            (js2-search-object-for-prop (js2-var-init-node-initializer parent)
-                                                        temp-names)))))
+                            (js2-search-object-for-prop
+                             (js2-var-init-node-initializer parent)
+                             temp-names)))))
 
       ;; Check all assign nodes
       (js2-visit-ast
@@ -12400,15 +12403,18 @@ and variables NAMES will contain one element."
                      (temp-names names))
                  (when (js2-prop-get-node-p left)
                    (let* ((prop-list (js2-compute-nested-prop-get left))
-                          (found (loop for prop in prop-list
-                                       until (not (string= (js2-name-node-name (pop temp-names)) (js2-name-node-name prop)))
-                                       if (not temp-names) return prop))
+                          (found (cl-loop for prop in prop-list
+                                          until (not (string= (js2-name-node-name
+                                                               (pop temp-names))
+                                                              (js2-name-node-name prop)))
+                                          if (not temp-names) return prop))
                           (found-node (or found
-                                         (when (js2-object-node-p right)
-                                           (js2-search-object-for-prop right temp-names)))))
+                                          (when (js2-object-node-p right)
+                                            (js2-search-object-for-prop right
+                                                                        temp-names)))))
                      (if found-node (push found-node node-init))))))
            t))))
-  node-init))
+    node-init))
 
 (defun js2-get-symbol-declaration (node name)
   "Find scope for NAME from NODE."
