@@ -7982,12 +7982,13 @@ difference is that NAME-NODES is passed down recursively."
       (setq name-nodes (append name-nodes (list node)))))
    ((js2-object-node-p node)
     (dolist (elem (js2-object-node-elems node))
-      (setq name-nodes
-            (append name-nodes
-                    (js2-define-destruct-symbols-internal
-                     ;; In abbreviated destructuring {a, b}, right == left.
-                     (js2-object-prop-node-right elem)
-                     decl-type face ignore-not-in-block name-nodes)))))
+      (when (js2-object-prop-node-p elem)
+        (setq name-nodes
+              (append name-nodes
+                      (js2-define-destruct-symbols-internal
+                       ;; In abbreviated destructuring {a, b}, right == left.
+                       (js2-object-prop-node-right elem)
+                       decl-type face ignore-not-in-block name-nodes))))))
    ((js2-array-node-p node)
     (dolist (elem (js2-array-node-elems node))
       (when elem
