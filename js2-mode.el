@@ -12305,7 +12305,13 @@ it marks the next defun after the ones already marked."
   (ring-insert find-tag-marker-ring (point-marker))
   (let* ((node (js2-node-at-point))
          (parent (js2-node-parent node))
-         (names (if (js2-prop-get-node-p parent)(reverse (js2-names-left node))))
+         (names (if (js2-prop-get-node-p parent)
+                    (reverse (let ((temp (js2-compute-nested-prop-get parent)))
+                               (loop for n in temp
+                                     with result = '()
+                                     do (push n result)
+                                     until (equal node n)
+                                     finally return result)))))
          node-init)
     (unless (and (js2-name-node-p node)
                (not (js2-var-init-node-p parent))
@@ -12314,7 +12320,7 @@ it marks the next defun after the ones already marked."
     (push (or (and names (pop names))
              (unless (and (js2-object-prop-node-p parent)
                         (eq node (js2-object-prop-node-left parent)))
-               (js2-name-node-name node))) names)
+                node)) names)
     (setq node-init (js2-search-scope node names))
 
     ;; todo: display list of results in buffer
@@ -12337,33 +12343,17 @@ it marks the next defun after the ones already marked."
       (error "No jump location found"))
     (goto-char (js2-node-abs-pos node-init))))
 
-(defun js2-build-prop-name-list (prop-node)
-  "Build a list of names from a PROP-NODE."
-  (let* (names
-         left
-         left-node)
-    (unless (js2-prop-get-node-p prop-node)
-      (error "Node is not a property prop-node"))
-    (while (js2-prop-get-node-p prop-node)
-      (let ((node (js2-prop-get-node-right prop-node)))
-        (push `(,(js2-name-node-name node) . ,node) names)
-        (setq left-node (js2-prop-get-node-left prop-node))
-        (when (js2-name-node-p left-node)
-          (setq left `(,(js2-name-node-name left-node) . ,left-node)))
-        (setq prop-node left-node)))
-    (push left names)))
-
-(defun js2-search-object (node name)
-  "Check if object NODE contains element with NAME."
+(defun js2-search-object (node name-node)
+  "Check if object NODE contains element with NAME-NODE."
   (unless (js2-object-node-p node)
     (error "Only run depth search on `js2-object-node'"))
-  ;; Only support name and nodes for the time being
+  ;; Only support name-node and nodes for the time being
   (cl-loop for elem in (js2-object-node-elems node)
            for left = (js2-object-prop-node-left elem)
            if (or (and (js2-name-node-p left)
-                    (string= name (js2-name-node-name left)))
+                    (equal (js2-name-node-name name-node) (js2-name-node-name left)))
                  (and (js2-string-node-p left)
-                    (string= name (js2-string-node-value left))))
+                    (string= (js2-name-node-name name-node) (js2-string-node-value left))))
            return elem))
 
 (defun js2-search-object-for-prop (object prop-names)
@@ -12385,7 +12375,7 @@ i.e. ('name' 'value') = {name : { value: 3}}"
 NAMES is a list of property values to search for. For functions
 and variables NAMES will contain one element."
   (let (node-init
-        (val (first names)))
+        (val (js2-name-node-name (first names))))
     (setq node-init (js2-get-symbol-declaration node val))
 
     (when (> (length names) 1)
@@ -12409,41 +12399,16 @@ and variables NAMES will contain one element."
                      (right (js2-assign-node-right node))
                      (temp-names names))
                  (when (js2-prop-get-node-p left)
-                   (let* ((prop-list (js2-build-prop-name-list left))
-                          (prop-names (mapcar 'car prop-list))
-                          (found (loop for prop in prop-names
-                                       until (not (string= (pop temp-names) prop))
+                   (let* ((prop-list (js2-compute-nested-prop-get left))
+                          (found (loop for prop in prop-list
+                                       until (not (string= (js2-name-node-name (pop temp-names)) (js2-name-node-name prop)))
                                        if (not temp-names) return prop))
-                          (found-node (if found (cdr (assoc found prop-list))
-                                        (when (js2-object-node-p right)
-                                          (js2-search-object-for-prop right temp-names)))))
+                          (found-node (or found
+                                         (when (js2-object-node-p right)
+                                           (js2-search-object-for-prop right temp-names)))))
                      (if found-node (push found-node node-init))))))
            t))))
   node-init))
-
-(defun js2-names-left (name-node)
-"Returns a list of names for a `js2-prop-get-node'.
-NAME-NODE is a node that forms part of the `js2-prop-get-node'."
-  (let* (name
-         (parent (js2-node-parent name-node))
-         left
-         names)
-    (unless  (js2-prop-get-node-p parent)
-      (error "Parent is not a prop-get-node"))
-    (setq name (js2-name-node-name name-node)
-          left (js2-prop-get-node-left parent))
-    (if (and (js2-name-node-p left)
-	   (string= name (js2-name-node-name left)))
-        (setq names name)
-      (js2-visit-ast
-       parent
-       (lambda (node endp)
-         (unless endp
-           (if (js2-name-node-p node)
-               (push (js2-name-node-name node) names)
-             t))))
-      names)
-    (if (listp names) names (list names))))
 
 (defun js2-get-symbol-declaration (node name)
   "Find scope for NAME from NODE."
