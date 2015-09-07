@@ -7966,10 +7966,12 @@ Scanner should be initialized."
     (js2-node-add-children fn-node pn)
     pn))
 
-(defun js2-define-destruct-symbols-internal
-    (node decl-type face &optional ignore-not-in-block)
-  "Internal version of `js2-define-destruct-symbols'.  The only
-difference is that NAME-NODES is passed down recursively."
+(defun js2-define-destruct-symbols (node decl-type face &optional ignore-not-in-block)
+  "Declare and fontify destructuring parameters inside NODE.
+NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
+
+Return a list of `js2-name-node' nodes representing the symbols
+declared; probably to check them for errors."
   (let (name-nodes)
     (cond
      ((js2-name-node-p node)
@@ -7986,7 +7988,7 @@ difference is that NAME-NODES is passed down recursively."
         (when (js2-object-prop-node-p elem)
           (setq name-nodes
                 (append name-nodes
-                        (js2-define-destruct-symbols-internal
+                        (js2-define-destruct-symbols
                          ;; In abbreviated destructuring {a, b}, right == left.
                          (js2-object-prop-node-right elem)
                          decl-type face ignore-not-in-block))))))
@@ -7995,19 +7997,11 @@ difference is that NAME-NODES is passed down recursively."
         (when elem
           (setq name-nodes
                 (append name-nodes
-                        (js2-define-destruct-symbols-internal
+                        (js2-define-destruct-symbols
                          elem decl-type face ignore-not-in-block))))))
      (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
                           (js2-node-len node))))
     name-nodes))
-
-(defun js2-define-destruct-symbols (node decl-type face &optional ignore-not-in-block)
-  "Declare and fontify destructuring parameters inside NODE.
-NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
-
-Return a list of `js2-name-node' nodes representing the symbols
-declared; probably to check them for errors."
-  (js2-define-destruct-symbols-internal node decl-type face ignore-not-in-block))
 
 (defvar js2-illegal-strict-identifiers
   '("eval" "arguments")
