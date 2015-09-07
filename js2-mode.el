@@ -12345,8 +12345,7 @@ it marks the next defun after the ones already marked."
 
 (defun js2-search-object (node name-node)
   "Check if object NODE contains element with NAME-NODE."
-  (unless (js2-object-node-p node)
-    (error "Only run depth search on `js2-object-node'"))
+  (cl-assert (js2-object-node-p node))
   ;; Only support name-node and nodes for the time being
   (cl-loop for elem in (js2-object-node-elems node)
            for left = (js2-object-prop-node-left elem)
