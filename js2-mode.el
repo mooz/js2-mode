@@ -7982,26 +7982,26 @@ declared; probably to check them for errors."
           (js2-set-face (setq leftpos (js2-node-abs-pos node))
                         (+ leftpos (js2-node-len node))
                         face 'record))
-        (setq name-nodes (list node))))
+        (list node)))
      ((js2-object-node-p node)
       (dolist (elem (js2-object-node-elems node))
         (when (js2-object-prop-node-p elem)
-          (setq name-nodes
-                (append name-nodes
-                        (js2-define-destruct-symbols
-                         ;; In abbreviated destructuring {a, b}, right == left.
-                         (js2-object-prop-node-right elem)
-                         decl-type face ignore-not-in-block))))))
+          (push (js2-define-destruct-symbols
+                 ;; In abbreviated destructuring {a, b}, right == left.
+                 (js2-object-prop-node-right elem)
+                 decl-type face ignore-not-in-block)
+                name-nodes)))
+      (apply #'append (nreverse name-nodes)))
      ((js2-array-node-p node)
       (dolist (elem (js2-array-node-elems node))
         (when elem
-          (setq name-nodes
-                (append name-nodes
-                        (js2-define-destruct-symbols
-                         elem decl-type face ignore-not-in-block))))))
+          (push (js2-define-destruct-symbols
+                 elem decl-type face ignore-not-in-block)
+                name-nodes)))
+      (apply #'append (nreverse name-nodes)))
      (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
-                          (js2-node-len node))))
-    name-nodes))
+                          (js2-node-len node))
+        nil))))
 
 (defvar js2-illegal-strict-identifiers
   '("eval" "arguments")
