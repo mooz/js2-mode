@@ -9,8 +9,8 @@
   builds), `js2-mode` uses the indentation code from `js-mode`.  Where
   feasible, the user options (and functions) now have aliases, but if
   you're using Emacs 25 and you see an indentation-related setting
-  that stopped working, try setting the one for the `js` group: `M-x
-  customize-group RET js RET`.
+  that stopped working, try looking for a corresponding one in the
+  `js` group: `M-x customize-group RET js RET`.
 
 * New command: `js2-jump-to-definition`. It's bound to `M-.` by
   default, via remapping `js-find-symbol`. To get back to the default
