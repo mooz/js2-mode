@@ -298,13 +298,19 @@ the test."
 (js2-deftest-parse function-strict-const-scope
   "'use strict';\nconst a;\nif (1) {\n  const a;\n}")
 
-;;; Spread operator
+;;; Rest/spread operator
 
 (js2-deftest-parse spread-in-array-literal
   "[1, ...[2, 3], 4, ...[5, 6]];")
 
 (js2-deftest-parse spread-in-function-call
   "f(3, ...[t(2), t(3)], 42, ...[t(4)]);")
+
+(js2-deftest-parse rest-in-object-literal
+  "const {x, y, ...z} = f();")
+
+(js2-deftest-parse spread-in-object-literal
+  "f({x, y, ...z});")
 
 ;;; Arrow functions
 

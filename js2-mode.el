@@ -10617,7 +10617,8 @@ expression)."
                 tt (js2-get-prop-name-token))))
       (cond
        ;; Found a property (of any sort)
-       ((member tt (list js2-NAME js2-STRING js2-NUMBER js2-LB))
+       ((or (member tt (list js2-NAME js2-STRING js2-NUMBER js2-LB))
+            (and (>= js2-language-version 200) (= js2-TRIPLEDOT tt)))
         (setq after-comma nil
               elem (js2-parse-named-prop tt pos previous-token))
         (if (and (null elem)
@@ -10668,7 +10669,8 @@ expression)."
 (defun js2-parse-named-prop (tt pos previous-token)
   "Parse a name, string, or getter/setter object property.
 When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
-  (let ((key (cond
+  (let (is-rest
+        (key (cond
               ;; Literal string keys: {'foo': 'bar'}
               ((= tt js2-STRING)
                (make-js2-string-node))
@@ -10683,6 +10685,16 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
                (make-js2-number-node))
               ;; Unquoted names: {foo: 12}
               ((= tt js2-NAME)
+               (js2-create-name-node))
+              ;; Rest/spread property: {...foo}
+              ((and (>= js2-language-version 200)
+                    (= tt js2-TRIPLEDOT)
+                    ;; FIXME: In destructuring ("rest") it must be just a name,
+                    ;; but outside of destructuring ("spread") it can be any
+                    ;; expression.
+                    (= (js2-peek-token) js2-NAME))
+               (setq tt (js2-get-token)
+                     is-rest t)
                (js2-create-name-node))
               ;; Anything else is an error
               (t (js2-report-error "msg.bad.prop"))))
@@ -10707,7 +10719,7 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
      (t
       (let ((beg (js2-current-token-beg))
             (end (js2-current-token-end))
-            (expr (js2-parse-plain-property key)))
+            (expr (js2-parse-plain-property key is-rest)))
         (when (and (= tt js2-NAME)
                    (not js2-is-in-destructuring)
                    js2-highlight-external-variables
@@ -10721,7 +10733,7 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
                       'record)
         expr)))))
 
-(defun js2-parse-plain-property (prop)
+(defun js2-parse-plain-property (prop is-rest)
   "Parse a non-getter/setter property in an object literal.
 PROP is the node representing the property: a number, name,
 string or expression."
@@ -10743,6 +10755,8 @@ string or expression."
       (js2-node-add-children result prop)
       (js2-node-set-prop result 'SHORTHAND t)
       result)
+     ;; Spreads must be abbreviated properties
+     (is-rest (js2-report-error "msg.bad.prop"))
      ;; Normal property
      (t
       (if (= tt js2-COLON)
