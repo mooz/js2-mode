@@ -1,5 +1,23 @@
 # History of user-visible changes
 
+## 20150909
+
+* `js2-mode` now derives from `js-mode`. That means the former
+  function will run `js-mode-hook`, as well as `js2-mode-hook`. The
+  key bindings will default to `js-mode-map` where they're not set in
+  `js2-mode-map`. And in Emacs 25 or later (including the snapshot
+  builds), `js2-mode` uses the indentation code from `js-mode`.  Where
+  feasible, the user options (and functions) now have aliases, but if
+  you're using Emacs 25 and you see an indentation-related setting
+  that stopped working, try setting the one for the `js` group: `M-x
+  customize-group RET js RET`.
+
+* New command: `js2-jump-to-definition`. It's bound to `M-.` by
+  default, via remapping `js-find-symbol`. To get back to the default
+  `M-.` binding (e.g. `find-tag`), put this in your init file:
+
+      (eval-after-load 'js (define-key js-mode-map (kbd "M-.") nil))
+
 ## 20150713
 
 * More comprehensive strict mode warnings and syntax errors.
