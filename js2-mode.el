@@ -1116,7 +1116,7 @@ information."
     (define-key map (kbd "C-c C-o") #'js2-mode-toggle-element)
     (define-key map (kbd "C-c C-w") #'js2-mode-toggle-warnings-and-errors)
     (define-key map [down-mouse-3] #'js2-down-mouse-3)
-    (define-key map (kbd "M-.") #'js2-jump-to-definition)
+    (define-key map [remap js-find-symbol] #'js2-jump-to-definition)
 
     (define-key map [menu-bar javascript]
       (cons "JavaScript" (make-sparse-keymap "JavaScript")))
