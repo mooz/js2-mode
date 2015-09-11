@@ -10654,7 +10654,13 @@ expression)."
                     (lambda (previous-elem)
                       (and (setq previous-elem-key-string
                                  (js2-property-key-string previous-elem))
-                           (string= previous-elem-key-string elem-key-string)))
+                           ;; Check if the property is a duplicate.
+                           (string= previous-elem-key-string elem-key-string)
+                           ;; But make an exception for getter / setter pairs.
+                           (not (and (js2-getter-setter-node-p elem)
+                                     (js2-getter-setter-node-p previous-elem)
+                                     (/= (js2-getter-setter-node-type elem)
+                                         (js2-getter-setter-node-type previous-elem))))))
                     elems))
           (js2-report-error "msg.dup.obj.lit.prop.strict"
                             elem-key-string
