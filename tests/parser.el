@@ -294,9 +294,21 @@ the test."
   "'use strict';\nvar object = {a: 1, a: 2, 'a': 3, ['a']: 4, 1: 5, '1': 6, [1 + 1]: 7};"
   :syntax-error "a" :errors-count 4) ; "a" has 3 dupes, "1" has 1 dupe.
 
-;; errors... or lackthereof.
+(js2-deftest-parse function-strict-duplicate-getter
+  "'use strict';\nvar a = {get x() {}, get x() {}};"
+  :syntax-error "x" :errors-count 1)
+
+(js2-deftest-parse function-strict-duplicate-setter
+  "'use strict';\nvar a = {set x() {}, set x() {}};"
+  :syntax-error "x" :errors-count 1)
+
+;;; Lack of errors in strict mode
+
 (js2-deftest-parse function-strict-const-scope
   "'use strict';\nconst a;\nif (1) {\n  const a;\n}")
+
+(js2-deftest-parse function-strict-no-getter-setter-duplicate
+  "'use strict';\nvar a = {get x() {}, set x() {}};")
 
 ;;; Spread operator
 
