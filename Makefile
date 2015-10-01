@@ -10,16 +10,12 @@ SRCS = js2-mode.el js2-imenu-extras.el
 OBJS = $(SRCS:.el=.elc)
 
 %.elc: %.el
-	${EMACS} $(BATCHFLAGS) -f batch-byte-compile $^
+	${EMACS} $(BATCHFLAGS) -L . -f batch-byte-compile $^
 
 all: $(OBJS)
 
 clean:
 	-rm -f $(OBJS)
-
-# custom build (require loads)
-js2-imenu-extras.elc: js2-mode.elc
-	${EMACS} $(BATCHFLAGS) -l ./js2-mode.elc -f batch-byte-compile $*.el
 
 test:
 	${EMACS} $(BATCHFLAGS) -L . -l js2-mode.el -l js2-old-indent.el -l tests/parser.el\
