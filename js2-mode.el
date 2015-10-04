@@ -89,14 +89,19 @@
 (require 'imenu)
 (require 'js)
 (require 'etags)
+(require 'sgml-mode)
 
 (eval-and-compile
-  (if (version< emacs-version "25.0")
-      (require 'js2-old-indent)
+  (cond
+   ((version< emacs-version "25.0")
+    (require 'js2-old-indent)
+    (defvar js2-continued-expression-function 'js2-continued-expression-p))
+   (t
     (defvaralias 'js2-basic-offset 'js-indent-level nil)
     (defalias 'js2-proper-indentation 'js--proper-indentation)
-    (defalias 'js2-indent-line 'js-indent-line)
-    (defalias 'js2-re-search-forward 'js--re-search-forward)))
+    (defalias 'js2-old-indent-line 'js-indent-line)
+    (defalias 'js2-re-search-forward 'js--re-search-forward)
+    (defvar js2-continued-expression-function 'js--continued-expression-p))))
 
 ;;; Externs (variables presumed to be defined by the host system)
 
@@ -11271,6 +11276,64 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (pop-to-buffer js2-source-buffer)
         (goto-char pos)
         (message msg))))))
+
+(defconst js2-jsx-before-tag-regex "\\([(=]\\|return\\)")
+(defconst js2-jsx-start-tag-regex (concat js2-jsx-before-tag-regex "[[:space:]\n]*?<" sgml-name-re))
+(defconst js2-jsx-after-tag-regex "[;),]")
+(defconst js2-jsx-end-tag-regex (concat "</" sgml-name-re ">[[:space:]\n]*?" js2-jsx-after-tag-regex))
+
+(defun js2-jsx-indented-element-p ()
+  "Determine if/how the current line should be indented as JSX.
+Return `first' for the first JSXElement on its own line.
+Return `nth' for subsequent lines of the first JSXElement.
+Return nil for non-JSX lines."
+  (let ((current-pos (point))
+        (current-line-number (line-number-at-pos))
+        before-tag-pos
+        end-pos)
+    (save-excursion
+      (and (progn
+             (back-to-indentation)
+             (not (looking-at-p js2-jsx-after-tag-regex)))
+           ;; Determine if we're inside a jsx element
+           (progn
+             (end-of-line 1)
+             (re-search-backward js2-jsx-start-tag-regex nil t))
+           (setq before-tag-pos (match-end 1))
+           ;; The line of the js syntax preceding the jsx is indented like js
+           (> current-line-number (line-number-at-pos before-tag-pos))
+           ;; Ensure we're actually within the bounds of the jsx
+           (not (and (setq end-pos (re-search-forward js2-jsx-end-tag-regex nil t))
+                     (< end-pos current-pos)))
+           (cond
+            ((progn
+               (goto-char before-tag-pos)
+               (end-of-line 1)
+               (js2-forward-sws)
+               (= current-line-number (line-number-at-pos)))
+             ;; Indent the first jsx thing like js so we can indent future jsx
+             ;; things like sgml relative to the first thing
+             'first)
+            (t
+             ;; Indent relatively
+             'nth))))))
+
+(defun js2-indent-line (&optional bounce-backwards)
+  "Indent the current line as JavaScript or JSX source text."
+  (let ((indentation-type (js2-jsx-indented-element-p)))
+    (cond
+     ((eq indentation-type 'first)
+      ;; Don't treat this first thing as a continued expression (often a "<" in
+      ;; an sgml tag gets interpreted as such)
+      (cl-letf (((symbol-function js2-continued-expression-function) 'ignore))
+        (js2-old-indent-line bounce-backwards)))
+     ((eq indentation-type 'nth)
+      ;; Make `forward-sexp' behave like in sgml-mode
+      (with-syntax-table sgml-mode-syntax-table
+        (let (forward-sexp-function
+              parse-sexp-lookup-properties)
+          (sgml-indent-line))))
+     (t (js2-old-indent-line bounce-backwards)))))
 
 ;;;###autoload
 (define-derived-mode js2-mode js-mode "Javascript-IDE"

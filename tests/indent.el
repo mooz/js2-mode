@@ -140,3 +140,18 @@
   |  ,
   |  bar = 8;"
   :bind ((js2-pretty-multiline-declarations 'dynamic)))
+
+(js2-deftest-indent jsx-one-line
+  "var foo = <div></div>;")
+
+(js2-deftest-indent jsx-children-parentheses
+  "return (
+  |  <div>
+  |  </div>
+  |  <div>
+  |    <div></div>
+  |    <div>
+  |      <div></div>
+  |    </div>
+  |  </div>
+  |);")
