@@ -11286,10 +11286,11 @@ Selecting an error will jump it to the corresponding source-buffer error.
 Return `first' for the first JSXElement on its own line.
 Return `nth' for subsequent lines of the first JSXElement.
 Return nil for non-JSX lines."
-  (let ((current-pos (point))
-        (current-line-number (line-number-at-pos))
+  (let ((current-line-number (line-number-at-pos))
         before-tag-pos
-        tag-pos
+        before-tag-line
+        tag-start-pos
+        tag-start-line
         end-pos)
     (save-excursion
       (and (progn
@@ -11298,17 +11299,25 @@ Return nil for non-JSX lines."
            ;; Determine if we're inside a jsx element
            (progn
              (end-of-line 1)
-             (when (re-search-backward js2-jsx-before-tag-regex nil t)
-               (setq before-tag-pos (match-end 0))
-               (goto-char before-tag-pos)
-               (js2-forward-sws)
-               (when (looking-at sgml-start-tag-regex)
-                 (setq tag-pos (match-beginning 0))
-                 ;; Lines of the js preceding jsx are indented normally
-                 (>= current-line-number (line-number-at-pos tag-pos)))))
+             (re-search-backward js2-jsx-before-tag-regex nil t))
+           (progn
+             (setq before-tag-pos (match-end 0))
+             (goto-char before-tag-pos)
+             (js2-forward-sws)
+             (looking-at sgml-start-tag-regex))
+           (progn
+             (setq before-tag-line (line-number-at-pos before-tag-pos)
+                   tag-start-pos (match-beginning 0)
+                   tag-start-line (line-number-at-pos tag-start-pos))
+             (and
+              ;; The first line with everything on it isn't indented
+              (not (= current-line-number tag-start-line before-tag-line))
+              ;; We used js syntax typically preceding jsx to find jsx, but make
+              ;; sure those lines are not also treated as jsx
+              (>= current-line-number tag-start-line)))
            ;; Ensure we're actually within the bounds of the jsx
            (not (and (setq end-pos (re-search-forward js2-jsx-end-tag-regex nil t))
-                     (< end-pos current-pos)))
+                     (< (line-number-at-pos end-pos) current-line-number)))
            (cond
             ((progn
                (goto-char before-tag-pos)

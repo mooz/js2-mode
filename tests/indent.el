@@ -162,3 +162,11 @@
   |  <div></div>
   |);")
 
+(js2-deftest-indent jsx-multiple-instances
+  "return (
+  |  <div>
+  |    <div></div>
+  |  </div>
+  |);
+  |var foo = <div></div>;
+  |")
