@@ -162,6 +162,13 @@
   |  <div></div>
   |);")
 
+(js2-deftest-indent jsx-attribute
+  "return (
+  |  <div
+  |     attribute=\"a\"></div>
+  |);"
+  :bind ((sgml-attribute-offset 1))) ; Emacs 24.5 -> 25 compat
+
 (js2-deftest-indent jsx-multiple-instances
   "return (
   |  <div>
