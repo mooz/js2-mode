@@ -155,3 +155,10 @@
   |    </div>
   |  </div>
   |);")
+
+(js2-deftest-indent jsx-leading-comment
+  "return (
+  |  // Sneaky!
+  |  <div></div>
+  |);")
+

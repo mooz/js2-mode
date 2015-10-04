@@ -11277,8 +11277,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (goto-char pos)
         (message msg))))))
 
-(defconst js2-jsx-before-tag-regex "\\([(=]\\|return\\)")
-(defconst js2-jsx-start-tag-regex (concat js2-jsx-before-tag-regex "[[:space:]\n]*?<" sgml-name-re))
+(defconst js2-jsx-before-tag-regex "[(=]\\|return")
 (defconst js2-jsx-after-tag-regex "[;),]")
 (defconst js2-jsx-end-tag-regex (concat "</" sgml-name-re ">[[:space:]\n]*?" js2-jsx-after-tag-regex))
 
@@ -11290,6 +11289,7 @@ Return nil for non-JSX lines."
   (let ((current-pos (point))
         (current-line-number (line-number-at-pos))
         before-tag-pos
+        tag-pos
         end-pos)
     (save-excursion
       (and (progn
@@ -11298,10 +11298,14 @@ Return nil for non-JSX lines."
            ;; Determine if we're inside a jsx element
            (progn
              (end-of-line 1)
-             (re-search-backward js2-jsx-start-tag-regex nil t))
-           (setq before-tag-pos (match-end 1))
-           ;; The line of the js syntax preceding the jsx is indented like js
-           (> current-line-number (line-number-at-pos before-tag-pos))
+             (when (re-search-backward js2-jsx-before-tag-regex nil t)
+               (setq before-tag-pos (match-end 0))
+               (goto-char before-tag-pos)
+               (js2-forward-sws)
+               (when (looking-at sgml-start-tag-regex)
+                 (setq tag-pos (match-beginning 0))
+                 ;; Lines of the js preceding jsx are indented normally
+                 (>= current-line-number (line-number-at-pos tag-pos)))))
            ;; Ensure we're actually within the bounds of the jsx
            (not (and (setq end-pos (re-search-forward js2-jsx-end-tag-regex nil t))
                      (< end-pos current-pos)))
