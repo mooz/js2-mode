@@ -11279,7 +11279,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
 
 (defconst js2-jsx-before-tag-regex "\\([(=]\\|return\\)")
 (defconst js2-jsx-start-tag-regex (concat js2-jsx-before-tag-regex
-                                          "\\(?:[[:space:]\n]\\|//.*\\|/\\*.*?\\*/\\)*?"
+                                          "\\(?:[[:space:]\n]\\|//.*\\|/\\*\\(?:.\\|\n\\)*?\\*/\\)*?"
                                           "<" sgml-name-re))
 (defconst js2-jsx-after-tag-regex "[;),]")
 (defconst js2-jsx-end-tag-regex (concat "</" sgml-name-re ">[[:space:]\n]*?" js2-jsx-after-tag-regex))
