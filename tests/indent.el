@@ -156,9 +156,17 @@
   |  </div>
   |);")
 
-(js2-deftest-indent jsx-leading-comment
+(js2-deftest-indent jsx-leading-single-comment
   "return (
   |  // Sneaky!
+  |  <div></div>
+  |);")
+
+(js2-deftest-indent jsx-leading-multi-comment
+  "return (
+  |  /*
+  |   * Sneaky!
+  |   */
   |  <div></div>
   |);")
 
