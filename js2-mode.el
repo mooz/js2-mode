@@ -11281,8 +11281,9 @@ Selecting an error will jump it to the corresponding source-buffer error.
   "\\(?:[[:space:]\n]\\|//.*\\|/\\*\\(?:.\\|\n\\)*?\\*/\\)*?"
   "Match whitespace and comments.")
 
-(defconst js2-jsx-start-tag-re
-  (concat "\\([(=:,]\\)" js2-whitespace-and-comments-re "\\(<\\)" sgml-name-re)
+(defconst js2-jsx-before-tag-re "[(=:,]")
+
+(defconst js2-jsx-start-tag-re (concat "<" sgml-name-re)
   "Find where JSX starts.
 Assume JSX appears in the following instances:
 - Inside parentheses, when returned or as the first argument to a function
@@ -11327,6 +11328,7 @@ Currently, JSX indentation supports the following styles:
   );"
   (let ((current-pos (point))
         (current-line (line-number-at-pos))
+        last-pos
         before-tag-pos before-tag-line
         tag-start-pos tag-start-line
         tag-end-pos tag-end-line
@@ -11337,11 +11339,17 @@ Currently, JSX indentation supports the following styles:
        ;; Determine if we're inside a jsx element
        (progn
          (end-of-line)
-         (re-search-backward js2-jsx-start-tag-re nil t))
+         (while (and (not tag-start-pos)
+                     (setq last-pos (re-search-backward js2-jsx-before-tag-re nil t)))
+           (goto-char (match-end 0))
+           (js2-forward-sws)
+           (when (looking-at js2-jsx-start-tag-re)
+             (setq before-tag-pos last-pos
+                   tag-start-pos (match-beginning 0)))
+           (goto-char last-pos))
+         tag-start-pos)
        (progn
-         (setq before-tag-pos (match-beginning 1)
-               before-tag-line (line-number-at-pos before-tag-pos)
-               tag-start-pos (match-beginning 2)
+         (setq before-tag-line (line-number-at-pos before-tag-pos)
                tag-start-line (line-number-at-pos tag-start-pos))
          (and
           ;; A "before" line which also starts an element begins with js, so
