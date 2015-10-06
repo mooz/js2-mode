@@ -11418,15 +11418,15 @@ Currently, JSX indentation supports the following styles:
             (t (setq parens (cdr parens)))))
          t)
         (t))
-       ;; Indent the first jsx thing like js so we can indent future jsx things
-       ;; like sgml relative to the first thing
        (cond
         (type)
+        ;; Indent the first jsx thing like js so we can indent future jsx things
+        ;; like sgml relative to the first thing
         ((= current-line tag-start-line) 'first)
         ('nth))))))
 
 (defmacro js2-as-sgml (&rest body)
-  "Indent the current line as SGML."
+  "Execute BODY as if in sgml-mode."
   `(with-syntax-table sgml-mode-syntax-table
      (let (forward-sexp-function
            parse-sexp-lookup-properties
@@ -11434,7 +11434,7 @@ Currently, JSX indentation supports the following styles:
        ,@body)))
 
 (defun js2-expression-in-sgml-indent-line ()
-  "Indent the current line as the greater of JavaScript or SGML."
+  "Indent the current line as JavaScript or SGML (whichever is farther)."
   (let* (indent-col
          (savep (point))
          ;; Don't whine about errors/warnings when we're indenting.
