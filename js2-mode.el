@@ -11277,24 +11277,24 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (goto-char pos)
         (message msg))))))
 
-(defconst js2-whitespace-and-comments-re
-  "\\(?:[[:space:]\n]\\|//.*\\|/\\*\\(?:.\\|\n\\)*?\\*/\\)*?"
-  "Match whitespace and comments.")
-
-(defconst js2-jsx-before-tag-re "[(=:,]")
-
-(defconst js2-jsx-start-tag-re (concat "<" sgml-name-re)
+(defconst js2-jsx-before-tag-re "[(=:,]"
   "Find where JSX starts.
 Assume JSX appears in the following instances:
 - Inside parentheses, when returned or as the first argument to a function
 - When assigned to variables or object properties
 - As the N+1th argument to a function")
 
+(defconst js2-jsx-start-tag-re (concat "<" sgml-name-re)
+  "Find the start of a JSX element.")
+
 (defconst js2-jsx-end-tag-re
-  (concat "\\(</" sgml-name-re ">\\|/>\\)[[:space:]\n]*?\\([),]\\)")
+  (concat "\\(?:</" sgml-name-re ">\\|/>\\)")
+  "Find the end of a JSX element.")
+
+(defconst js2-jsx-after-tag-re "[),]"
   "Find where JSX ends.
 This complements the assumption of where JSX appears from
-`js2-jsx-start-tag-re', which see.")
+`js2-jsx-before-tag-re', which see.")
 
 ;; TODO: Use `syntax-ppss' to increase the accuracy of matching parentheses
 (defun js2-jsx-indented-element-p ()
@@ -11359,21 +11359,34 @@ Currently, JSX indentation supports the following styles:
           (>= current-line tag-start-line)))
        (cond
         ;; Analyze bounds if there are any
-        ((re-search-forward js2-jsx-end-tag-re nil t)
-         (setq tag-end-pos (match-beginning 1)
-               tag-end-line (line-number-at-pos tag-end-pos)
-               after-tag-pos (match-beginning 2)
+        ((progn
+           (while (and (not tag-end-pos)
+                       (setq last-pos (re-search-forward js2-jsx-end-tag-re nil t)))
+             (goto-char (match-end 0))
+             (js2-forward-sws)
+             (when (looking-at js2-jsx-after-tag-re)
+               (setq tag-end-pos last-pos
+                     after-tag-pos (match-beginning 0))))
+           tag-end-pos)
+         (setq tag-end-line (line-number-at-pos tag-end-pos)
                after-tag-line (line-number-at-pos after-tag-line))
-         (and
-          ;; Ensure we're actually within the bounds of the jsx
-          (<= current-line tag-end-line)
-          ;; An "after" line which does not end an element begins with
-          ;; js, so indent it like js
-          (<= current-line after-tag-line)))
+         (or (and
+              ;; Ensure we're actually within the bounds of the jsx
+              (<= current-line tag-end-line)
+              ;; An "after" line which does not end an element begins with
+              ;; js, so indent it like js
+              (<= current-line after-tag-line))
+             (and
+              ;; Handle another case where there could be e.g. comments after
+              ;; the element
+              (> current-line tag-end-line)
+              (< current-line after-tag-line)
+              (setq type 'last))))
         ;; They may not be any bounds (yet)
         (t))
        ;; Check if we're inside an embedded multi-line js expression
-       (progn
+       (cond
+        ((not type)
          (goto-char current-pos)
          (end-of-line)
          (setq parens (nth 9 (syntax-ppss)))
@@ -11398,6 +11411,7 @@ Currently, JSX indentation supports the following styles:
              (setq type 'expression))
             (t (setq parens (cdr parens)))))
          t)
+        (t))
        ;; Indent the first jsx thing like js so we can indent future jsx things
        ;; like sgml relative to the first thing
        (cond
@@ -11444,9 +11458,10 @@ Currently, JSX indentation supports the following styles:
     (cond
      ((eq indentation-type 'expression)
       (js2-expression-in-sgml-indent-line))
-     ((eq indentation-type 'first)
-      ;; Don't treat this first thing as a continued expression (often a "<" in
-      ;; an sgml tag gets interpreted as such)
+     ((or (eq indentation-type 'first)
+          (eq indentation-type 'last))
+      ;; Don't treat this first thing as a continued expression (often a "<" or
+      ;; ">" causes this misinterpretation)
       (cl-letf (((symbol-function js2-continued-expression-function) 'ignore))
         (js2-old-indent-line)))
      ((eq indentation-type 'nth)

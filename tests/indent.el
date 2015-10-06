@@ -189,6 +189,12 @@
   |  <div></div>
   |);")
 
+(js2-deftest-indent jsx-trailing-comment
+  "return (
+  |  <div></div>
+  |  // Sneaky!
+  |);")
+
 (js2-deftest-indent jsx-attribute
   "return (
   |  <div
