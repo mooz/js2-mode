@@ -41,6 +41,7 @@
      (let ,(append '(indent-tabs-mode
                      (js2-basic-offset 2)
                      (js2-pretty-multiline-declarations t)
+                     (js2-indent-jsx-p t)
                      (inhibit-point-motion-hooks t))
                    bind)
        (js2-test-indent ,content ,keep-indent))))

@@ -1202,6 +1202,12 @@ bound to TAB and backtab."
              (define-key map "\t" #'js2-indent-bounce)
              (define-key map (kbd "<backtab>") #'js2-indent-bounce-backward)))))
 
+(defcustom js2-indent-jsx-p nil
+  "Non-nil to indent JSX elements.
+This may slow down indentation for large files."
+  :type 'boolean
+  :group 'js2-mode)
+
 (defconst js2-mode-identifier-re "[[:alpha:]_$][[:alnum:]_$]*")
 
 (defvar js2-mode-//-comment-re "^\\(\\s-*\\)//.+"
@@ -11453,20 +11459,26 @@ Currently, JSX indentation supports the following styles:
           (indent-line-to indent-col))))))
 
 (defun js2-indent-line ()
-  "Indent the current line as JavaScript or JSX source text."
-  (let ((indentation-type (js2-jsx-indented-element-p)))
-    (cond
-     ((eq indentation-type 'expression)
-      (js2-expression-in-sgml-indent-line))
-     ((or (eq indentation-type 'first)
-          (eq indentation-type 'last))
-      ;; Don't treat this first thing as a continued expression (often a "<" or
-      ;; ">" causes this misinterpretation)
-      (cl-letf (((symbol-function js2-continued-expression-function) 'ignore))
-        (js2-old-indent-line)))
-     ((eq indentation-type 'nth)
-      (js2-as-sgml (sgml-indent-line)))
-     (t (js2-old-indent-line)))))
+  "Indent the current line as JavaScript or JSX source text.
+If `js2-indent-jsx-p' non-nil, which see, indent the current line
+as JSX source text."
+  (cond
+   (js2-indent-jsx-p
+    (let ((indentation-type (js2-jsx-indented-element-p)))
+      (cond
+       ((eq indentation-type 'expression)
+        (js2-expression-in-sgml-indent-line))
+       ((or (eq indentation-type 'first)
+            (eq indentation-type 'last))
+        ;; Don't treat this first thing as a continued expression (often a "<" or
+        ;; ">" causes this misinterpretation)
+        (cl-letf (((symbol-function js2-continued-expression-function) 'ignore))
+          (js2-old-indent-line)))
+       ((eq indentation-type 'nth)
+        (js2-as-sgml (sgml-indent-line)))
+       (t (js2-old-indent-line)))))
+   (t
+    (js2-old-indent-line))))
 
 ;;;###autoload
 (define-derived-mode js2-mode js-mode "Javascript-IDE"
