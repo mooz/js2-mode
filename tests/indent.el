@@ -157,6 +157,11 @@
   |  </div>
   |);")
 
+(js2-deftest-indent jsx-children-unclosed
+  "return (
+  |  <div>
+  |    <div>")
+
 (js2-deftest-indent jsx-argument
   "React.render(
   |  <div>
@@ -212,6 +217,13 @@
   |    })}
   |  </div>
   |);")
+
+(js2-deftest-indent jsx-embedded-js-unclosed
+  "return (
+  |  <div>
+  |    {array.map(function () {
+  |      return {
+  |        a: 1")
 
 (js2-deftest-indent jsx-embedded-js-attribute
   "return (
