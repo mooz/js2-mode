@@ -176,17 +176,9 @@
   |  </div>
   |);")
 
-(js2-deftest-indent jsx-leading-single-comment
+(js2-deftest-indent jsx-leading-comment
   "return (
   |  // Sneaky!
-  |  <div></div>
-  |);")
-
-(js2-deftest-indent jsx-leading-multi-comment
-  "return (
-  |  /*
-  |   * Sneaky!
-  |   */
   |  <div></div>
   |);")
 
@@ -195,13 +187,6 @@
   |  <div></div>
   |  // Sneaky!
   |);")
-
-(js2-deftest-indent jsx-attribute
-  "return (
-  |  <div
-  |     attribute=\"a\"></div>
-  |);"
-  :bind ((sgml-attribute-offset 1))) ; Emacs 24.5 -> 25 compat
 
 (js2-deftest-indent jsx-self-closing
   ;; This ensures we know the bounds of a self-closing element
