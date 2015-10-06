@@ -11302,7 +11302,6 @@ Assume JSX appears in the following instances:
 This complements the assumption of where JSX appears from
 `js2-jsx-before-tag-re', which see.")
 
-;; TODO: Use `syntax-ppss' to increase the accuracy of matching parentheses
 (defun js2-jsx-indented-element-p ()
   "Determine if/how the current line should be indented as JSX.
 
