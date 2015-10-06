@@ -11277,18 +11277,56 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (goto-char pos)
         (message msg))))))
 
-(defconst js2-jsx-before-tag-regex "\\([(=]\\|return\\)")
-(defconst js2-jsx-start-tag-regex (concat js2-jsx-before-tag-regex
-                                          "\\(?:[[:space:]\n]\\|//.*\\|/\\*\\(?:.\\|\n\\)*?\\*/\\)*?"
-                                          "<" sgml-name-re))
-(defconst js2-jsx-after-tag-regex "[;),]")
-(defconst js2-jsx-end-tag-regex (concat "</" sgml-name-re ">[[:space:]\n]*?" js2-jsx-after-tag-regex))
+(defconst js2-whitespace-and-comments-re
+  "\\(?:[[:space:]\n]\\|//.*\\|/\\*\\(?:.\\|\n\\)*?\\*/\\)*?"
+  "Match whitespace and comments.")
+
+(defconst js2-jsx-start-tag-re
+  (concat "\\([(=:,]\\)" js2-whitespace-and-comments-re "<" sgml-name-re)
+  "Find where JSX starts.
+Assume JSX appears in the following instances:
+- Inside parentheses, when returned or as the first argument to a function
+- When assigned to variables or object properties
+- As the N+1th argument to a function")
+
+(defconst js2-jsx-after-tag-re "[),]"
+  "Match characters indicating the end of JSX.")
+
+(defconst js2-jsx-end-tag-re
+  (concat "</" sgml-name-re ">[[:space:]\n]*?" js2-jsx-after-tag-re)
+  "Find where JSX ends.
+This complements the assumption of where JSX appears from
+`js2-jsx-start-tag-re', which see.")
 
 (defun js2-jsx-indented-element-p ()
   "Determine if/how the current line should be indented as JSX.
+
 Return `first' for the first JSXElement on its own line.
 Return `nth' for subsequent lines of the first JSXElement.
-Return nil for non-JSX lines."
+Return nil for non-JSX lines.
+
+Currently, JSX indentation supports the following styles:
+
+- Single-line elements (indented like normal JS):
+
+  var element = <div></div>;
+
+- Multi-line elements (enclosed in parentheses):
+
+  function () {
+    return (
+      <div>
+        <div></div>
+      </div>
+    );
+ }
+
+- Function arguments:
+
+  React.render(
+    <div></div>,
+    document.querySelector('.root')
+  );"
   (let ((current-line-number (line-number-at-pos))
         before-tag-pos
         before-tag-line
@@ -11298,11 +11336,11 @@ Return nil for non-JSX lines."
     (save-excursion
       (and (progn
              (back-to-indentation)
-             (not (looking-at-p js2-jsx-after-tag-regex)))
+             (not (looking-at-p js2-jsx-after-tag-re)))
            ;; Determine if we're inside a jsx element
            (progn
              (end-of-line 1)
-             (re-search-backward js2-jsx-start-tag-regex nil t))
+             (re-search-backward js2-jsx-start-tag-re nil t))
            (progn
              (setq before-tag-pos (match-end 1))
              (goto-char before-tag-pos)
@@ -11319,7 +11357,7 @@ Return nil for non-JSX lines."
               ;; sure those lines are not also treated as jsx
               (>= current-line-number tag-start-line)))
            ;; Ensure we're actually within the bounds of the jsx
-           (not (and (setq end-pos (re-search-forward js2-jsx-end-tag-regex nil t))
+           (not (and (setq end-pos (re-search-forward js2-jsx-end-tag-re nil t))
                      (< (line-number-at-pos end-pos) current-line-number)))
            (cond
             ((progn
