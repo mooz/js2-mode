@@ -156,6 +156,19 @@
   |  </div>
   |);")
 
+(js2-deftest-indent jsx-argument
+  "React.render(
+  |  <div>
+  |    <div></div>
+  |  </div>,
+  |  {
+  |    a: 1
+  |  },
+  |  <div>
+  |    <div></div>
+  |  </div>
+  |);")
+
 (js2-deftest-indent jsx-leading-single-comment
   "return (
   |  // Sneaky!
@@ -177,11 +190,13 @@
   |);"
   :bind ((sgml-attribute-offset 1))) ; Emacs 24.5 -> 25 compat
 
-(js2-deftest-indent jsx-multiple-instances
-  "return (
-  |  <div>
-  |    <div></div>
-  |  </div>
-  |);
-  |var foo = <div></div>;
-  |")
+(js2-deftest-indent jsx-self-closing
+  ;; This ensures we know the bounds of a self-closing element
+  "React.render(
+  |  <input
+  |     />,
+  |  {
+  |    a: 1
+  |  }
+  |);"
+  :bind ((sgml-attribute-offset 1))) ; Emacs 24.5 -> 25 compat

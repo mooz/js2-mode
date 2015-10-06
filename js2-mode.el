@@ -11289,11 +11289,12 @@ Assume JSX appears in the following instances:
 - When assigned to variables or object properties
 - As the N+1th argument to a function")
 
+;; TODO: Use `syntax-ppss' to increase the accuracy of matching parentheses
 (defconst js2-jsx-after-tag-re "[),]"
   "Match characters indicating the end of JSX.")
 
 (defconst js2-jsx-end-tag-re
-  (concat "</" sgml-name-re ">[[:space:]\n]*?" js2-jsx-after-tag-re)
+  (concat "\\(?:</" sgml-name-re ">\\|/>\\)[[:space:]\n]*?" js2-jsx-after-tag-re)
   "Find where JSX ends.
 This complements the assumption of where JSX appears from
 `js2-jsx-start-tag-re', which see.")
