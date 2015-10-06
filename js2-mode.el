@@ -11307,6 +11307,8 @@ This complements the assumption of where JSX appears from
 
 Return `first' for the first JSXElement on its own line.
 Return `nth' for subsequent lines of the first JSXElement.
+Return `expression' for an embedded JS expression.
+Return `after' for anything after the last JSXElement.
 Return nil for non-JSX lines.
 
 Currently, JSX indentation supports the following styles:
@@ -11386,7 +11388,7 @@ Currently, JSX indentation supports the following styles:
               ;; the element
               (> current-line tag-end-line)
               (< current-line after-tag-line)
-              (setq type 'last))))
+              (setq type 'after))))
         ;; They may not be any bounds (yet)
         (t))
        ;; Check if we're inside an embedded multi-line js expression
@@ -11468,7 +11470,7 @@ as JSX source text."
        ((eq indentation-type 'expression)
         (js2-expression-in-sgml-indent-line))
        ((or (eq indentation-type 'first)
-            (eq indentation-type 'last))
+            (eq indentation-type 'after))
         ;; Don't treat this first thing as a continued expression (often a "<" or
         ;; ">" causes this misinterpretation)
         (cl-letf (((symbol-function js2-continued-expression-function) 'ignore))
