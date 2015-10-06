@@ -11289,16 +11289,13 @@ Assume JSX appears in the following instances:
 - When assigned to variables or object properties
 - As the N+1th argument to a function")
 
-;; TODO: Use `syntax-ppss' to increase the accuracy of matching parentheses
-(defconst js2-jsx-after-tag-re "[),]"
-  "Match characters indicating the end of JSX.")
-
 (defconst js2-jsx-end-tag-re
-  (concat "\\(?:</" sgml-name-re ">\\|/>\\)[[:space:]\n]*?" js2-jsx-after-tag-re)
+  (concat "\\(</" sgml-name-re ">\\|/>\\)[[:space:]\n]*?\\([),]\\)")
   "Find where JSX ends.
 This complements the assumption of where JSX appears from
 `js2-jsx-start-tag-re', which see.")
 
+;; TODO: Use `syntax-ppss' to increase the accuracy of matching parentheses
 (defun js2-jsx-indented-element-p ()
   "Determine if/how the current line should be indented as JSX.
 
@@ -11328,42 +11325,46 @@ Currently, JSX indentation supports the following styles:
     <div></div>,
     document.querySelector('.root')
   );"
-  (let ((current-line-number (line-number-at-pos))
-        before-tag-pos
-        before-tag-line
-        tag-start-pos
-        tag-start-line
-        end-pos)
+  (let ((current-line (line-number-at-pos))
+        before-tag-pos before-tag-line
+        tag-start-pos tag-start-line
+        tag-end-pos tag-end-line
+        after-tag-pos after-tag-line)
     (save-excursion
-      (and (progn
-             (back-to-indentation)
-             (not (looking-at-p js2-jsx-after-tag-re)))
-           ;; Determine if we're inside a jsx element
-           (progn
-             (end-of-line 1)
-             (re-search-backward js2-jsx-start-tag-re nil t))
-           (progn
-             (setq before-tag-pos (match-beginning 1)
-                   before-tag-line (line-number-at-pos before-tag-pos)
-                   tag-start-pos (match-beginning 2)
-                   tag-start-line (line-number-at-pos tag-start-pos))
-             (and
-              ;; A "before" line which also starts an element begins with js, so
-              ;; indent it like js
-              (> current-line-number before-tag-line)
-              ;; Only indent the jsx lines like jsx
-              (>= current-line-number tag-start-line)))
-           ;; Ensure we're actually within the bounds of the jsx
-           (not (and (setq end-pos (re-search-forward js2-jsx-end-tag-re nil t))
-                     (< (line-number-at-pos end-pos) current-line-number)))
-           (cond
-            ((= current-line-number tag-start-line)
-             ;; Indent the first jsx thing like js so we can indent future jsx
-             ;; things like sgml relative to the first thing
-             'first)
-            (t
-             ;; Indent relatively
-             'nth))))))
+      (and
+       ;; Determine if we're inside a jsx element
+       (progn
+         (end-of-line 1)
+         (re-search-backward js2-jsx-start-tag-re nil t))
+       (progn
+         (setq before-tag-pos (match-beginning 1)
+               before-tag-line (line-number-at-pos before-tag-pos)
+               tag-start-pos (match-beginning 2)
+               tag-start-line (line-number-at-pos tag-start-pos))
+         (and
+          ;; A "before" line which also starts an element begins with js, so
+          ;; indent it like js
+          (> current-line before-tag-line)
+          ;; Only indent the jsx lines like jsx
+          (>= current-line tag-start-line)))
+       (cond
+        ;; Analyze bounds if there are any
+        ((re-search-forward js2-jsx-end-tag-re nil t)
+         (setq tag-end-pos (match-beginning 1)
+               tag-end-line (line-number-at-pos tag-end-pos)
+               after-tag-pos (match-beginning 2)
+               after-tag-line (line-number-at-pos after-tag-line))
+         (and
+          ;; Ensure we're actually within the bounds of the jsx
+          (<= current-line tag-end-line)
+          ;; An "after" line which does not end an element begins with
+          ;; js, so indent it like js
+          (<= current-line after-tag-line)))
+        ;; They may not be any bounds (yet)
+        (t))
+       ;; Indent the first jsx thing like js so we can indent future jsx things
+       ;; like sgml relative to the first thing
+       (if (= current-line tag-start-line) 'first 'nth)))))
 
 (defun js2-indent-line (&optional bounce-backwards)
   "Indent the current line as JavaScript or JSX source text."

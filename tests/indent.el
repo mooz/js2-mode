@@ -200,3 +200,4 @@
   |  }
   |);"
   :bind ((sgml-attribute-offset 1))) ; Emacs 24.5 -> 25 compat
+
