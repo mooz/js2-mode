@@ -213,3 +213,20 @@
   |  </div>
   |);")
 
+(js2-deftest-indent jsx-embedded-js-attribute
+  "return (
+  |  <div attribute={array.map(function () {
+  |         return {
+  |           a: 1
+  |         };
+  |
+  |         return {
+  |           a: 1
+  |         };
+  |
+  |         return {
+  |           a: 1
+  |         };
+  |       })}>
+  |  </div>
+  |);")
