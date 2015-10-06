@@ -11282,7 +11282,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
   "Match whitespace and comments.")
 
 (defconst js2-jsx-start-tag-re
-  (concat "\\([(=:,]\\)" js2-whitespace-and-comments-re "<" sgml-name-re)
+  (concat "\\([(=:,]\\)" js2-whitespace-and-comments-re "\\(<\\)" sgml-name-re)
   "Find where JSX starts.
 Assume JSX appears in the following instances:
 - Inside parentheses, when returned or as the first argument to a function
@@ -11342,29 +11342,21 @@ Currently, JSX indentation supports the following styles:
              (end-of-line 1)
              (re-search-backward js2-jsx-start-tag-re nil t))
            (progn
-             (setq before-tag-pos (match-end 1))
-             (goto-char before-tag-pos)
-             (js2-forward-sws)
-             (looking-at sgml-start-tag-regex))
-           (progn
-             (setq before-tag-line (line-number-at-pos before-tag-pos)
-                   tag-start-pos (match-beginning 0)
+             (setq before-tag-pos (match-beginning 1)
+                   before-tag-line (line-number-at-pos before-tag-pos)
+                   tag-start-pos (match-beginning 2)
                    tag-start-line (line-number-at-pos tag-start-pos))
              (and
-              ;; The first line with everything on it isn't indented
-              (not (= current-line-number tag-start-line before-tag-line))
-              ;; We used js syntax typically preceding jsx to find jsx, but make
-              ;; sure those lines are not also treated as jsx
+              ;; A "before" line which also starts an element begins with js, so
+              ;; indent it like js
+              (> current-line-number before-tag-line)
+              ;; Only indent the jsx lines like jsx
               (>= current-line-number tag-start-line)))
            ;; Ensure we're actually within the bounds of the jsx
            (not (and (setq end-pos (re-search-forward js2-jsx-end-tag-re nil t))
                      (< (line-number-at-pos end-pos) current-line-number)))
            (cond
-            ((progn
-               (goto-char before-tag-pos)
-               (end-of-line 1)
-               (js2-forward-sws)
-               (= current-line-number (line-number-at-pos)))
+            ((= current-line-number tag-start-line)
              ;; Indent the first jsx thing like js so we can indent future jsx
              ;; things like sgml relative to the first thing
              'first)
