@@ -11325,16 +11325,18 @@ Currently, JSX indentation supports the following styles:
     <div></div>,
     document.querySelector('.root')
   );"
-  (let ((current-line (line-number-at-pos))
+  (let ((current-pos (point))
+        (current-line (line-number-at-pos))
         before-tag-pos before-tag-line
         tag-start-pos tag-start-line
         tag-end-pos tag-end-line
-        after-tag-pos after-tag-line)
+        after-tag-pos after-tag-line
+        parentheses parenthesis in-jsx)
     (save-excursion
       (and
        ;; Determine if we're inside a jsx element
        (progn
-         (end-of-line 1)
+         (end-of-line)
          (re-search-backward js2-jsx-start-tag-re nil t))
        (progn
          (setq before-tag-pos (match-beginning 1)
@@ -11362,6 +11364,27 @@ Currently, JSX indentation supports the following styles:
           (<= current-line after-tag-line)))
         ;; They may not be any bounds (yet)
         (t))
+       ;; Confirm that we aren't inside an embedded multi-line js expression
+       (progn
+         (goto-char current-pos)
+         (end-of-line)
+         (setq parentheses (nth 9 (syntax-ppss))
+               in-jsx t)
+         (while (and parentheses in-jsx)
+           (setq parenthesis (car parentheses))
+           (if (and (>= parenthesis tag-start-pos)
+                    (= (char-after parenthesis) 123) ; {
+                    (> current-line (line-number-at-pos parenthesis))
+                    (cond
+                     ((progn
+                        (goto-char parenthesis)
+                        (ignore-errors (let (forward-sexp-function)
+                                         (forward-sexp))))
+                      (< current-line (line-number-at-pos)))
+                     (t)))
+               (setq in-jsx nil)
+             (setq parentheses (cdr parentheses))))
+         in-jsx)
        ;; Indent the first jsx thing like js so we can indent future jsx things
        ;; like sgml relative to the first thing
        (if (= current-line tag-start-line) 'first 'nth)))))

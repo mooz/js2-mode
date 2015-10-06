@@ -38,7 +38,8 @@
 
 (cl-defmacro js2-deftest-indent (name content &key bind keep-indent)
   `(ert-deftest ,(intern (format "js2-%s" name)) ()
-     (let ,(append '((js2-basic-offset 2)
+     (let ,(append '(indent-tabs-mode
+                     (js2-basic-offset 2)
                      (js2-pretty-multiline-declarations t)
                      (inhibit-point-motion-hooks t))
                    bind)
@@ -200,4 +201,15 @@
   |  }
   |);"
   :bind ((sgml-attribute-offset 1))) ; Emacs 24.5 -> 25 compat
+
+(js2-deftest-indent jsx-embedded-js-content
+  "return (
+  |  <div>
+  |    {array.map(function () {
+  |      return {
+  |        a: 1
+  |      };
+  |    })}
+  |  </div>
+  |);")
 
