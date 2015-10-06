@@ -11344,10 +11344,11 @@ Return nil for non-JSX lines."
       (cl-letf (((symbol-function js2-continued-expression-function) 'ignore))
         (js2-old-indent-line bounce-backwards)))
      ((eq indentation-type 'nth)
-      ;; Make `forward-sexp' behave like in sgml-mode
+      ;; Simulate sgml-mode indentation
       (with-syntax-table sgml-mode-syntax-table
         (let (forward-sexp-function
-              parse-sexp-lookup-properties)
+              parse-sexp-lookup-properties
+              (sgml-basic-offset js2-basic-offset))
           (sgml-indent-line))))
      (t (js2-old-indent-line bounce-backwards)))))
 
