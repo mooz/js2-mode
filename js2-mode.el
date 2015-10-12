@@ -1018,6 +1018,11 @@ in large files.")
   "Face used to highlight function name in calls."
   :group 'js2-mode)
 
+(defface js2-object-property
+  '((t :inherit default))
+  "Face used to highlight named property in object literal."
+  :group 'js2-mode)
+
 (defface js2-instance-member
   '((t :foreground "DarkOrchid"))
   "Face used to highlight instance variables in javascript.
@@ -10723,7 +10728,7 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
                       (if (js2-function-node-p
                            (js2-object-prop-node-right expr))
                           'font-lock-function-name-face
-                        'font-lock-variable-name-face)
+                        'js2-object-property)
                       'record)
         expr)))))
 

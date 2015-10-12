@@ -1,5 +1,10 @@
 # History of user-visible changes
 
+## Next
+
+* Object properties are highlighted using a different face:
+  `js2-object-property`, which has no color by default.
+
 ## 20150909
 
 * `js2-mode` now derives from `js-mode`. That means the former
