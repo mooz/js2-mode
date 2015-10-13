@@ -6758,6 +6758,8 @@ Shown at or above `js2-highlight-level' 3.")
                 (prop
                  (if (string-match js2-ecma-object-props prop-name)
                      'font-lock-constant-face))))))
+        (when (and (not face) prop-name)
+          (setq face 'js2-object-property))
         (when face
           (let ((pos (+ (js2-node-pos parent)  ; absolute
                         (js2-node-pos prop)))) ; relative
@@ -9973,9 +9975,9 @@ Returns an expression tree that includes PN, the parent node."
         (setq pn (js2-parse-tagged-template pn (make-js2-string-node :type tt))))
        (t
         (js2-unget-token)
-        (setq continue nil))))
-    (if (>= js2-highlight-level 2)
-        (js2-parse-highlight-member-expr-node pn))
+        (setq continue nil)))
+      (if (>= js2-highlight-level 2)
+          (js2-parse-highlight-member-expr-node pn)))
     pn))
 
 (defun js2-parse-tagged-template (tag-node tpl-node)
