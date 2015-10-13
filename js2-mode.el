@@ -89,14 +89,19 @@
 (require 'imenu)
 (require 'js)
 (require 'etags)
+(require 'sgml-mode)
 
 (eval-and-compile
-  (if (version< emacs-version "25.0")
-      (require 'js2-old-indent)
+  (cond
+   ((version< emacs-version "25.0")
+    (require 'js2-old-indent)
+    (defvar js2-continued-expression-function 'js2-continued-expression-p))
+   (t
     (defvaralias 'js2-basic-offset 'js-indent-level nil)
     (defalias 'js2-proper-indentation 'js--proper-indentation)
-    (defalias 'js2-indent-line 'js-indent-line)
-    (defalias 'js2-re-search-forward 'js--re-search-forward)))
+    (defalias 'js2-old-indent-line 'js-indent-line)
+    (defalias 'js2-re-search-forward 'js--re-search-forward)
+    (defvar js2-continued-expression-function 'js--continued-expression-p))))
 
 ;;; Externs (variables presumed to be defined by the host system)
 
@@ -1201,6 +1206,12 @@ bound to TAB and backtab."
                  (define-key map (kbd "<backtab>") nil))
              (define-key map "\t" #'js2-indent-bounce)
              (define-key map (kbd "<backtab>") #'js2-indent-bounce-backward)))))
+
+(defcustom js2-indent-jsx-p nil
+  "Non-nil to indent JSX elements.
+This may slow down indentation for large files."
+  :type 'boolean
+  :group 'js2-mode)
 
 (defconst js2-mode-identifier-re "[[:alpha:]_$][[:alnum:]_$]*")
 
@@ -11278,6 +11289,204 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (pop-to-buffer js2-source-buffer)
         (goto-char pos)
         (message msg))))))
+
+(defconst js2-jsx-before-tag-re "[(=:,]"
+  "Find where JSX starts.
+Assume JSX appears in the following instances:
+- Inside parentheses, when returned or as the first argument to a function
+- When assigned to variables or object properties
+- As the N+1th argument to a function")
+
+(defconst js2-jsx-start-tag-re (concat "<" sgml-name-re)
+  "Find the start of a JSX element.")
+
+(defconst js2-jsx-end-tag-re
+  (concat "\\(?:</" sgml-name-re ">\\|/>\\)")
+  "Find the end of a JSX element.")
+
+(defconst js2-jsx-after-tag-re "[),]"
+  "Find where JSX ends.
+This complements the assumption of where JSX appears from
+`js2-jsx-before-tag-re', which see.")
+
+(defun js2-jsx-indented-element-p ()
+  "Determine if/how the current line should be indented as JSX.
+
+Return `first' for the first JSXElement on its own line.
+Return `nth' for subsequent lines of the first JSXElement.
+Return `expression' for an embedded JS expression.
+Return `after' for anything after the last JSXElement.
+Return nil for non-JSX lines.
+
+Currently, JSX indentation supports the following styles:
+
+- Single-line elements (indented like normal JS):
+
+  var element = <div></div>;
+
+- Multi-line elements (enclosed in parentheses):
+
+  function () {
+    return (
+      <div>
+        <div></div>
+      </div>
+    );
+ }
+
+- Function arguments:
+
+  React.render(
+    <div></div>,
+    document.querySelector('.root')
+  );"
+  (let ((current-pos (point))
+        (current-line (line-number-at-pos))
+        last-pos
+        before-tag-pos before-tag-line
+        tag-start-pos tag-start-line
+        tag-end-pos tag-end-line
+        after-tag-pos after-tag-line
+        parens paren type)
+    (save-excursion
+      (and
+       ;; Determine if we're inside a jsx element
+       (progn
+         (end-of-line)
+         (while (and (not tag-start-pos)
+                     (setq last-pos (re-search-backward js2-jsx-before-tag-re nil t)))
+           (goto-char (match-end 0))
+           (js2-forward-sws)
+           (when (looking-at js2-jsx-start-tag-re)
+             (setq before-tag-pos last-pos
+                   tag-start-pos (match-beginning 0)))
+           (goto-char last-pos))
+         tag-start-pos)
+       (progn
+         (setq before-tag-line (line-number-at-pos before-tag-pos)
+               tag-start-line (line-number-at-pos tag-start-pos))
+         (and
+          ;; A "before" line which also starts an element begins with js, so
+          ;; indent it like js
+          (> current-line before-tag-line)
+          ;; Only indent the jsx lines like jsx
+          (>= current-line tag-start-line)))
+       (cond
+        ;; Analyze bounds if there are any
+        ((progn
+           (while (and (not tag-end-pos)
+                       (setq last-pos (re-search-forward js2-jsx-end-tag-re nil t)))
+             (goto-char (match-end 0))
+             (js2-forward-sws)
+             (when (looking-at js2-jsx-after-tag-re)
+               (setq tag-end-pos last-pos
+                     after-tag-pos (match-beginning 0))))
+           tag-end-pos)
+         (setq tag-end-line (line-number-at-pos tag-end-pos)
+               after-tag-line (line-number-at-pos after-tag-line))
+         (or (and
+              ;; Ensure we're actually within the bounds of the jsx
+              (<= current-line tag-end-line)
+              ;; An "after" line which does not end an element begins with
+              ;; js, so indent it like js
+              (<= current-line after-tag-line))
+             (and
+              ;; Handle another case where there could be e.g. comments after
+              ;; the element
+              (> current-line tag-end-line)
+              (< current-line after-tag-line)
+              (setq type 'after))))
+        ;; They may not be any bounds (yet)
+        (t))
+       ;; Check if we're inside an embedded multi-line js expression
+       (cond
+        ((not type)
+         (goto-char current-pos)
+         (end-of-line)
+         (setq parens (nth 9 (syntax-ppss)))
+         (while (and parens (not type))
+           (setq paren (car parens))
+           (cond
+            ((and (>= paren tag-start-pos)
+                  ;; Curly bracket indicates the start of an embedded expression
+                  (= (char-after paren) 123) ; {
+                  ;; The first line of the expression is indented like sgml
+                  (> current-line (line-number-at-pos paren))
+                  ;; Check if within a closing curly bracket (if any)
+                  ;; (exclusive, as the closing bracket is indented like sgml)
+                  (cond
+                   ((progn
+                      (goto-char paren)
+                      (ignore-errors (let (forward-sexp-function)
+                                       (forward-sexp))))
+                    (< current-line (line-number-at-pos)))
+                   (t)))
+             ;; Indicate this guy will be indented specially
+             (setq type 'expression))
+            (t (setq parens (cdr parens)))))
+         t)
+        (t))
+       (cond
+        (type)
+        ;; Indent the first jsx thing like js so we can indent future jsx things
+        ;; like sgml relative to the first thing
+        ((= current-line tag-start-line) 'first)
+        ('nth))))))
+
+(defmacro js2-as-sgml (&rest body)
+  "Execute BODY as if in sgml-mode."
+  `(with-syntax-table sgml-mode-syntax-table
+     (let (forward-sexp-function
+           parse-sexp-lookup-properties
+           (sgml-basic-offset js2-basic-offset))
+       ,@body)))
+
+(defun js2-expression-in-sgml-indent-line ()
+  "Indent the current line as JavaScript or SGML (whichever is farther)."
+  (let* (indent-col
+         (savep (point))
+         ;; Don't whine about errors/warnings when we're indenting.
+         ;; This has to be set before calling parse-partial-sexp below.
+         (inhibit-point-motion-hooks t)
+         (parse-status (save-excursion
+                         (syntax-ppss (point-at-bol)))))
+    ;; Don't touch multiline strings.
+    (unless (nth 3 parse-status)
+      (setq indent-col (save-excursion
+                         (back-to-indentation)
+                         (if (>= (point) savep) (setq savep nil))
+                         (js2-as-sgml (sgml-calculate-indent))))
+      (if (null indent-col)
+          'noindent
+        ;; Use whichever indentation column is greater, such that the sgml
+        ;; column is effectively a minimum
+        (setq indent-col (max (js2-proper-indentation parse-status)
+                              (+ indent-col js2-basic-offset)))
+        (if savep
+            (save-excursion (indent-line-to indent-col))
+          (indent-line-to indent-col))))))
+
+(defun js2-indent-line ()
+  "Indent the current line as JavaScript or JSX source text.
+If `js2-indent-jsx-p' non-nil, which see, indent the current line
+as JSX source text."
+  (cond
+   (js2-indent-jsx-p
+    (let ((indentation-type (js2-jsx-indented-element-p)))
+      (cond
+       ((eq indentation-type 'expression)
+        (js2-expression-in-sgml-indent-line))
+       ((or (eq indentation-type 'first)
+            (eq indentation-type 'after))
+        ;; Don't treat this first thing as a continued expression (often a "<" or
+        ;; ">" causes this misinterpretation)
+        (cl-letf (((symbol-function js2-continued-expression-function) 'ignore))
+          (js2-old-indent-line)))
+       ((eq indentation-type 'nth)
+        (js2-as-sgml (sgml-indent-line)))
+       (t (js2-old-indent-line)))))
+   (t
+    (js2-old-indent-line))))
 
 ;;;###autoload
 (define-derived-mode js2-mode js-mode "Javascript-IDE"
