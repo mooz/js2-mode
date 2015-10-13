@@ -399,6 +399,55 @@ the test."
 (js2-deftest-parse parse-generator-comp-with-yield-inside-function-is-ok
   "(for (x of []) function*() {  yield x;\n});")
 
+;;; Async
+
+(js2-deftest-parse async-function-statement
+  "async function foo() {\n}")
+
+(js2-deftest-parse async-function-statement-inside-block
+  "if (true) {\n  async function foo() {\n  }\n}")
+
+(js2-deftest-parse async-function-expression-statements-are-verboten
+  "async function() {}" :syntax-error "(")
+
+(js2-deftest-parse async-named-function-expression
+  "a = async function b() {};")
+
+(js2-deftest-parse async-arrow-function-expression
+  "a = async (b) => {  b;\n};")
+
+;;; Await
+
+(js2-deftest-parse await-is-ok "async function foo() {\n  await bar();\n}")
+
+(js2-deftest-parse await-inside-assignment-is-ok
+                   "async function foo() {\n  var result = await bar();\n}")
+
+(js2-deftest-parse await-inside-array-is-ok
+                   "async function foo() {\n  var results = [await bar(), await baz()];\n}")
+
+(js2-deftest-parse await-inside-non-async-function-is-not-ok
+                   "function foo() {\n  await bar();\n}"
+                   :syntax-error "await")
+
+(js2-deftest-parse await-inside-non-async-arrow-function-is-not-ok
+                   "a = () => {  await bar();\n}"
+                   :syntax-error "await")
+
+;;; 'async' and 'await' are contextual keywords
+
+(js2-deftest-parse async-can-be-var-name
+  "var async = 3;")
+
+(js2-deftest-parse async-can-be-function-name
+  "function async() {\n}")
+
+(js2-deftest-parse await-can-be-var-name
+  "var await = 3;")
+
+(js2-deftest-parse await-can-be-function-name
+  "function await() {\n}")
+
 ;;; Numbers
 
 (js2-deftest-parse decimal-starting-with-zero "081;" :reference "81;")
