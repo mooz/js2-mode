@@ -738,6 +738,7 @@ parser as a frontend to an interpreter or byte compiler.")
 (js2-deflocal js2-compiler-use-dynamic-scope nil)
 (js2-deflocal js2-compiler-reserved-keywords-as-identifier nil)
 (js2-deflocal js2-compiler-xml-available t)
+(js2-deflocal js2-compiler-e4x-accessor-available nil)
 (js2-deflocal js2-compiler-optimization-level 0)
 (js2-deflocal js2-compiler-generating-source t)
 (js2-deflocal js2-compiler-strict-mode nil)
@@ -10065,7 +10066,7 @@ Last token parsed must be `js2-RB'."
     (when (= tt js2-DOTDOT)
       (js2-must-have-xml)
       (setq member-type-flags js2-descendants-flag))
-    (if (not js2-compiler-xml-available)
+    (if (not js2-compiler-e4x-accessor-available)
         (progn
           (js2-must-match-prop-name "msg.no.name.after.dot")
           (setq name (js2-create-name-node t js2-GETPROP)
@@ -10298,7 +10299,7 @@ array-literals, array comprehensions and regular expressions."
 (defun js2-parse-name (_tt)
   (let ((name (js2-current-token-string))
         node)
-    (setq node (if js2-compiler-xml-available
+    (setq node (if js2-compiler-e4x-accessor-available
                    (js2-parse-property-name nil name 0)
                  (js2-create-name-node 'check-activation nil name)))
     (if js2-highlight-external-variables
