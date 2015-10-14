@@ -8134,7 +8134,7 @@ Last token scanned is the close-curly for the function body."
        ((js2-match-token js2-LP)
         (js2-parse-function 'FUNCTION_STATEMENT pos star-p name))
        (js2-allow-member-expr-as-function-name
-        (setq member-expr (js2-parse-member-expr-tail nil name))
+        (setq member-expr (js2-parse-member-or-new-expr-tail name))
         (js2-parse-highlight-member-expr-fn-name member-expr)
         (js2-must-match js2-LP "msg.no.paren.parms")
         (setf pn (js2-parse-function 'FUNCTION_STATEMENT pos star-p)
@@ -9819,7 +9819,7 @@ to parse the operand (for prefix operators)."
       (prog1
           (setq beg (js2-current-token-beg)
                 end (js2-current-token-end)
-                expr (js2-make-unary tt 'js2-parse-member-expr t))
+                expr (js2-make-unary tt 'js2-parse-lhs-expr))
         (js2-check-bad-inc-dec tt beg end expr)))
      ((= tt js2-DELPROP)
       (js2-get-token)
@@ -9830,9 +9830,9 @@ to parse the operand (for prefix operators)."
      ((and (= tt js2-LT)
            js2-compiler-xml-available)
       ;; XML stream encountered in expression.
-      (js2-parse-member-expr-tail t (js2-parse-xml-initializer)))
+      (js2-parse-lhs-expr-tail (js2-parse-xml-initializer)))
      (t
-      (setq pn (js2-parse-member-expr t)
+      (setq pn (js2-parse-lhs-expr)
             ;; Don't look across a newline boundary for a postfix incop.
             tt (js2-peek-token-or-eol))
       (when (or (= tt js2-INC) (= tt js2-DEC))
@@ -9914,7 +9914,29 @@ Returns the list in reverse order.  Consumes the right-paren token."
       (js2-must-match js2-RP "msg.no.paren.arg")
       result)))
 
-(defun js2-parse-member-expr (&optional allow-call-syntax)
+(defun js2-parse-lhs-expr ()
+  "Parse a `LeftHandSideExpression'.
+
+The two possible productions are collectively handled like a
+`CallExpression' with optional `Arguments' at end."
+  (let ((pn (js2-parse-member-or-new-expr)))
+    (js2-parse-lhs-expr-tail pn)))
+
+(defun js2-parse-lhs-expr-tail (pn)
+  "Continues a `LeftHandSideExpression' after `pn'."
+  (let (tt
+        (continue t))
+    (while continue
+      (setq tt (js2-peek-token))
+      (cond
+       ((= tt js2-LP)
+        (setq pn (js2-parse-function-call pn)))
+       (t
+        (setq continue nil)))))
+  pn)
+
+(defun js2-parse-member-or-new-expr ()
+  "Parse a `MemberExpression' or `NewExpression'."
   (let ((tt (js2-current-token-type))
         pn pos target args beg end init)
     (if (/= tt js2-NEW)
@@ -9923,7 +9945,7 @@ Returns the list in reverse order.  Consumes the right-paren token."
       (js2-get-token)
       (setq pos (js2-current-token-beg)
             beg pos
-            target (js2-parse-member-expr)
+            target (js2-parse-member-or-new-expr)
             end (js2-node-end target)
             pn (make-js2-new-node :pos pos
                                   :target target
@@ -9947,12 +9969,12 @@ Returns the list in reverse order.  Consumes the right-paren token."
               (js2-new-node-initializer pn) init)
         (js2-node-add-children pn init))
         (setf (js2-node-len pn) (- end beg)))  ; end outer if
-    (js2-parse-member-expr-tail allow-call-syntax pn)))
+    (js2-parse-member-or-new-expr-tail pn)))
 
-(defun js2-parse-member-expr-tail (allow-call-syntax pn)
-  "Parse a chain of property/array accesses or function calls.
+(defun js2-parse-member-or-new-expr-tail (pn)
+  "Continues a `MemberExpression' or `NewExpression' after `pn'.
+
 Includes parsing for E4X operators like `..' and `.@'.
-If ALLOW-CALL-SYNTAX is nil, stops when we encounter a left-paren.
 Returns an expression tree that includes PN, the parent node."
   (let (tt
         (continue t))
@@ -9965,11 +9987,6 @@ Returns an expression tree that includes PN, the parent node."
         (setq pn (js2-parse-dot-query pn)))
        ((= tt js2-LB)
         (setq pn (js2-parse-element-get pn)))
-       ((= tt js2-LP)
-        (js2-unget-token)
-        (if allow-call-syntax
-            (setq pn (js2-parse-function-call pn))
-          (setq continue nil)))
        ((= tt js2-TEMPLATE_HEAD)
         (setq pn (js2-parse-tagged-template pn (js2-parse-template-literal))))
        ((= tt js2-NO_SUBS_TEMPLATE)
