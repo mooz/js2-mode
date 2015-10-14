@@ -338,6 +338,23 @@ the test."
 (js2-deftest-parse arrow-function-recovers-from-error
   "[(,foo) => 1];" :syntax-error "," :errors-count 6)
 
+;;; Bind operators
+
+(js2-deftest-parse unary-bind-operator
+  "::a.b;")
+
+(js2-deftest-parse unary-bind-operator-with-call
+  "::a.b();")
+
+(js2-deftest-parse binary-bind-operator
+  "a :: b;")
+
+(js2-deftest-parse binary-bind-operator-with-call
+  "a :: b();")
+
+(js2-deftest-parse bind-operator-chain
+  "::a.b :: c :: d;")
+
 ;;; Automatic semicolon insertion
 
 (js2-deftest-parse no-auto-semi-insertion-after-if

@@ -3497,7 +3497,8 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-ASSIGN_SUB "-=")
                (cons js2-ASSIGN_MUL "*=")
                (cons js2-ASSIGN_DIV "/=")
-               (cons js2-ASSIGN_MOD "%="))))
+               (cons js2-ASSIGN_MOD "%=")
+               (cons js2-COLONCOLON "::"))))
     (cl-loop for (k . v) in tokens do
              (puthash k v table))
     table))
@@ -9917,9 +9918,17 @@ Returns the list in reverse order.  Consumes the right-paren token."
 (defun js2-parse-lhs-expr ()
   "Parse a `LeftHandSideExpression'.
 
-The two possible productions are collectively handled like a
-`CallExpression' with optional `Arguments' at end."
-  (let ((pn (js2-parse-member-or-new-expr)))
+The three possible productions are collectively handled like a
+`CallExpression' with optional `Arguments' at end.  Unary bind is
+handled specially because it is the only one not beginning with a
+`NewExpression'."
+  (let ((pn (if (= (js2-current-token-type) js2-COLONCOLON)
+                ;; A unary bind, in the form of `::NewExpression'.
+                (progn
+                  (js2-get-token)
+                  (js2-make-unary js2-COLONCOLON 'js2-parse-member-or-new-expr))
+              ;; otherwise
+              (js2-parse-member-or-new-expr))))
     (js2-parse-lhs-expr-tail pn)))
 
 (defun js2-parse-lhs-expr-tail (pn)
@@ -9931,9 +9940,16 @@ The two possible productions are collectively handled like a
       (cond
        ((= tt js2-LP)
         (setq pn (js2-parse-function-call pn)))
+       ((= tt js2-COLONCOLON)
+        (setq pn (js2-parse-binary-bind pn)))
        (t
         (setq continue nil)))))
   pn)
+
+(defun js2-parse-binary-bind (pn)
+  "Complete a binary function bind after `pn'."
+  (cl-assert (= js2-COLONCOLON (js2-get-token)))
+  (js2-make-binary js2-COLONCOLON pn 'js2-parse-member-or-new-expr))
 
 (defun js2-parse-member-or-new-expr ()
   "Parse a `MemberExpression' or `NewExpression'."
