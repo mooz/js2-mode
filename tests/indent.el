@@ -140,3 +140,11 @@
   |  ,
   |  bar = 8;"
   :bind ((js2-pretty-multiline-declarations 'dynamic)))
+
+(js2-deftest-indent indent-generator-method
+  "class A {
+  |  * x() {
+  |    return 1
+  |      * 2;
+  |  }
+  |}")
