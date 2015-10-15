@@ -215,11 +215,20 @@ and comments have been removed."
 
 (defun js2-looking-at-operator-p ()
   "Return non-nil if text after point is a non-comma operator."
+  (defvar js2-mode-identifier-re)
   (and (looking-at js2-indent-operator-re)
-       (or (not (looking-at ":"))
+       (or (not (eq (char-after) ?:))
            (save-excursion
              (and (js2-re-search-backward "[?:{]\\|\\_<case\\_>" nil t)
-                  (looking-at "?"))))))
+                  (eq (char-after) ??))))
+       (not (and
+             (eq (char-after) ?*)
+             (looking-at (concat "\\* *" js2-mode-identifier-re " *("))
+             (save-excursion
+               (goto-char (1- (match-end 0)))
+               (let (forward-sexp-function) (forward-sexp))
+               (js2-forward-sws)
+               (eq (char-after) ?{))))))
 
 (defun js2-continued-expression-p ()
   "Return non-nil if the current line continues an expression."
