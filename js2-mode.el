@@ -3275,7 +3275,7 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
 
 (defun js2-print-function-node (n i)
   (let* ((pad (js2-make-pad i))
-         (getter (js2-node-get-prop n 'GETTER_SETTER))
+         (method (js2-node-get-prop n 'METHOD_TYPE))
          (name (or (js2-function-node-name n)
                    (js2-function-node-member-expr n)))
          (params (js2-function-node-params n))
@@ -3283,7 +3283,7 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
          (rest-p (js2-function-node-rest-p n))
          (body (js2-function-node-body n))
          (expr (not (eq (js2-function-node-form n) 'FUNCTION_STATEMENT))))
-    (unless (or getter arrow)
+    (unless (or method arrow)
       (insert pad "function")
       (when (eq (js2-function-node-generator-type n) 'STAR)
         (insert "*")))
@@ -3934,24 +3934,24 @@ both fields have the same value.")
           (insert ": ")
           (js2-print-ast right 0)))))
 
-(cl-defstruct (js2-getter-setter-node
+(cl-defstruct (js2-method-node
                (:include js2-infix-node)
                (:constructor nil)
-               (:constructor make-js2-getter-setter-node (&key type ; GET, SET, or FUNCTION
-                                                               (pos js2-ts-cursor)
-                                                               len left right)))
-  "AST node for a getter/setter property in an object literal.
-The `left' field is the `js2-name-node' naming the getter/setter prop.
+               (:constructor make-js2-method-node (&key type ; GET, SET, or FUNCTION
+                                                        (pos js2-ts-cursor)
+                                                        len left right)))
+  "AST node for a method in an object literal or a class body.
+The `left' field is the `js2-name-node' naming the method.
 The `right' field is always an anonymous `js2-function-node' with a node
-property `GETTER_SETTER' set to js2-GET, js2-SET, or js2-FUNCTION. ")
+property `METHOD_TYPE' set to js2-GET, js2-SET, or js2-FUNCTION. ")
 
-(put 'cl-struct-js2-getter-setter-node 'js2-visitor 'js2-visit-infix-node)
-(put 'cl-struct-js2-getter-setter-node 'js2-printer 'js2-print-getter-setter)
+(put 'cl-struct-js2-method-node 'js2-visitor 'js2-visit-infix-node)
+(put 'cl-struct-js2-method-node 'js2-printer 'js2-print-method)
 
-(defun js2-print-getter-setter (n i)
+(defun js2-print-method (n i)
   (let* ((pad (js2-make-pad i))
-         (left (js2-getter-setter-node-left n))
-         (right (js2-getter-setter-node-right n)))
+         (left (js2-method-node-left n))
+         (right (js2-method-node-right n)))
     (insert pad)
     (if (/= (js2-node-type n) js2-FUNCTION)
         (insert (if (= (js2-node-type n) js2-GET) "get " "set ")))
@@ -10586,7 +10586,7 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
 
 (defun js2-property-key-string (property-node)
   "Return the key of PROPERTY-NODE (a `js2-object-prop-node' or
-`js2-getter-setter-node') as a string, or nil if it can't be
+`js2-method-node') as a string, or nil if it can't be
 represented as a string (e.g., the key is computed by an
 expression)."
   (let ((key (js2-infix-node-left property-node)))
@@ -10675,10 +10675,10 @@ expression)."
                            ;; Check if the property is a duplicate.
                            (string= previous-elem-key-string elem-key-string)
                            ;; But make an exception for getter / setter pairs.
-                           (not (and (js2-getter-setter-node-p elem)
-                                     (js2-getter-setter-node-p previous-elem)
-                                     (/= (js2-getter-setter-node-type elem)
-                                         (js2-getter-setter-node-type previous-elem))))))
+                           (not (and (js2-method-node-p elem)
+                                     (js2-method-node-p previous-elem)
+                                     (/= (js2-method-node-type elem)
+                                         (js2-method-node-type previous-elem))))))
                     elems))
           (js2-report-error "msg.dup.obj.lit.prop.strict"
                             elem-key-string
@@ -10709,7 +10709,7 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
            (>= js2-language-version 200))
       (when (js2-name-node-p key)  ; highlight function name properties
         (js2-record-face 'font-lock-function-name-face))
-      (js2-parse-getter-setter-prop pos key property-type))
+      (js2-parse-method-prop pos key property-type))
      ;; regular prop
      (t
       (let ((beg (js2-current-token-beg))
@@ -10790,11 +10790,11 @@ string or expression."
       (js2-node-add-children result prop expr)
       result))))
 
-(defun js2-parse-getter-setter-prop (pos prop type-string)
-  "Parse getter or setter property in an object literal.
+(defun js2-parse-method-prop (pos prop type-string)
+  "Parse method property in an object literal or a class body.
 JavaScript syntax is:
 
-  { get foo() {...}, set foo(x) {...} }
+  { foo(...) {...}, get foo() {...}, set foo(x) {...}, *foo(...) {...} }
 
 and expression closure style is also supported
 
@@ -10814,15 +10814,15 @@ TYPE-STRING is a string `get', `set', `*', or nil, indicating a found keyword."
         (js2-report-error "msg.bad.prop")
       (if (cl-plusp (length (js2-function-name fn)))
           (js2-report-error "msg.bad.prop")))
-    (js2-node-set-prop fn 'GETTER_SETTER type)  ; for codegen
+    (js2-node-set-prop fn 'METHOD_TYPE type)  ; for codegen
     (when (string= type-string "*")
       (setf (js2-function-node-generator-type fn) 'STAR))
     (setq end (js2-node-end fn)
-          result (make-js2-getter-setter-node :type type
-                                              :pos pos
-                                              :len (- end pos)
-                                              :left prop
-                                              :right fn))
+          result (make-js2-method-node :type type
+                                       :pos pos
+                                       :len (- end pos)
+                                       :left prop
+                                       :right fn))
     (js2-node-add-children result prop fn)
     result))
 
