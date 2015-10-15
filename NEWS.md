@@ -4,6 +4,10 @@
 
 * Object properties are highlighted using a different face:
   `js2-object-property`, which has no color by default.
+* `js2-getter-setter-node` is renamed to `js2-method-node`, together
+  with its related functions.  It already handles generator methods,
+  and will in the future add support for async methods, so the old
+  name will get more confusing.
 
 ## 20150909
 
