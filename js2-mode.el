@@ -10649,6 +10649,10 @@ expression)."
         (if after-comma
             (js2-parse-warn-trailing-comma "msg.extra.trailing.comma"
                                            pos elems after-comma)))
+       ;; Skip semicolons in a class body
+       ((and class-p
+             (= tt js2-SEMI))
+        nil)
        (t
         (js2-report-error "msg.bad.prop")
         (unless js2-recover-from-parse-errors
