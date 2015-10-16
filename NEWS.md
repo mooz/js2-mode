@@ -8,6 +8,8 @@
   with its related functions.  It already handles generator methods,
   and will in the future add support for async methods, so the old
   name will get more confusing.
+* Support for default parameters in destructuring.  It should work for both
+  objects and arrays, in both literals and function arguments.
 
 ## 20150909
 
