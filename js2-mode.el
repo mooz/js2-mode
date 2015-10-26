@@ -6758,7 +6758,7 @@ Shown at or above `js2-highlight-level' 3.")
                 (prop
                  (if (string-match js2-ecma-object-props prop-name)
                      'font-lock-constant-face))))))
-        (when (and (not face) prop-name)
+        (when (and (not face) target (not call-p) prop-name)
           (setq face 'js2-object-property))
         (when face
           (let ((pos (+ (js2-node-pos parent)  ; absolute
