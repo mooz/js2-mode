@@ -148,3 +148,24 @@
   |      * 2;
   |  }
   |}")
+
+(js2-deftest-indent case-inside-switch
+  "switch(true) {
+  |case 'true':
+  |  return 1;
+  |}")
+
+(js2-deftest-indent case-inside-switch-with-extra-indent
+  "switch(true) {
+  |  case 'true':
+  |    return 1;
+  |}"
+  :bind ((js2-indent-switch-body t)))
+
+(js2-deftest-indent case-inside-switch-with-extra-indent-curly-after-newline
+  "switch(true)
+  |{
+  |  case 'true':
+  |    return 1;
+  |}"
+  :bind ((js2-indent-switch-body t)))

@@ -440,7 +440,7 @@ indentation is aligned to that column."
         (goto-char bracket)
         (cond
          ((looking-at "[({[][ \t]*\\(/[/*]\\|$\\)")
-          (when (save-excursion (skip-chars-backward " \t)")
+          (when (save-excursion (skip-chars-backward " \t\n)")
                                 (looking-at ")"))
             (backward-list))
           (back-to-indentation)
