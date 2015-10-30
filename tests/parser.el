@@ -766,6 +766,9 @@ the test."
 (js2-deftest-parse parse-class-keywordlike-method
   "class C {\n  delete() {}\n  if() {}\n}")
 
+(js2-deftest-parse parse-harmony-class-allow-semicolon-element
+  "class Foo {;}" :reference "class Foo {\n}")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"
