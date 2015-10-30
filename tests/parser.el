@@ -189,6 +189,11 @@ the test."
 (js2-deftest-parse object-literal-method
   "var x = {f(y) {  return y;\n}};")
 
+(js2-deftest object-literal-method-own-name-in-scope "({f(){f();}});"
+  (js2-mode)
+  (should (equal '("msg.undeclared.variable" "f")
+                 (caar js2-parsed-warnings))))
+
 (js2-deftest-parse object-literal-getter-method
   "var x = {get f() {  return 42;\n}};")
 
