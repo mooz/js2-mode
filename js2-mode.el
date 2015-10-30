@@ -1717,6 +1717,9 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.destruct.assign.no.init"
          "Missing = in destructuring declaration")
 
+(js2-msg "msg.init.no.destruct"
+         "Binding initializer not in destructuring assignment")
+
 (js2-msg "msg.no.octal.strict"
          "Octal numbers prohibited in strict mode.")
 
@@ -10725,6 +10728,8 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
      ;; binding element with initializer
      ((and (= (js2-peek-token) js2-ASSIGN)
            (>= js2-language-version 200))
+      (if (not js2-is-in-destructuring)
+          (js2-report-error "msg.init.no.destruct"))
       (js2-parse-initialized-binding key))
      ;; regular prop
      (t

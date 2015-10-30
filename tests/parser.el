@@ -198,6 +198,11 @@ the test."
   (should (equal '("msg.var.redecl" "a")
                  (caar js2-parsed-warnings))))
 
+(js2-deftest initializer-outside-destruct-is-error "({a=1});"
+  (js2-mode)
+  (should (equal "msg.init.no.destruct"
+                 (car (caar js2-parsed-errors)))))
+
 ;;; Object literals
 
 (js2-deftest-parse object-literal-shorthand
