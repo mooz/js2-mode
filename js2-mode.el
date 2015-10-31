@@ -95,6 +95,7 @@
       (require 'js2-old-indent)
     (defvaralias 'js2-basic-offset 'js-indent-level nil)
     (defalias 'js2-proper-indentation 'js--proper-indentation)
+    (defalias 'js2-jsx-indent-line 'js-jsx-indent-line)
     (defalias 'js2-indent-line 'js-indent-line)
     (defalias 'js2-re-search-forward 'js--re-search-forward)))
 
@@ -11378,11 +11379,14 @@ Selecting an error will jump it to the corresponding source-buffer error.
 ;;;###autoload
 (define-derived-mode js2-jsx-mode js2-mode "JSX-IDE"
   "Major mode for editing JSX code.
-Like `js-jsx-mode', which see.
-Indentation support requires Emacs 25+ (or the latest js.el)."
-  ;; Feature-detect JSX indentation support (in js-mode from Emacs 25+).
-  (if (fboundp 'js-jsx-indent-line)
-      (set (make-local-variable 'indent-line-function) #'js-jsx-indent-line)))
+
+To customize the indentation for this mode, set the SGML offset
+variables (`sgml-basic-offset' et al) locally, like so:
+
+  (defun set-jsx-indentation ()
+    (setq-local sgml-basic-offset js2-basic-offset))
+  (add-hook 'js2-jsx-mode-hook #'set-jsx-indentation)"
+  (set (make-local-variable 'indent-line-function) #'js2-jsx-indent-line))
 
 (defun js2-mode-exit ()
   "Exit `js2-mode' and clean up."
