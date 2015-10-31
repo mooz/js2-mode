@@ -11373,6 +11373,17 @@ Selecting an error will jump it to the corresponding source-buffer error.
 
   (js2-reparse))
 
+;; We may eventually want js2-jsx-mode to derive from js-jsx-mode, but that'd be
+;; a bit more complicated and it doesn't net us much yet.
+;;;###autoload
+(define-derived-mode js2-jsx-mode js2-mode "JSX-IDE"
+  "Major mode for editing JSX code.
+Like `js-jsx-mode', which see.
+Indentation support requires Emacs 25+ (or the latest js.el)."
+  ;; Feature-detect JSX indentation support (in js-mode from Emacs 25+).
+  (if (fboundp 'js-jsx-indent-line)
+      (set (make-local-variable 'indent-line-function) #'js-jsx-indent-line)))
+
 (defun js2-mode-exit ()
   "Exit `js2-mode' and clean up."
   (interactive)
