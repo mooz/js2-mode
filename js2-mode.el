@@ -1717,6 +1717,9 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.destruct.assign.no.init"
          "Missing = in destructuring declaration")
 
+(js2-msg "msg.init.no.destruct"
+         "Binding initializer not in destructuring assignment")
+
 (js2-msg "msg.no.octal.strict"
          "Octal numbers prohibited in strict mode.")
 
@@ -8003,16 +8006,18 @@ declared; probably to check them for errors."
         (list node)))
      ((js2-object-node-p node)
       (dolist (elem (js2-object-node-elems node))
-        (when (js2-object-prop-node-p elem)
+        ;; js2-infix-node-p catches both object prop node and initialized
+        ;; binding element (which is directly an infix node).
+        (when (js2-infix-node-p elem)
           (push (js2-define-destruct-symbols
-                 ;; In abbreviated destructuring {a, b}, right == left.
-                 (js2-object-prop-node-right elem)
+                 (js2-infix-node-left elem)
                  decl-type face ignore-not-in-block)
                 name-nodes)))
       (apply #'append (nreverse name-nodes)))
      ((js2-array-node-p node)
       (dolist (elem (js2-array-node-elems node))
         (when elem
+          (if (js2-infix-node-p elem) (setq elem (js2-infix-node-left elem)))
           (push (js2-define-destruct-symbols
                  elem decl-type face ignore-not-in-block)
                 name-nodes)))
@@ -9632,7 +9637,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
       (js2-node-add-children pn test-expr if-true if-false))
     pn))
 
-(defun js2-make-binary (type left parser)
+(defun js2-make-binary (type left parser &optional no-get)
   "Helper for constructing a binary-operator AST node.
 LEFT is the left-side-expression, already parsed, and the
 binary operator should have just been matched.
@@ -9643,7 +9648,7 @@ FIXME: The latter option is unused?"
          (op-pos (- (js2-current-token-beg) pos))
          (right (if (js2-node-p parser)
                     parser
-                  (js2-get-token)
+                  (unless no-get (js2-get-token))
                   (funcall parser)))
          (pn (make-js2-infix-node :type type
                                   :pos pos
@@ -10364,14 +10369,20 @@ array-literals, array comprehensions and regular expressions."
         (apply #'js2-node-add-children pn (js2-array-node-elems pn)))
        ;; destructuring binding
        (js2-is-in-destructuring
-        (push (if (or (= tt js2-LC)
-                      (= tt js2-LB)
-                      (= tt js2-NAME))
-                  ;; [a, b, c] | {a, b, c} | {a:x, b:y, c:z} | a
-                  (js2-parse-destruct-primary-expr)
-                ;; invalid pattern
+        (push (cond
+               ((and (= tt js2-NAME)
+                     (= js2-ASSIGN (js2-peek-token)))
+                ;; a=defaultValue
+                (js2-parse-initialized-binding (js2-parse-name js2-NAME)))
+               ((or (= tt js2-LC)
+                    (= tt js2-LB)
+                    (= tt js2-NAME))
+                ;; [a, b, c] | {a, b, c} | {a:x, b:y, c:z} | a
+                (js2-parse-destruct-primary-expr))
+               ;; invalid pattern
+               (t
                 (js2-report-error "msg.bad.var")
-                (make-js2-error-node))
+                (make-js2-error-node)))
               elems)
         (setq after-lb-or-comma nil
               after-comma nil))
@@ -10714,6 +10725,12 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
       (when (js2-name-node-p key)  ; highlight function name properties
         (js2-record-face 'font-lock-function-name-face))
       (js2-parse-method-prop pos key property-type))
+     ;; binding element with initializer
+     ((and (= (js2-peek-token) js2-ASSIGN)
+           (>= js2-language-version 200))
+      (if (not js2-is-in-destructuring)
+          (js2-report-error "msg.init.no.destruct"))
+      (js2-parse-initialized-binding key))
      ;; regular prop
      (t
       (let ((beg (js2-current-token-beg))
@@ -10731,6 +10748,13 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
                         'js2-object-property)
                       'record)
         expr)))))
+
+(defun js2-parse-initialized-binding (name)
+  "Parse a `SingleNameBinding' with initializer.
+
+`name' is the `BindingIdentifier'."
+  (when (js2-match-token js2-ASSIGN)
+    (js2-make-binary js2-ASSIGN name 'js2-parse-assign-expr t)))
 
 (defun js2-parse-prop-name (tt)
   (cond
