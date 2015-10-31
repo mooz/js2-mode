@@ -12,7 +12,7 @@ The stable versions are hosted at [GNU ELPA](http://elpa.gnu.org/)
 (<kbd>M-x list-packages</kbd>).
 
 You can also install the latest development version from
-[Melpa](http://melpa.milkbox.net/#installing).
+[MELPA](https://melpa.org/#/getting-started).
 
 Emacs 22 and 23
 ===============
