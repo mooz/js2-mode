@@ -60,6 +60,12 @@
 
 ;;   (add-to-list 'interpreter-mode-alist '("node" . js2-mode))
 
+;; Support for JSX is available via the derived mode `js2-jsx-mode'.  If you
+;; also want JSX support, use that mode instead:
+
+;;   (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-jsx-mode))
+;;   (add-to-list 'interpreter-mode-alist '("node" . js2-jsx-mode))
+
 ;; To customize how it works:
 ;;   M-x customize-group RET js2-mode RET
 
