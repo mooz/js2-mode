@@ -31,14 +31,15 @@
        (if keep-indent
            s
          (replace-regexp-in-string "^ *" "" s)))
-      (js2-mode)
+      (js2-jsx-mode)
       (indent-region (point-min) (point-max))
       (should (string= s (buffer-substring-no-properties
                           (point-min) (point)))))))
 
 (cl-defmacro js2-deftest-indent (name content &key bind keep-indent)
   `(ert-deftest ,(intern (format "js2-%s" name)) ()
-     (let ,(append '((js2-basic-offset 2)
+     (let ,(append '(indent-tabs-mode
+                     (js2-basic-offset 2)
                      (js2-pretty-multiline-declarations t)
                      (inhibit-point-motion-hooks t))
                    bind)
@@ -169,3 +170,95 @@
   |    return 1;
   |}"
   :bind ((js2-indent-switch-body t)))
+
+(js2-deftest-indent jsx-one-line
+  "var foo = <div></div>;")
+
+(js2-deftest-indent jsx-children-parentheses
+  "return (
+  |  <div>
+  |  </div>
+  |  <div>
+  |    <div></div>
+  |    <div>
+  |      <div></div>
+  |    </div>
+  |  </div>
+  |);")
+
+(js2-deftest-indent jsx-children-unclosed
+  "return (
+  |  <div>
+  |    <div>")
+
+(js2-deftest-indent jsx-argument
+  "React.render(
+  |  <div>
+  |    <div></div>
+  |  </div>,
+  |  {
+  |    a: 1
+  |  },
+  |  <div>
+  |    <div></div>
+  |  </div>
+  |);")
+
+(js2-deftest-indent jsx-leading-comment
+  "return (
+  |  // Sneaky!
+  |  <div></div>
+  |);")
+
+(js2-deftest-indent jsx-trailing-comment
+  "return (
+  |  <div></div>
+  |  // Sneaky!
+  |);")
+
+(js2-deftest-indent jsx-self-closing
+  ;; This ensures we know the bounds of a self-closing element
+  "React.render(
+  |  <input
+  |     />,
+  |  {
+  |    a: 1
+  |  }
+  |);"
+  :bind ((sgml-attribute-offset 1))) ; Emacs 24.5 -> 25 compat
+
+(js2-deftest-indent jsx-embedded-js-content
+  "return (
+  |  <div>
+  |    {array.map(function () {
+  |      return {
+  |        a: 1
+  |      };
+  |    })}
+  |  </div>
+  |);")
+
+(js2-deftest-indent jsx-embedded-js-unclosed
+  "return (
+  |  <div>
+  |    {array.map(function () {
+  |      return {
+  |        a: 1")
+
+(js2-deftest-indent jsx-embedded-js-attribute
+  "return (
+  |  <div attribute={array.map(function () {
+  |         return {
+  |           a: 1
+  |         };
+  |
+  |         return {
+  |           a: 1
+  |         };
+  |
+  |         return {
+  |           a: 1
+  |         };
+  |       })}>
+  |  </div>
+  |);")
