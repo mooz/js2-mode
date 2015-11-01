@@ -10,6 +10,9 @@
   name will get more confusing.
 * Support for default parameters in destructuring.  It should work for both
   objects and arrays, in both literals and function arguments.
+* New mode: `js2-jsx-mode`, deriving from `js2-mode`.  Supports indentation of
+  JSXElement expressions wrapped within parentheses or as function arguments.
+  Indentation is customizable via `sgml-attribute-offset`.
 
 ## 20150909
 
