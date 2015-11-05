@@ -617,7 +617,9 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-NO_SUBS_TEMPLATE 167) ; template literal without substitutions
 (defvar js2-TAGGED_TEMPLATE 168)  ; tagged template literal
 
-(defconst js2-num-tokens (1+ js2-TAGGED_TEMPLATE))
+(defvar js2-AWAIT 169)  ; await (pseudo keyword)
+
+(defconst js2-num-tokens (1+ js2-AWAIT))
 
 (defconst js2-debug-print-trees nil)
 
@@ -1361,6 +1363,9 @@ the correct number of ARGS must be provided."
 
 (js2-msg "msg.yield.parenthesized"
          "yield expression must be parenthesized.")
+
+(js2-msg "msg.bad.await"
+         "await must be in async functions.")
 
 ;; NativeGlobal
 (js2-msg "msg.cant.call.indirect"
@@ -3256,6 +3261,7 @@ a `js2-label-node' or the innermost enclosing loop.")
                                                           params rest-p
                                                           body
                                                           generator-type
+                                                          async
                                                           lp rp)))
   "AST node for a function declaration.
 The `params' field is a Lisp list of nodes.  Each node is either a simple
@@ -3272,6 +3278,7 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
   ignore-dynamic   ; ignore value of the dynamic-scope flag (interpreter only)
   needs-activation ; t if we need an activation object for this frame
   generator-type   ; STAR, LEGACY, COMPREHENSION or nil
+  async            ; t if the function is defined as `async function`
   member-expr)     ; nonstandard Ecma extension from Rhino
 
 (put 'cl-struct-js2-function-node 'js2-visitor 'js2-visit-function-node)
@@ -3293,8 +3300,10 @@ The `params' field is a Lisp list of nodes.  Each node is either a simple
          (rest-p (js2-function-node-rest-p n))
          (body (js2-function-node-body n))
          (expr (not (eq (js2-function-node-form n) 'FUNCTION_STATEMENT))))
-    (unless (or method arrow)
-      (insert pad "function")
+    (unless method
+      (insert pad)
+      (when (js2-function-node-async n) (insert "async "))
+      (unless arrow (insert "function"))
       (when (eq (js2-function-node-generator-type n) 'STAR)
         (insert "*")))
     (when name
@@ -3465,6 +3474,7 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-TYPEOF "typeof")
                (cons js2-INSTANCEOF "instanceof")
                (cons js2-DELPROP "delete")
+               (cons js2-AWAIT "await")
                (cons js2-COMMA ",")
                (cons js2-COLON ":")
                (cons js2-OR "||")
@@ -3545,7 +3555,7 @@ The type field holds the actual assignment operator.")
                                                        len operand)))
   "AST node type for unary operator nodes.
 The type field can be NOT, BITNOT, POS, NEG, INC, DEC,
-TYPEOF, DELPROP or TRIPLEDOT.  For INC or DEC, a 'postfix node
+TYPEOF, DELPROP, TRIPLEDOT or AWAIT.  For INC or DEC, a 'postfix node
 property is added if the operator follows the operand."
   operand)  ; a `js2-node' expression
 
@@ -3565,7 +3575,8 @@ property is added if the operator follows the operand."
     (unless postfix
       (insert op))
     (if (or (= tt js2-TYPEOF)
-            (= tt js2-DELPROP))
+            (= tt js2-DELPROP)
+            (= tt js2-AWAIT))
         (insert " "))
     (js2-print-ast (js2-unary-node-operand n) 0)
     (when postfix
@@ -5130,6 +5141,8 @@ You should use `js2-print-tree' instead of this function."
           (or (js2-node-has-side-effects expr)
               (when (js2-string-node-p expr)
                 (member (js2-string-node-value expr) '("use strict" "use asm"))))))
+       ((= tt js2-AWAIT)
+        (js2-node-has-side-effects (js2-unary-node-operand node)))
        ((= tt js2-COMMA)
         (js2-node-has-side-effects (js2-infix-node-right node)))
        ((or (= tt js2-AND)
@@ -7702,12 +7715,43 @@ Returns nil and consumes nothing if MATCH is not the next token."
 (defun js2-match-contextual-kwd (name)
   "Consume and return t if next token is `js2-NAME', and its
 string is NAME.  Returns nil and keeps current token otherwise."
-  (if (or (/= (js2-get-token) js2-NAME)
-          (not (string= (js2-current-token-string) name)))
-      (progn
-        (js2-unget-token)
-        nil)
+  (if (js2-contextual-kwd-p (progn (js2-get-token)
+                                   (js2-current-token))
+                            name)
+      (progn (js2-record-face 'font-lock-keyword-face) t)
+    (js2-unget-token)
+    nil))
+
+(defun js2-contextual-kwd-p (token name)
+  "Return t if TOKEN is `js2-NAME', and its string is NAME."
+  (and (= (js2-token-type token) js2-NAME)
+       (string= (js2-token-string token) name)))
+
+(defun js2-match-async-function ()
+  (when (and (js2-contextual-kwd-p (js2-current-token) "async")
+             (= (js2-peek-token) js2-FUNCTION))
     (js2-record-face 'font-lock-keyword-face)
+    (js2-get-token)
+    t))
+
+(defun js2-match-async-arrow-function ()
+  (when (and (js2-contextual-kwd-p (js2-current-token) "async")
+             (/= (js2-peek-token) js2-FUNCTION))
+    (js2-record-face 'font-lock-keyword-face)
+    (js2-get-token)
+    t))
+
+(defun js2-match-await ()
+  (when (and (= tt js2-NAME)
+             (js2-contextual-kwd-p (js2-current-token) "await"))
+    (js2-record-face 'font-lock-keyword-face)
+    (let ((beg (js2-current-token-beg))
+          (end (js2-current-token-end)))
+      (js2-get-token)
+      (unless (and (js2-inside-function)
+                   (js2-function-node-async js2-current-script-or-fn))
+        (js2-report-error "msg.bad.await" nil
+                          beg (- end beg))))
     t))
 
 (defun js2-get-prop-name-token ()
@@ -8144,7 +8188,7 @@ Last token scanned is the close-curly for the function body."
                                   (js2-name-node-name name) pos end)
         (js2-add-strict-warning "msg.anon.no.return.value" nil pos end)))))
 
-(defun js2-parse-function-stmt ()
+(defun js2-parse-function-stmt (&optional async-p)
   (let ((pos (js2-current-token-beg))
         (star-p (js2-match-token js2-MUL)))
     (js2-must-match-name "msg.unnamed.function.stmt")
@@ -8152,28 +8196,31 @@ Last token scanned is the close-curly for the function body."
           pn member-expr)
       (cond
        ((js2-match-token js2-LP)
-        (js2-parse-function 'FUNCTION_STATEMENT pos star-p name))
+        (js2-parse-function 'FUNCTION_STATEMENT pos star-p async-p name))
        (js2-allow-member-expr-as-function-name
         (setq member-expr (js2-parse-member-expr-tail nil name))
         (js2-parse-highlight-member-expr-fn-name member-expr)
         (js2-must-match js2-LP "msg.no.paren.parms")
-        (setf pn (js2-parse-function 'FUNCTION_STATEMENT pos star-p)
+        (setf pn (js2-parse-function 'FUNCTION_STATEMENT pos star-p async-p)
               (js2-function-node-member-expr pn) member-expr)
         pn)
        (t
         (js2-report-error "msg.no.paren.parms")
         (make-js2-error-node))))))
 
-(defun js2-parse-function-expr ()
+(defun js2-parse-async-function-stmt ()
+  (js2-parse-function-stmt t))
+
+(defun js2-parse-function-expr (&optional async-p)
   (let ((pos (js2-current-token-beg))
         (star-p (js2-match-token js2-MUL))
         name)
     (when (js2-match-token js2-NAME)
       (setq name (js2-create-name-node t)))
     (js2-must-match js2-LP "msg.no.paren.parms")
-    (js2-parse-function 'FUNCTION_EXPRESSION pos star-p name)))
+    (js2-parse-function 'FUNCTION_EXPRESSION pos star-p async-p name)))
 
-(defun js2-parse-function-internal (function-type pos star-p &optional name)
+(defun js2-parse-function-internal (function-type pos star-p &optional async-p name)
   (let (fn-node lp)
     (if (= (js2-current-token-type) js2-LP) ; eventually matched LP?
         (setq lp (js2-current-token-beg)))
@@ -8181,7 +8228,8 @@ Last token scanned is the close-curly for the function body."
                                           :name name
                                           :form function-type
                                           :lp (if lp (- lp pos))
-                                          :generator-type (and star-p 'STAR)))
+                                          :generator-type (and star-p 'STAR)
+                                          :async async-p))
     (when name
       (js2-set-face (js2-node-pos name) (js2-node-end name)
                     'font-lock-function-name-face 'record)
@@ -8236,7 +8284,7 @@ Last token scanned is the close-curly for the function body."
     (setf (js2-scope-parent-scope fn-node) js2-current-scope)
     fn-node))
 
-(defun js2-parse-function (function-type pos star-p &optional name)
+(defun js2-parse-function (function-type pos star-p &optional async-p name)
   "Function parser.  FUNCTION-TYPE is a symbol, POS is the
 beginning of the first token (function keyword, unless it's an
 arrow function), NAME is js2-name-node."
@@ -8252,7 +8300,7 @@ arrow function), NAME is js2-name-node."
       (setq ts-state (make-js2-ts-state))
       (setq continue (catch 'reparse
                        (setq fn-node (js2-parse-function-internal
-                                      function-type pos star-p name))
+                                      function-type pos star-p async-p name))
                        ;; Don't continue.
                        nil))
       (when continue
@@ -8362,9 +8410,12 @@ node are given relative start positions and correct lengths."
 (defun js2-statement-helper ()
   (let* ((tt (js2-get-token))
          (first-tt tt)
+         (async-stmt (js2-match-async-function))
          (parser (if (= tt js2-ERROR)
                      #'js2-parse-semi
-                   (aref js2-parsers tt)))
+                   (if async-stmt
+                       #'js2-parse-async-function-stmt
+                     (aref js2-parsers tt))))
          pn)
     ;; If the statement is set, then it's been told its label by now.
     (and js2-labeled-stmt
@@ -8373,7 +8424,8 @@ node are given relative start positions and correct lengths."
     (setq pn (funcall parser))
     ;; Don't do auto semi insertion for certain statement types.
     (unless (or (memq first-tt js2-no-semi-insertion)
-                (js2-labeled-stmt-node-p pn))
+                (js2-labeled-stmt-node-p pn)
+                async-stmt)
       (js2-auto-insert-semicolon pn))
     pn))
 
@@ -9576,9 +9628,20 @@ If NODE is non-nil, it is the AST node associated with the symbol."
   (let ((tt (js2-get-token))
         (pos (js2-current-token-beg))
         pn left right op-pos
-        ts-state recorded-identifiers parsed-errors)
+        ts-state recorded-identifiers parsed-errors
+        async-p)
     (if (= tt js2-YIELD)
         (js2-parse-return-or-yield tt t)
+      ;; TODO(mooz): Bit confusing.
+      ;; If we meet `async` token and it's not part of `async
+      ;; function`, then this `async` is for a succeeding async arrow
+      ;; function.
+      ;; Since arrow function parsing doesn't rely on neither
+      ;; `js2-parse-function-stmt' nor `js2-parse-function-expr' that
+      ;; interpret `async` token, we trash `async` and just remember
+      ;; we met `async` keyword to `async-p'.
+      (when (js2-match-async-arrow-function)
+        (setq async-p t))
       ;; Save the tokenizer state in case we find an arrow function
       ;; and have to rewind.
       (setq ts-state (make-js2-ts-state)
@@ -9614,7 +9677,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
         (js2-ts-seek ts-state)
         (setq js2-recorded-identifiers recorded-identifiers
               js2-parsed-errors parsed-errors)
-        (setq pn (js2-parse-function 'FUNCTION_ARROW (js2-current-token-beg) nil)))
+        (setq pn (js2-parse-function 'FUNCTION_ARROW (js2-current-token-beg) nil async-p)))
        (t
         (js2-unget-token)))
       pn)))
@@ -9803,6 +9866,18 @@ to parse the operand (for prefix operators)."
     (js2-node-add-children pn expr)
     pn))
 
+(defun js2-make-await ()
+  "Make an await node."
+  (let* ((pos (js2-current-token-beg))
+         (expr (js2-parse-unary-expr))
+         (end (js2-node-end expr))
+         pn)
+    (setq pn (make-js2-await-node :pos pos
+                                  :len (- end pos)
+                                  :operand expr))
+    (js2-node-add-children pn expr)
+    pn))
+
 (defconst js2-incrementable-node-types
   (list js2-NAME js2-GETPROP js2-GETELEM js2-GET_REF js2-CALL)
   "Node types that can be the operand of a ++ or -- operator.")
@@ -9844,6 +9919,8 @@ to parse the operand (for prefix operators)."
      ((= tt js2-DELPROP)
       (js2-get-token)
       (js2-make-unary js2-DELPROP 'js2-parse-unary-expr))
+     ((js2-match-await)
+      (js2-make-unary js2-AWAIT 'js2-parse-unary-expr))
      ((= tt js2-ERROR)
       (js2-get-token)
       (make-js2-error-node))  ; try to continue
@@ -10233,6 +10310,8 @@ array-literals, array comprehensions and regular expressions."
       (js2-parse-class-expr))
      ((= tt js2-FUNCTION)
       (js2-parse-function-expr))
+     ((js2-match-async-function)
+      (js2-parse-function-expr t))
      ((= tt js2-LB)
       (js2-parse-array-comp-or-literal))
      ((= tt js2-LC)
