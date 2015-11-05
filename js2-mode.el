@@ -3958,13 +3958,12 @@ both fields have the same value.")
 (cl-defstruct (js2-method-node
                (:include js2-infix-node)
                (:constructor nil)
-               (:constructor make-js2-method-node (&key type ; GET, SET, or FUNCTION
-                                                        (pos js2-ts-cursor)
+               (:constructor make-js2-method-node (&key (pos js2-ts-cursor)
                                                         len left right)))
   "AST node for a method in an object literal or a class body.
 The `left' field is the `js2-name-node' naming the method.
 The `right' field is always an anonymous `js2-function-node' with a node
-property `METHOD_TYPE' set to js2-GET, js2-SET, or js2-FUNCTION. ")
+property `METHOD_TYPE' set to 'GET or 'SET. ")
 
 (put 'cl-struct-js2-method-node 'js2-visitor 'js2-visit-infix-node)
 (put 'cl-struct-js2-method-node 'js2-printer 'js2-print-method)
@@ -3972,10 +3971,13 @@ property `METHOD_TYPE' set to js2-GET, js2-SET, or js2-FUNCTION. ")
 (defun js2-print-method (n i)
   (let* ((pad (js2-make-pad i))
          (left (js2-method-node-left n))
-         (right (js2-method-node-right n)))
+         (right (js2-method-node-right n))
+         (type (js2-node-get-prop right 'METHOD_TYPE)))
     (insert pad)
-    (if (/= (js2-node-type n) js2-FUNCTION)
-        (insert (if (= (js2-node-type n) js2-GET) "get " "set ")))
+    (when type
+      (insert (cdr (assoc type '((GET . "get ")
+                                 (SET . "set ")
+                                 (FUNCTION . ""))))))
     (when (and (js2-function-node-p right)
                (eq 'STAR (js2-function-node-generator-type right)))
       (insert "*"))
@@ -10778,8 +10780,11 @@ expression)."
                            ;; But make an exception for getter / setter pairs.
                            (not (and (js2-method-node-p elem)
                                      (js2-method-node-p previous-elem)
-                                     (/= (js2-method-node-type elem)
-                                         (js2-method-node-type previous-elem))))))
+                                     (let ((type (js2-node-get-prop (js2-method-node-right elem) 'METHOD_TYPE))
+                                           (previous-type (js2-node-get-prop (js2-method-node-right previous-elem) 'METHOD_TYPE)))
+                                       (and (member type '(GET SET))
+                                            (member previous-type '(GET SET))
+                                            (not (eq type previous-type))))))))
                     elems))
           (js2-report-error "msg.dup.obj.lit.prop.strict"
                             elem-key-string
@@ -10917,10 +10922,9 @@ and expression closure style is also supported
 POS is the start position of the `get' or `set' keyword.
 PROP is the `js2-name-node' representing the property name.
 TYPE-STRING is a string `get', `set', `*', or nil, indicating a found keyword."
-  (let ((type (cond
-               ((string= "get" type-string) js2-GET)
-               ((string= "set" type-string) js2-SET)
-               (t js2-FUNCTION)))
+  (let ((type (or (cdr (assoc type-string '(("get" . GET)
+                                            ("set" . SET))))
+                  'FUNCTION))
         result end
         (fn (js2-parse-function-expr)))
     ;; it has to be an anonymous function, as we already parsed the name
@@ -10932,8 +10936,7 @@ TYPE-STRING is a string `get', `set', `*', or nil, indicating a found keyword."
     (when (string= type-string "*")
       (setf (js2-function-node-generator-type fn) 'STAR))
     (setq end (js2-node-end fn)
-          result (make-js2-method-node :type type
-                                       :pos pos
+          result (make-js2-method-node :pos pos
                                        :len (- end pos)
                                        :left prop
                                        :right fn))
