@@ -675,6 +675,7 @@ List of chars built up while scanning various tokens.")
   (string "")
   number
   number-base
+  number-legacy-octal-p
   regexp-flags
   comment-type
   follows-eol-p)
@@ -3701,11 +3702,14 @@ Returns 0 if NODE is nil or its identifier field is nil."
                                                         (num-value (js2-token-number
                                                                     (js2-current-token)))
                                                         (num-base (js2-token-number-base
-                                                                   (js2-current-token))))))
+                                                                   (js2-current-token)))
+                                                        (legacy-octal-p (js2-token-number-legacy-octal-p
+                                                                         (js2-current-token))))))
   "AST node for a number literal."
   value      ; the original string, e.g. "6.02e23"
   num-value  ; the parsed number value
-  num-base)  ; the number's base
+  num-base  ; the number's base
+  legacy-octal-p)  ; whether the number is a legacy octal (0123 instead of 0o123)
 
 (put 'cl-struct-js2-number-node 'js2-visitor 'js2-visit-none)
 (put 'cl-struct-js2-number-node 'js2-printer 'js2-print-number-node)
@@ -5879,7 +5883,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
   (let (identifier-start
         is-unicode-escape-start c
         contains-escape escape-val str result base
-        look-for-slash continue tt
+        look-for-slash continue tt legacy-octal
         (token (js2-new-token 0)))
     (setq
      tt
@@ -6001,6 +6005,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
               ((and (or (eq c ?o) (eq c ?O))
                     (>= js2-language-version 200))
                (setq base 8)
+               (setq legacy-octal nil)
                (setq c (js2-get-char)))
               ((js2-digit-p c)
                (setq base 'maybe-8))
@@ -6038,7 +6043,8 @@ its relevant fields and puts it into `js2-ti-tokens'."
                (js2-add-to-string c)
                (setq c (js2-get-char)))
              (when (eq base 'maybe-8)
-               (setq base 8))))
+               (setq base 8
+                     legacy-octal t))))
            (when (and (eq base 10) (memq c '(?. ?e ?E)))
              (when (eq c ?.)
                (cl-loop do
@@ -6060,7 +6066,8 @@ its relevant fields and puts it into `js2-ti-tokens'."
            (js2-unget-char)
            (let ((str (js2-set-string-from-buffer token)))
              (setf (js2-token-number token) (js2-string-to-number str base)
-                   (js2-token-number-base token) base))
+                   (js2-token-number-base token) base
+                   (js2-token-number-legacy-octal-p token) (and (= base 8) legacy-octal)))
            (throw 'return js2-NUMBER))
          ;; is it a string?
          (when (or (memq c '(?\" ?\'))
@@ -10249,7 +10256,8 @@ array-literals, array comprehensions and regular expressions."
      ((= tt js2-NUMBER)
       (setq node (make-js2-number-node))
       (when (and js2-in-use-strict-directive
-                 (= (js2-number-node-num-base node) 8))
+                 (= (js2-number-node-num-base node) 8)
+                 (js2-number-node-legacy-octal-p node))
         (js2-report-error "msg.no.octal.strict"))
       node)
      ((or (= tt js2-STRING) (= tt js2-NO_SUBS_TEMPLATE))
