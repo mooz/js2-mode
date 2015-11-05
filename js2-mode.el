@@ -3977,6 +3977,7 @@ property `METHOD_TYPE' set to 'GET or 'SET. ")
     (when type
       (insert (cdr (assoc type '((GET . "get ")
                                  (SET . "set ")
+                                 (ASYNC . "async ")
                                  (FUNCTION . ""))))))
     (when (and (js2-function-node-p right)
                (eq 'STAR (js2-function-node-generator-type right)))
@@ -10722,12 +10723,11 @@ expression)."
                  (= js2-MUL tt))
         (setq previous-token (js2-current-token)
               tt (js2-get-prop-name-token)))
-      ;; Handle 'get' or 'set' keywords
+      ;; Handle getter, setter and async methods
       (let ((prop (js2-current-token-string)))
         (when (and (>= js2-language-version 200)
                    (= js2-NAME tt)
-                   (or (string= prop "get")
-                       (string= prop "set"))
+                   (member prop '("get" "set" "async"))
                    (member (js2-peek-token)
                            (list js2-NAME js2-STRING js2-NUMBER js2-LB)))
           (setq previous-token (js2-current-token)
@@ -10804,11 +10804,10 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
                              (if (= (js2-token-type previous-token) js2-MUL)
                                  "*"
                                (js2-token-string previous-token)))))
-    (when (or (string= prop "get")
-              (string= prop "set"))
+    (when (member prop '("get" "set" "async"))
       (js2-set-face (js2-token-beg previous-token)
                     (js2-token-end previous-token)
-                    'font-lock-keyword-face 'record))  ; get/set
+                    'font-lock-keyword-face 'record))  ; get/set/async
     (cond
      ;; method definition: {f() {...}}
      ((and (= (js2-peek-token) js2-LP)
@@ -10913,7 +10912,8 @@ string or expression."
   "Parse method property in an object literal or a class body.
 JavaScript syntax is:
 
-  { foo(...) {...}, get foo() {...}, set foo(x) {...}, *foo(...) {...} }
+  { foo(...) {...}, get foo() {...}, set foo(x) {...}, *foo(...) {...},
+    async foo(...) {...} }
 
 and expression closure style is also supported
 
@@ -10922,11 +10922,12 @@ and expression closure style is also supported
 POS is the start position of the `get' or `set' keyword.
 PROP is the `js2-name-node' representing the property name.
 TYPE-STRING is a string `get', `set', `*', or nil, indicating a found keyword."
-  (let ((type (or (cdr (assoc type-string '(("get" . GET)
-                                            ("set" . SET))))
-                  'FUNCTION))
-        result end
-        (fn (js2-parse-function-expr)))
+  (let* ((type (or (cdr (assoc type-string '(("get" . GET)
+                                             ("set" . SET)
+                                             ("async" . ASYNC))))
+                   'FUNCTION))
+         result end
+         (fn (js2-parse-function-expr (eq type 'ASYNC))))
     ;; it has to be an anonymous function, as we already parsed the name
     (if (/= (js2-node-type fn) js2-FUNCTION)
         (js2-report-error "msg.bad.prop")

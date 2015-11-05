@@ -446,6 +446,18 @@ the test."
 (js2-deftest-parse async-arrow-function-expression
   "a = async (b) => {  b;\n};")
 
+(js2-deftest-parse async-method-in-object-literal
+  "({async f() {}});")
+
+(js2-deftest-parse async-method-in-class-body
+  "class C {\n  async foo() {}\n}")
+
+(js2-deftest-parse static-async-method-in-class-body
+  "class C {\n  static async foo() {}\n}")
+
+(js2-deftest-parse async-method-allow-await
+  "({async f() {  await x;\n}});")
+
 ;;; Await
 
 (js2-deftest-parse await-is-ok "async function foo() {\n  await bar();\n}")
