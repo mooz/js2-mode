@@ -187,8 +187,11 @@ the test."
 (js2-deftest-parse destruct-non-name-target-is-error
   "var {1=1} = {};" :syntax-error "1" :errors-count 1)
 
-(js2-deftest-parse destruct-with-initializer-in-function-arguments
+(js2-deftest-parse destruct-with-initializer-in-function-params
   "function f({a, b = 1, c}, [d, e = 1, f]) {\n}")
+
+(js2-deftest-parse destruct-with-default-in-function-params
+  "function f({x = 1, y = 2} = {}, [x, y] = [1, 2]) {\n}")
 
 (js2-deftest-parse destruct-name-conflict-is-error-in-object
   "\"use strict\";\nvar {a=1,a=2} = {};" :syntax-error "a" :errors-count 1)

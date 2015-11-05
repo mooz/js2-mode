@@ -8088,8 +8088,7 @@ represented by FN-NODE at POS."
                        new-param-name-nodes (js2-define-destruct-symbols
                                              param js2-LP 'js2-function-param))
                  (js2-check-strict-function-params param-name-nodes new-param-name-nodes)
-                 (setq param-name-nodes (append param-name-nodes new-param-name-nodes))
-                 (push param params))
+                 (setq param-name-nodes (append param-name-nodes new-param-name-nodes)))
                 ;; variable name
                 (t
                  (when (and (>= js2-language-version 200)
@@ -8103,22 +8102,23 @@ represented by FN-NODE at POS."
                  (setq param (js2-create-name-node))
                  (js2-define-symbol js2-LP (js2-current-token-string) param)
                  (js2-check-strict-function-params param-name-nodes (list param))
-                 (setq param-name-nodes (append param-name-nodes (list param)))
-                 ;; default parameter value
-                 (when (and (>= js2-language-version 200)
-                            (js2-match-token js2-ASSIGN))
-                   (cl-assert (not paren-free-arrow))
-                   (let* ((pos (js2-node-pos param))
-                          (tt (js2-current-token-type))
-                          (op-pos (- (js2-current-token-beg) pos))
-                          (left param)
-                          (right (js2-parse-assign-expr))
-                          (len (- (js2-node-end right) pos)))
-                     (setq param (make-js2-assign-node
-                                  :type tt :pos pos :len len :op-pos op-pos
-                                  :left left :right right))
-                     (js2-node-add-children param left right)))
-                 (push param params)))
+                 (setq param-name-nodes (append param-name-nodes (list param)))))
+               ;; default parameter value
+               (when (and (not rest-param-at)
+                          (>= js2-language-version 200)
+                          (js2-match-token js2-ASSIGN))
+                 (cl-assert (not paren-free-arrow))
+                 (let* ((pos (js2-node-pos param))
+                        (tt (js2-current-token-type))
+                        (op-pos (- (js2-current-token-beg) pos))
+                        (left param)
+                        (right (js2-parse-assign-expr))
+                        (len (- (js2-node-end right) pos)))
+                   (setq param (make-js2-assign-node
+                                :type tt :pos pos :len len :op-pos op-pos
+                                :left left :right right))
+                   (js2-node-add-children param left right)))
+               (push param params)
                (when (and rest-param-at (> (length params) (1+ rest-param-at)))
                  (js2-report-error "msg.param.after.rest" nil
                                    (js2-node-pos param) (js2-node-len param)))
