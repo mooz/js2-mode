@@ -199,7 +199,7 @@ Set `js2-include-rhino-externs' to t to include them.")
   (mapcar 'symbol-name
           '(__dirname __filename Buffer clearInterval clearTimeout require
             console exports global module process setInterval setTimeout
-            querystring))
+            querystring setImmediate clearImmediate))
   "Node.js externs.
 Set `js2-include-node-externs' to t to include them.")
 
