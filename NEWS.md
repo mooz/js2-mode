@@ -4,15 +4,16 @@
 
 * Object properties are highlighted using a different face:
   `js2-object-property`, which has no color by default.
-* `js2-getter-setter-node` is renamed to `js2-method-node`, together
-  with its related functions.  It already handles generator methods,
-  and will in the future add support for async methods, so the old
-  name will get more confusing.
+* `js2-getter-setter-node` is renamed to `js2-method-node`, together with
+  its related functions.  It already handles generator methods, and we
+  added support for async methods (see below), so the old name will get
+  more confusing.
 * Support for default parameters in destructuring.  It should work for both
   objects and arrays, in both literals and function arguments.
 * New mode: `js2-jsx-mode`, deriving from `js2-mode`.  Supports indentation of
   JSXElement expressions wrapped within parentheses or as function arguments.
   Indentation is customizable via `sgml-attribute-offset`.
+* Experimental support for ES7 stage 3 async/await.
 
 ## 20150909
 
