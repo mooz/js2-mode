@@ -748,7 +748,7 @@ the test."
     (should export-node)
     (should (js2-var-decl-node-p (js2-export-node-declaration export-node)))))
 
-(js2-deftest export-class-declaration "export class Foo {};"
+(js2-deftest export-class-declaration "export class Foo {}"
   (js2-init-scanner)
   (js2-push-scope (make-js2-scope :pos 0))
   (should (js2-match-token js2-EXPORT))
@@ -756,7 +756,7 @@ the test."
     (should export-node)
     (should (js2-class-node-p (js2-export-node-declaration export-node)))))
 
-(js2-deftest export-function-declaration "export default function doStuff() {};"
+(js2-deftest export-function-declaration "export default function doStuff() {}"
   (js2-init-scanner)
   (js2-push-scope (make-js2-scope :pos 0))
   (should (js2-match-token js2-EXPORT))
@@ -764,7 +764,7 @@ the test."
     (should export-node)
     (should (js2-export-node-default export-node))))
 
-(js2-deftest export-generator-declaration "export default function* one() {};"
+(js2-deftest export-generator-declaration "export default function* one() {}"
   (js2-init-scanner)
   (js2-push-scope (make-js2-scope :pos 0))
   (should (js2-match-token js2-EXPORT))
@@ -795,8 +795,8 @@ the test."
 (js2-deftest-parse parse-re-export-named-list "export {foo, bar as bang} from 'other/lib';")
 (js2-deftest-parse parse-export-const-declaration "export const PI = Math.PI;")
 (js2-deftest-parse parse-export-let-declaration "export let foo = [1];")
-(js2-deftest-parse parse-export-function-declaration "export default function doStuff() {};")
-(js2-deftest-parse parse-export-generator-declaration "export default function* one() {};")
+(js2-deftest-parse parse-export-function-declaration "export default function doStuff() {\n}\n;")
+(js2-deftest-parse parse-export-generator-declaration "export default function* one() {\n}\n;")
 (js2-deftest-parse parse-export-assignment-expression "export default a = b;")
 
 ;;; Strings
