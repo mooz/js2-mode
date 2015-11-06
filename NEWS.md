@@ -6,7 +6,7 @@
   `js2-object-property`, which has no color by default.
 * `js2-getter-setter-node` is renamed to `js2-method-node`, together with
   its related functions.  It already handles generator methods, and we
-  added support for async methods (see below), so the old name will get
+  added support for async methods (see below), so the old name would get
   more confusing.
 * Support for default parameters in destructuring.  It should work for both
   objects and arrays, in both literals and function arguments.
