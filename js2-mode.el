@@ -8842,20 +8842,30 @@ invalid export statements."
               (setq from-clause (js2-parse-from-clause)))
           (js2-unget-token))))
      ((js2-match-token js2-DEFAULT)
-      (setq default (js2-parse-expr)))
+      (setq default (cond ((js2-match-token js2-CLASS)
+                           (js2-parse-class-stmt))
+                          ((js2-match-token js2-FUNCTION)
+                           (js2-parse-function-stmt))
+                          (t (js2-parse-expr)))))
      ((or (js2-match-token js2-VAR) (js2-match-token js2-CONST) (js2-match-token js2-LET))
       (setq declaration (js2-parse-variables (js2-current-token-type) (js2-current-token-beg))))
+     ((js2-match-token js2-CLASS)
+      (setq declaration (js2-parse-class-stmt)))
+     ((js2-match-token js2-FUNCTION)
+      (setq declaration (js2-parse-function-stmt)))
      (t
       (setq declaration (js2-parse-expr))))
     (when from-clause
       (push from-clause children))
     (when declaration
       (push declaration children)
-      (when (not (js2-function-node-p declaration))
+      (when (not (or (js2-function-node-p declaration)
+                     (js2-class-node-p declaration)))
         (js2-auto-insert-semicolon declaration)))
     (when default
       (push default children)
-      (when (not (js2-function-node-p default))
+      (when (not (or (js2-function-node-p default)
+                     (js2-class-node-p default)))
         (js2-auto-insert-semicolon default)))
     (let ((node (make-js2-export-node
                   :pos beg
