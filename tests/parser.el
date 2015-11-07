@@ -795,8 +795,8 @@ the test."
 (js2-deftest-parse parse-re-export-named-list "export {foo, bar as bang} from 'other/lib';")
 (js2-deftest-parse parse-export-const-declaration "export const PI = Math.PI;")
 (js2-deftest-parse parse-export-let-declaration "export let foo = [1];")
-(js2-deftest-parse parse-export-function-declaration "export default function doStuff() {\n}\n;")
-(js2-deftest-parse parse-export-generator-declaration "export default function* one() {\n}\n;")
+(js2-deftest-parse parse-export-function-declaration "export default function doStuff() {\n}")
+(js2-deftest-parse parse-export-generator-declaration "export default function* one() {\n}")
 (js2-deftest-parse parse-export-assignment-expression "export default a = b;")
 
 ;;; Strings

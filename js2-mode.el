@@ -2551,7 +2551,8 @@ so many of its properties will be nil.
       (js2-print-from-clause from))
      (exports-list
       (js2-print-named-imports exports-list)))
-    (insert ";\n")))
+    (unless (and default (not (js2-assign-node-p default)))
+      (insert ";\n"))))
 
 (cl-defstruct (js2-while-node
                (:include js2-loop-node)
