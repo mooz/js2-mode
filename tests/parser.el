@@ -354,6 +354,20 @@ the test."
 (js2-deftest-parse spread-in-function-call
   "f(3, ...[t(2), t(3)], 42, ...[t(4)]);")
 
+(js2-deftest-parse rest-in-array-destructure
+  "let [x, y, z, ...w] = [1, ...a, ...b, c];")
+
+(js2-deftest-parse comma-after-rest-in-array
+  "let [...x,] = [1, 2, 3];"
+  :syntax-error "," :errors-count 1)
+
+(js2-deftest-parse elem-after-rest-in-array
+  "let [...x, y] = [1, 2, 3];"
+  :syntax-error "," :errors-count 2)
+
+(js2-deftest-parse array-destructure-expr-default
+  "let [[x] = [3]] = y;")
+
 ;;; Arrow functions
 
 (js2-deftest-parse arrow-function-with-empty-args-and-no-curlies
