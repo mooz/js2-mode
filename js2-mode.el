@@ -2551,7 +2551,9 @@ so many of its properties will be nil.
       (js2-print-from-clause from))
      (exports-list
       (js2-print-named-imports exports-list)))
-    (unless (and default (not (js2-assign-node-p default)))
+    (unless (or (and default (not (js2-assign-node-p default)))
+                (and declaration (or (js2-function-node-p declaration)
+                                     (js2-class-node-p declaration))))
       (insert ";\n"))))
 
 (cl-defstruct (js2-while-node

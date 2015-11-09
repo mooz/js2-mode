@@ -799,6 +799,12 @@ the test."
 (js2-deftest-parse parse-export-generator-declaration "export default function* one() {\n}")
 (js2-deftest-parse parse-export-assignment-expression "export default a = b;")
 
+(js2-deftest-parse parse-export-function-declaration-no-semi
+  "export function f() {\n}")
+
+(js2-deftest-parse parse-export-class-declaration-no-semi
+  "export class C {\n}")
+
 ;;; Strings
 
 (js2-deftest-parse string-literal
