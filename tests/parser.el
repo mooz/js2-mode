@@ -790,6 +790,13 @@ the test."
   (js2-mode)
   (should (not (equal nil js2-parsed-warnings))))
 
+(js2-deftest export-default-async-function-no-semicolon "export default async function foo() {}"
+  (js2-mode)
+  (should (equal nil js2-parsed-warnings)))
+(js2-deftest export-async-function-no-semicolon "export async function foo() {}"
+  (js2-mode)
+  (should (equal nil js2-parsed-warnings)))
+
 (js2-deftest-parse parse-export-rexport "export * from 'other/lib';")
 (js2-deftest-parse parse-export-export-named-list "export {foo, bar as bang};")
 (js2-deftest-parse parse-re-export-named-list "export {foo, bar as bang} from 'other/lib';")
@@ -804,6 +811,12 @@ the test."
 
 (js2-deftest-parse parse-export-class-declaration-no-semi
   "export class C {\n}")
+
+(js2-deftest-parse parse-export-async-function-allow-await
+  "export async function f() {\n  await f();\n}")
+
+(js2-deftest-parse parse-export-default-async-function-allow-await
+  "export default async function f() {\n  await f();\n}")
 
 ;;; Strings
 
