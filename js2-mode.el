@@ -2551,7 +2551,9 @@ so many of its properties will be nil.
       (js2-print-from-clause from))
      (exports-list
       (js2-print-named-imports exports-list)))
-    (unless (and default (not (js2-assign-node-p default)))
+    (unless (or (and default (not (js2-assign-node-p default)))
+                (and declaration (or (js2-function-node-p declaration)
+                                     (js2-class-node-p declaration))))
       (insert ";\n"))))
 
 (cl-defstruct (js2-while-node
@@ -8845,6 +8847,11 @@ invalid export statements."
      ((js2-match-token js2-DEFAULT)
       (setq default (cond ((js2-match-token js2-CLASS)
                            (js2-parse-class-stmt))
+                          ((js2-match-token js2-NAME)
+                           (if (js2-match-async-function)
+                               (js2-parse-async-function-stmt)
+                             (js2-unget-token)
+                             (js2-parse-expr)))
                           ((js2-match-token js2-FUNCTION)
                            (js2-parse-function-stmt))
                           (t (js2-parse-expr)))))
@@ -8852,6 +8859,12 @@ invalid export statements."
       (setq declaration (js2-parse-variables (js2-current-token-type) (js2-current-token-beg))))
      ((js2-match-token js2-CLASS)
       (setq declaration (js2-parse-class-stmt)))
+     ((js2-match-token js2-NAME)
+      (setq declaration
+            (if (js2-match-async-function)
+                (js2-parse-async-function-stmt)
+              (js2-unget-token)
+              (js2-parse-expr))))
      ((js2-match-token js2-FUNCTION)
       (setq declaration (js2-parse-function-stmt)))
      (t
