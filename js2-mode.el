@@ -7754,7 +7754,7 @@ string is NAME.  Returns nil and keeps current token otherwise."
     (js2-get-token)
     t))
 
-(defun js2-match-await ()
+(defun js2-match-await (tt)
   (when (and (= tt js2-NAME)
              (js2-contextual-kwd-p (js2-current-token) "await"))
     (js2-record-face 'font-lock-keyword-face)
@@ -9953,7 +9953,7 @@ to parse the operand (for prefix operators)."
      ((= tt js2-DELPROP)
       (js2-get-token)
       (js2-make-unary js2-DELPROP 'js2-parse-unary-expr))
-     ((js2-match-await)
+     ((js2-match-await tt)
       (js2-make-unary js2-AWAIT 'js2-parse-unary-expr))
      ((= tt js2-ERROR)
       (js2-get-token)
