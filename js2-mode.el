@@ -8924,7 +8924,7 @@ Last matched token must be js2-FOR."
              ((= tt js2-SEMI)
               (js2-unget-token)
               (setq init (make-js2-empty-expr-node)))
-             ((or (= tt js2-VAR) (= tt js2-LET))
+             ((or (= tt js2-VAR) (= tt js2-LET) (= tt js2-CONST))
               (setq init (js2-parse-variables tt (js2-current-token-beg))))
              (t
               (js2-unget-token)
