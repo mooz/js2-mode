@@ -7749,7 +7749,8 @@ string is NAME.  Returns nil and keeps current token otherwise."
 
 (defun js2-match-async-arrow-function ()
   (when (and (js2-contextual-kwd-p (js2-current-token) "async")
-             (/= (js2-peek-token) js2-FUNCTION))
+             (/= (js2-peek-token) js2-FUNCTION)
+             (/= (js2-peek-token) js2-DOT))
     (js2-record-face 'font-lock-keyword-face)
     (js2-get-token)
     t))
