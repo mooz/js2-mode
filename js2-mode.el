@@ -11905,10 +11905,7 @@ PARSE-STATUS is as documented in `parse-partial-sexp'."
             (insert "\n")
             (indent-to col)
             (insert "*/"))))
-     ((and single
-           (save-excursion
-              (and (zerop (forward-line 1))
-                   (looking-at "\\s-*//"))))
+     (single
       (indent-to col)
       (insert "// ")))
     ;; Don't need to extend the comment after all.
