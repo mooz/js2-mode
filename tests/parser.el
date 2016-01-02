@@ -487,6 +487,12 @@ the test."
 
 ;;; 'async' and 'await' are contextual keywords
 
+(js2-deftest-parse async-can-be-name
+  "void async;")
+
+(js2-deftest-parse async-can-be-object-name
+  "async.z;")
+
 (js2-deftest-parse async-can-be-var-name
   "var async = 3;")
 

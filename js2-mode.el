@@ -7749,12 +7749,20 @@ string is NAME.  Returns nil and keeps current token otherwise."
     (js2-get-token)
     t))
 
-(defun js2-match-async-arrow-function ()
-  (when (and (js2-contextual-kwd-p (js2-current-token) "async")
-             (/= (js2-peek-token) js2-FUNCTION))
-    (js2-record-face 'font-lock-keyword-face)
-    (js2-get-token)
-    t))
+;; Matching "async" is performed in two parts, because in the functions' one use
+;; case, it isn't known whether an arrow function is actually being parsed (and
+;; thus whether `js2-get-token' should be called) until later.  If
+;; `js2-get-token' were called eccentrically, `js2-current-token' would be
+;; off-by-one, causing `js2-parse-unary-expr' to potentially fail when "async"
+;; is unused in a non-keyword context.
+
+(defun js2-match-async-arrow-function-1 ()
+  (and (js2-contextual-kwd-p (js2-current-token) "async")
+       (/= (js2-peek-token) js2-FUNCTION)))
+
+(defun js2-match-async-arrow-function-2 ()
+  (js2-record-face 'font-lock-keyword-face)
+  (js2-get-token))
 
 (defun js2-match-await (tt)
   (when (and (= tt js2-NAME)
@@ -9676,7 +9684,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
       ;; `js2-parse-function-stmt' nor `js2-parse-function-expr' that
       ;; interpret `async` token, we trash `async` and just remember
       ;; we met `async` keyword to `async-p'.
-      (when (js2-match-async-arrow-function)
+      (when (js2-match-async-arrow-function-1)
         (setq async-p t))
       ;; Save the tokenizer state in case we find an arrow function
       ;; and have to rewind.
@@ -9711,6 +9719,8 @@ If NODE is non-nil, it is the AST node associated with the symbol."
        ((and (= tt js2-ARROW)
              (>= js2-language-version 200))
         (js2-ts-seek ts-state)
+        (when async-p
+          (js2-match-async-arrow-function-2))
         (setq js2-recorded-identifiers recorded-identifiers
               js2-parsed-errors parsed-errors)
         (setq pn (js2-parse-function 'FUNCTION_ARROW (js2-current-token-beg) nil async-p)))
