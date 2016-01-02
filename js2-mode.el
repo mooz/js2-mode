@@ -9900,18 +9900,6 @@ to parse the operand (for prefix operators)."
     (js2-node-add-children pn expr)
     pn))
 
-(defun js2-make-await ()
-  "Make an await node."
-  (let* ((pos (js2-current-token-beg))
-         (expr (js2-parse-unary-expr))
-         (end (js2-node-end expr))
-         pn)
-    (setq pn (make-js2-await-node :pos pos
-                                  :len (- end pos)
-                                  :operand expr))
-    (js2-node-add-children pn expr)
-    pn))
-
 (defconst js2-incrementable-node-types
   (list js2-NAME js2-GETPROP js2-GETELEM js2-GET_REF js2-CALL)
   "Node types that can be the operand of a ++ or -- operator.")
