@@ -3843,6 +3843,29 @@ You can tell the quote type by looking at the first character."
       (insert ",")))
   (insert "]"))
 
+(cl-defstruct (js2-object-node
+               (:include js2-node)
+               (:constructor nil)
+               (:constructor make-js2-object-node (&key (type js2-OBJECTLIT)
+                                                        (pos js2-ts-cursor)
+                                                        len
+                                                        elems)))
+  "AST node for an object literal expression.
+`elems' is a list of `js2-object-prop-node'."
+  elems)
+
+(put 'cl-struct-js2-object-node 'js2-visitor 'js2-visit-object-node)
+(put 'cl-struct-js2-object-node 'js2-printer 'js2-print-object-node)
+
+(defun js2-visit-object-node (n v)
+  (dolist (e (js2-object-node-elems n))
+    (js2-visit-ast e v)))
+
+(defun js2-print-object-node (n i)
+  (insert (js2-make-pad i) "{")
+  (js2-print-list (js2-object-node-elems n))
+  (insert "}"))
+
 (cl-defstruct (js2-class-node
                (:include js2-object-node)
                (:constructor nil)
@@ -3888,29 +3911,6 @@ optional `js2-expr-node'"
                  (js2-print-ast elem 0)) ;; TODO(sdh): indentation isn't quite right
         (js2-print-ast elem (1+ i))))
     (insert "\n" pad "}")))
-
-(cl-defstruct (js2-object-node
-               (:include js2-node)
-               (:constructor nil)
-               (:constructor make-js2-object-node (&key (type js2-OBJECTLIT)
-                                                        (pos js2-ts-cursor)
-                                                        len
-                                                        elems)))
-  "AST node for an object literal expression.
-`elems' is a list of `js2-object-prop-node'."
-  elems)
-
-(put 'cl-struct-js2-object-node 'js2-visitor 'js2-visit-object-node)
-(put 'cl-struct-js2-object-node 'js2-printer 'js2-print-object-node)
-
-(defun js2-visit-object-node (n v)
-  (dolist (e (js2-object-node-elems n))
-    (js2-visit-ast e v)))
-
-(defun js2-print-object-node (n i)
-  (insert (js2-make-pad i) "{")
-  (js2-print-list (js2-object-node-elems n))
-  (insert "}"))
 
 (cl-defstruct (js2-computed-prop-name-node
                (:include js2-node)
