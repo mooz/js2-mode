@@ -3479,6 +3479,7 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-INSTANCEOF "instanceof")
                (cons js2-DELPROP "delete")
                (cons js2-AWAIT "await")
+               (cons js2-VOID "void")
                (cons js2-COMMA ",")
                (cons js2-COLON ":")
                (cons js2-OR "||")
@@ -3580,7 +3581,8 @@ property is added if the operator follows the operand."
       (insert op))
     (if (or (= tt js2-TYPEOF)
             (= tt js2-DELPROP)
-            (= tt js2-AWAIT))
+            (= tt js2-AWAIT)
+            (= tt js2-VOID))
         (insert " "))
     (js2-print-ast (js2-unary-node-operand n) 0)
     (when postfix
