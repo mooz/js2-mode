@@ -7504,7 +7504,7 @@ For instance, processing a nested scope requires a parent function node."
   (let (result fn parent-qname p elem)
     (dolist (entry js2-imenu-recorder)
       ;; function node goes first
-      (cl-destructuring-bind (current-fn &rest (&whole chain head &rest)) entry
+      (cl-destructuring-bind (current-fn &rest (&whole chain head &rest _)) entry
         ;; Examine head's defining scope:
         ;; Pre-processed chain, or top-level/external, keep as-is.
         (if (or (stringp head) (js2-node-top-level-decl-p head))
@@ -10674,6 +10674,7 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
     (js2-set-face (js2-node-pos name) (js2-node-end name)
                   'font-lock-function-name-face 'record)
     (let ((node (js2-parse-class pos 'CLASS_STATEMENT name)))
+      (js2-record-imenu-functions node name)
       (js2-define-symbol js2-FUNCTION
                          (js2-name-node-name name)
                          node)
@@ -10768,7 +10769,7 @@ expression)."
        ;; Found a property (of any sort)
        ((member tt (list js2-NAME js2-STRING js2-NUMBER js2-LB))
         (setq after-comma nil
-              elem (js2-parse-named-prop tt pos previous-token))
+              elem (js2-parse-named-prop tt previous-token))
         (if (and (null elem)
                  (not js2-recover-from-parse-errors))
             (setq continue nil)))
@@ -10827,7 +10828,7 @@ expression)."
     (js2-must-match js2-RC "msg.no.brace.prop")
     (nreverse elems)))
 
-(defun js2-parse-named-prop (tt pos previous-token)
+(defun js2-parse-named-prop (tt previous-token)
   "Parse a name, string, or getter/setter object property.
 When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
   (let ((key (js2-parse-prop-name tt))
@@ -10835,8 +10836,10 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
         (property-type (when previous-token
                              (if (= (js2-token-type previous-token) js2-MUL)
                                  "*"
-                               (js2-token-string previous-token)))))
+                               (js2-token-string previous-token))))
+        pos)
     (when (member prop '("get" "set" "async"))
+      (setq pos (js2-token-beg previous-token))
       (js2-set-face (js2-token-beg previous-token)
                     (js2-token-end previous-token)
                     'font-lock-keyword-face 'record))  ; get/set/async
@@ -10968,6 +10971,7 @@ TYPE-STRING is a string `get', `set', `*', or nil, indicating a found keyword."
     (js2-node-set-prop fn 'METHOD_TYPE type)  ; for codegen
     (when (string= type-string "*")
       (setf (js2-function-node-generator-type fn) 'STAR))
+    (unless pos (setq pos (js2-node-pos prop)))
     (setq end (js2-node-end fn)
           result (make-js2-method-node :pos pos
                                        :len (- end pos)
