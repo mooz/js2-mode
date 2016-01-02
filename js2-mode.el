@@ -3844,7 +3844,7 @@ You can tell the quote type by looking at the first character."
   (insert "]"))
 
 (cl-defstruct (js2-class-node
-               (:include js2-node)
+               (:include js2-object-node)
                (:constructor nil)
                (:constructor make-js2-class-node (&key (type js2-CLASS)
                                                        (pos js2-ts-cursor)
@@ -3857,7 +3857,7 @@ optional `js2-expr-node'"
   form             ; CLASS_{STATEMENT|EXPRESSION}
   name             ; class name (a `js2-node-name', or nil if anonymous)
   extends          ; class heritage (a `js2-expr-node', or nil if none)
-  elems)
+  )
 
 (put 'cl-struct-js2-class-node 'js2-visitor 'js2-visit-class-node)
 (put 'cl-struct-js2-class-node 'js2-printer 'js2-print-class-node)
