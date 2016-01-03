@@ -161,6 +161,12 @@ the test."
 (js2-deftest-parse parse-for-of
   "for (var a of []) {\n}")
 
+(js2-deftest-parse of-can-be-name
+  "void of;")
+
+(js2-deftest-parse of-can-be-object-name
+  "of.z;")
+
 (js2-deftest-parse of-can-be-var-name
   "var of = 3;")
 
