@@ -7764,27 +7764,39 @@ string is NAME.  Returns nil and keeps current token otherwise."
   (js2-record-face 'font-lock-keyword-face)
   (js2-get-token))
 
-(defun js2-match-await (tt)
-  (when (and (= tt js2-NAME)
-             (js2-contextual-kwd-p (js2-current-token) "await")
-             ;; Per the proposal, AwaitExpression consists of "await"
-             ;; followed by a UnaryExpression.  So look ahead for one.
-             (let ((ts-state (make-js2-ts-state))
-                   js2-recorded-identifiers
-                   js2-parsed-errors)
-               (js2-get-token)
-               (prog1
-                   (/= (js2-node-type (js2-parse-unary-expr)) js2-ERROR)
-                 (js2-ts-seek ts-state))))
-    (js2-record-face 'font-lock-keyword-face)
-    (let ((beg (js2-current-token-beg))
-          (end (js2-current-token-end)))
-      (js2-get-token)
-      (unless (and (js2-inside-function)
-                   (js2-function-node-async js2-current-script-or-fn))
-        (js2-report-error "msg.bad.await" nil
-                          beg (- end beg))))
-    t))
+(defun js2-parse-await-maybe (tt)
+  "Parse \"await\" as an AwaitExpression, if it is one."
+  (let (pn post-parse-ts-state)
+    (when (and (= tt js2-NAME)
+               (js2-contextual-kwd-p (js2-current-token) "await")
+               ;; Per the proposal, AwaitExpression consists of "await"
+               ;; followed by a UnaryExpression.  So look ahead for one.
+               (let ((pre-parse-ts-state (make-js2-ts-state))
+                     js2-recorded-identifiers
+                     js2-parsed-errors)
+                 (js2-get-token)
+                 ;; Stash the node in case it's a successful parse, because then
+                 ;; we can return it.
+                 (setq pn (js2-make-unary js2-AWAIT 'js2-parse-unary-expr))
+                 ;; The token stream state after parsing must also be restored
+                 ;; if the node is returned.
+                 (setq post-parse-ts-state (make-js2-ts-state))
+                 (prog1
+                     (/= (js2-node-type (js2-unary-node-operand pn)) js2-ERROR)
+                   ;; Whether we parsed an AwaitExpression and need to do some
+                   ;; retroactive checks, or if the parse failed, the token
+                   ;; stream must be restored to its pre-parse state.
+                   (js2-ts-seek pre-parse-ts-state))))
+      (js2-record-face 'font-lock-keyword-face)
+      (let ((beg (js2-current-token-beg))
+            (end (js2-current-token-end)))
+        (js2-get-token)
+        (unless (and (js2-inside-function)
+                     (js2-function-node-async js2-current-script-or-fn))
+          (js2-report-error "msg.bad.await" nil
+                            beg (- end beg))))
+      (js2-ts-seek post-parse-ts-state)
+      pn)))
 
 (defun js2-get-prop-name-token ()
   (js2-get-token (and (>= js2-language-version 170) 'KEYWORD_IS_NAME)))
@@ -9962,8 +9974,7 @@ to parse the operand (for prefix operators)."
      ((= tt js2-DELPROP)
       (js2-get-token)
       (js2-make-unary js2-DELPROP 'js2-parse-unary-expr))
-     ((js2-match-await tt)
-      (js2-make-unary js2-AWAIT 'js2-parse-unary-expr))
+     ((js2-parse-await-maybe tt))
      ((= tt js2-ERROR)
       (js2-get-token)
       (make-js2-error-node))  ; try to continue
