@@ -7766,7 +7766,16 @@ string is NAME.  Returns nil and keeps current token otherwise."
 
 (defun js2-match-await (tt)
   (when (and (= tt js2-NAME)
-             (js2-contextual-kwd-p (js2-current-token) "await"))
+             (js2-contextual-kwd-p (js2-current-token) "await")
+             ;; Per the proposal, AwaitExpression consists of "await"
+             ;; followed by a UnaryExpression.  So look ahead for one.
+             (let ((ts-state (make-js2-ts-state))
+                   js2-recorded-identifiers
+                   js2-parsed-errors)
+               (js2-get-token)
+               (prog1
+                   (/= (js2-node-type (js2-parse-unary-expr)) js2-ERROR)
+                 (js2-ts-seek ts-state))))
     (js2-record-face 'font-lock-keyword-face)
     (let ((beg (js2-current-token-beg))
           (end (js2-current-token-end)))

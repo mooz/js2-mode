@@ -499,6 +499,12 @@ the test."
 (js2-deftest-parse async-can-be-function-name
   "function async() {\n}")
 
+(js2-deftest-parse await-can-be-name
+  "void await;")
+
+(js2-deftest-parse await-can-be-object-name
+  "await.z;")
+
 (js2-deftest-parse await-can-be-var-name
   "var await = 3;")
 
