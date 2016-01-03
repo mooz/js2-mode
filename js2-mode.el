@@ -7753,6 +7753,9 @@ string is NAME.  Returns nil and keeps current token otherwise."
   (and (js2-contextual-kwd-p (js2-current-token) "async")
        (/= (js2-peek-token) js2-FUNCTION)))
 
+(defsubst js2-inside-function ()
+  (cl-plusp js2-nesting-of-function))
+
 (defun js2-parse-await-maybe (tt)
   "Parse \"await\" as an AwaitExpression, if it is one."
   (let (pn post-parse-ts-state)
@@ -7836,9 +7839,6 @@ Returns t on match, nil if no match."
       (js2-report-error msg-id)
       (js2-unget-token))
     nil))
-
-(defsubst js2-inside-function ()
-  (cl-plusp js2-nesting-of-function))
 
 (defun js2-set-requires-activation ()
   (if (js2-function-node-p js2-current-script-or-fn)
