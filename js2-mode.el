@@ -7754,7 +7754,7 @@ string is NAME.  Returns nil and keeps current token otherwise."
 ;; thus whether `js2-get-token' should be called) until later.  If
 ;; `js2-get-token' were called eccentrically, `js2-current-token' would be
 ;; off-by-one, causing `js2-parse-unary-expr' to potentially fail when "async"
-;; is unused in a non-keyword context.
+;; is used in a non-keyword context.
 
 (defun js2-match-async-arrow-function-1 ()
   (and (js2-contextual-kwd-p (js2-current-token) "async")
