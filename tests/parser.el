@@ -126,6 +126,9 @@ the test."
 (js2-deftest-parse let-expression-statement
   "let (x = 42) x;")
 
+(js2-deftest-parse void
+  "void 0;")
+
 ;;; Callers of `js2-valid-prop-name-token'
 
 (js2-deftest-parse parse-property-access-when-not-keyword
@@ -157,6 +160,12 @@ the test."
 
 (js2-deftest-parse parse-for-of
   "for (var a of []) {\n}")
+
+(js2-deftest-parse of-can-be-name
+  "void of;")
+
+(js2-deftest-parse of-can-be-object-name
+  "of.z;")
 
 (js2-deftest-parse of-can-be-var-name
   "var of = 3;")
@@ -484,11 +493,23 @@ the test."
 
 ;;; 'async' and 'await' are contextual keywords
 
+(js2-deftest-parse async-can-be-name
+  "void async;")
+
+(js2-deftest-parse async-can-be-object-name
+  "async.z;")
+
 (js2-deftest-parse async-can-be-var-name
   "var async = 3;")
 
 (js2-deftest-parse async-can-be-function-name
   "function async() {\n}")
+
+(js2-deftest-parse await-can-be-name
+  "void await;")
+
+(js2-deftest-parse await-can-be-object-name
+  "await.z;")
 
 (js2-deftest-parse await-can-be-var-name
   "var await = 3;")

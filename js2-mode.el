@@ -3479,6 +3479,7 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-INSTANCEOF "instanceof")
                (cons js2-DELPROP "delete")
                (cons js2-AWAIT "await")
+               (cons js2-VOID "void")
                (cons js2-COMMA ",")
                (cons js2-COLON ":")
                (cons js2-OR "||")
@@ -3580,7 +3581,8 @@ property is added if the operator follows the operand."
       (insert op))
     (if (or (= tt js2-TYPEOF)
             (= tt js2-DELPROP)
-            (= tt js2-AWAIT))
+            (= tt js2-AWAIT)
+            (= tt js2-VOID))
         (insert " "))
     (js2-print-ast (js2-unary-node-operand n) 0)
     (when postfix
@@ -7748,24 +7750,46 @@ string is NAME.  Returns nil and keeps current token otherwise."
     t))
 
 (defun js2-match-async-arrow-function ()
-  (when (and (js2-contextual-kwd-p (js2-current-token) "async")
-             (/= (js2-peek-token) js2-FUNCTION))
-    (js2-record-face 'font-lock-keyword-face)
-    (js2-get-token)
-    t))
+  (and (js2-contextual-kwd-p (js2-current-token) "async")
+       (/= (js2-peek-token) js2-FUNCTION)))
 
-(defun js2-match-await (tt)
-  (when (and (= tt js2-NAME)
-             (js2-contextual-kwd-p (js2-current-token) "await"))
-    (js2-record-face 'font-lock-keyword-face)
-    (let ((beg (js2-current-token-beg))
-          (end (js2-current-token-end)))
-      (js2-get-token)
-      (unless (and (js2-inside-function)
-                   (js2-function-node-async js2-current-script-or-fn))
-        (js2-report-error "msg.bad.await" nil
-                          beg (- end beg))))
-    t))
+(defsubst js2-inside-function ()
+  (cl-plusp js2-nesting-of-function))
+
+(defsubst js2-inside-async-function ()
+  (and (js2-inside-function)
+       (js2-function-node-async js2-current-script-or-fn)))
+
+(defun js2-parse-await-maybe (tt)
+  "Parse \"await\" as an AwaitExpression, if it is one."
+  (and (= tt js2-NAME)
+       (js2-contextual-kwd-p (js2-current-token) "await")
+       ;; Per the proposal, AwaitExpression consists of "await"
+       ;; followed by a UnaryExpression.  So look ahead for one.
+       (let ((ts-state (make-js2-ts-state))
+             (recorded-identifiers js2-recorded-identifiers)
+             (parsed-errors js2-parsed-errors)
+             (current-token (js2-current-token))
+             (beg (js2-current-token-beg))
+             (end (js2-current-token-end))
+             pn)
+         (js2-get-token)
+         (setq pn (js2-make-unary js2-AWAIT 'js2-parse-unary-expr))
+         (if (= (js2-node-type (js2-unary-node-operand pn)) js2-ERROR)
+             ;; The parse failed, so pretend like nothing happened and restore
+             ;; the previous parsing state.
+             (progn
+               (js2-ts-seek ts-state)
+               (setq js2-recorded-identifiers recorded-identifiers
+                     js2-parsed-errors parsed-errors)
+               ;; And ensure the caller knows about the failure.
+               nil)
+           ;; The parse was successful, so process and return the "await".
+           (js2-record-face 'font-lock-keyword-face current-token)
+           (unless (js2-inside-async-function)
+             (js2-report-error "msg.bad.await" nil
+                               beg (- end beg)))
+           pn))))
 
 (defun js2-get-prop-name-token ()
   (js2-get-token (and (>= js2-language-version 170) 'KEYWORD_IS_NAME)))
@@ -7816,9 +7840,6 @@ Returns t on match, nil if no match."
       (js2-report-error msg-id)
       (js2-unget-token))
     nil))
-
-(defsubst js2-inside-function ()
-  (cl-plusp js2-nesting-of-function))
 
 (defun js2-set-requires-activation ()
   (if (js2-function-node-p js2-current-script-or-fn)
@@ -9709,6 +9730,9 @@ If NODE is non-nil, it is the AST node associated with the symbol."
        ((and (= tt js2-ARROW)
              (>= js2-language-version 200))
         (js2-ts-seek ts-state)
+        (when async-p
+          (js2-record-face 'font-lock-keyword-face)
+          (js2-get-token))
         (setq js2-recorded-identifiers recorded-identifiers
               js2-parsed-errors parsed-errors)
         (setq pn (js2-parse-function 'FUNCTION_ARROW (js2-current-token-beg) nil async-p)))
@@ -9941,8 +9965,7 @@ to parse the operand (for prefix operators)."
      ((= tt js2-DELPROP)
       (js2-get-token)
       (js2-make-unary js2-DELPROP 'js2-parse-unary-expr))
-     ((js2-match-await tt)
-      (js2-make-unary js2-AWAIT 'js2-parse-unary-expr))
+     ((js2-parse-await-maybe tt))
      ((= tt js2-ERROR)
       (js2-get-token)
       (make-js2-error-node))  ; try to continue
