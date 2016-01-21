@@ -11615,18 +11615,13 @@ highlighting features of `js2-mode'."
     map)
   "Keymap used for js2 diagnostics buffers.")
 
-(defun js2-error-buffer-mode ()
+(define-derived-mode js2-error-buffer-mode special-mode "JS Lint Diagnostics"
   "Major mode for js2 diagnostics buffers.
 Selecting an error will jump it to the corresponding source-buffer error.
 \\{js2-error-buffer-mode-map}"
-  (interactive)
-  (setq major-mode 'js2-error-buffer-mode
-        mode-name "JS Lint Diagnostics")
-  (use-local-map js2-error-buffer-mode-map)
   (setq truncate-lines t)
   (set-buffer-modified-p nil)
-  (setq buffer-read-only t)
-  (run-hooks 'js2-error-buffer-mode-hook))
+  (setq buffer-read-only t))
 
 (defun js2-error-buffer-next ()
   "Move to next error and view it."
@@ -11655,7 +11650,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
   "Scroll source buffer to show error at current line."
   (interactive)
   (cond
-   ((not (eq major-mode 'js2-error-buffer-mode))
+   ((not (derived-mode-p 'js2-error-buffer-mode))
     (message "Not in a js2 errors buffer"))
    ((not (buffer-live-p js2-source-buffer))
     (message "Source buffer has been killed"))
