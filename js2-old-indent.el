@@ -225,12 +225,15 @@ and comments have been removed."
                   (eq (char-after) ??))))
        (not (and
              (eq (char-after) ?*)
-             (looking-at (concat "\\* *" js2-mode-identifier-re " *("))
+             ;; Generator method (possibly using computed property).
+             (looking-at (concat "\\* *\\(?:\\[\\|"
+                                 js2-mode-identifier-re
+                                 " *(\\)"))
              (save-excursion
-               (goto-char (1- (match-end 0)))
-               (let (forward-sexp-function) (forward-sexp))
-               (js2-forward-sws)
-               (eq (char-after) ?{))))))
+               (js2-backward-sws)
+               ;; We might misindent some expressions that would
+               ;; return NaN anyway.  Shouldn't be a problem.
+               (memq (char-before) '(?, ?} ?{)))))))
 
 (defun js2-continued-expression-p ()
   "Return non-nil if the current line continues an expression."

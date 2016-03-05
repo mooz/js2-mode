@@ -146,7 +146,15 @@
   "class A {
   |  * x() {
   |    return 1
-  |      * 2;
+  |      * a(2);
+  |  }
+  |}")
+
+(js2-deftest-indent indent-generator-computed-method
+  "class A {
+  |  *[Symbol.iterator]() {
+  |    yield 'Foo';
+  |    yield 'Bar';
   |  }
   |}")
 
