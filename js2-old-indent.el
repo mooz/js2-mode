@@ -132,12 +132,12 @@ followed by an opening brace.")
 
 (defconst js2-indent-operator-re
   (concat "[-+*/%<>&^|?:.]\\([^-+*/]\\|$\\)\\|!?=\\|"
-          (regexp-opt '("in" "instanceof") 'words))
+          (regexp-opt '("in" "instanceof") 'symbols))
   "Regular expression matching operators that affect indentation
 of continued expressions.")
 
 (defconst js2-declaration-keyword-re
-  (regexp-opt '("var" "let" "const") 'words)
+  (regexp-opt '("var" "let" "const") 'symbols)
   "Regular expression matching variable declaration keywords.")
 
 (defun js2-re-search-forward-inner (regexp &optional bound count)
