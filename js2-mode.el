@@ -8107,7 +8107,11 @@ declared; probably to check them for errors."
      ((js2-array-node-p node)
       (dolist (elem (js2-array-node-elems node))
         (when elem
-          (if (js2-infix-node-p elem) (setq elem (js2-infix-node-left elem)))
+          (setq elem (cond ((js2-infix-node-p elem) ;; default (=)
+                            (js2-infix-node-left elem))
+                           ((js2-unary-node-p elem) ;; rest (...)
+                            (js2-unary-node-operand elem))
+                           (t elem)))
           (push (js2-define-destruct-symbols
                  elem decl-type face ignore-not-in-block)
                 name-nodes)))
@@ -10478,19 +10482,13 @@ array-literals, array comprehensions and regular expressions."
 
 (defun js2-parse-array-literal (pos)
   (let ((after-lb-or-comma t)
-        after-comma tt elems pn
+        after-comma tt elems pn was-rest
         (continue t))
     (unless js2-is-in-destructuring
       (js2-push-scope (make-js2-scope))) ; for the legacy array comp
     (while continue
       (setq tt (js2-get-token))
       (cond
-       ;; comma
-       ((= tt js2-COMMA)
-        (setq after-comma (js2-current-token-end))
-        (if (not after-lb-or-comma)
-            (setq after-lb-or-comma t)
-          (push nil elems)))
        ;; end of array
        ((or (= tt js2-RB)
             (= tt js2-EOF))  ; prevent infinite loop
@@ -10504,27 +10502,18 @@ array-literals, array comprehensions and regular expressions."
                                       :len (- js2-ts-cursor pos)
                                       :elems (nreverse elems)))
         (apply #'js2-node-add-children pn (js2-array-node-elems pn)))
-       ;; destructuring binding
-       (js2-is-in-destructuring
-        (push (cond
-               ((and (= tt js2-NAME)
-                     (= js2-ASSIGN (js2-peek-token)))
-                ;; a=defaultValue
-                (js2-parse-initialized-binding (js2-parse-name js2-NAME)))
-               ((or (= tt js2-LC)
-                    (= tt js2-LB)
-                    (= tt js2-NAME))
-                ;; [a, b, c] | {a, b, c} | {a:x, b:y, c:z} | a
-                (js2-parse-destruct-primary-expr))
-               ;; invalid pattern
-               (t
-                (js2-report-error "msg.bad.var")
-                (make-js2-error-node)))
-              elems)
-        (setq after-lb-or-comma nil
-              after-comma nil))
+       ;; anything after rest element (...foo)
+       (was-rest
+        (js2-report-error "msg.param.after.rest"))
+       ;; comma
+       ((= tt js2-COMMA)
+        (setq after-comma (js2-current-token-end))
+        (if (not after-lb-or-comma)
+            (setq after-lb-or-comma t)
+          (push nil elems)))
        ;; array comp
        ((and (>= js2-language-version 170)
+             (not js2-is-in-destructuring)
              (= tt js2-FOR)          ; check for array comprehension
              (not after-lb-or-comma) ; "for" can't follow a comma
              elems                   ; must have at least 1 element
@@ -10538,9 +10527,12 @@ array-literals, array comprehensions and regular expressions."
           (js2-report-error "msg.no.bracket.arg"))
         (if (and (= tt js2-TRIPLEDOT)
                  (>= js2-language-version 200))
-            ;; spread operator
-            (push (js2-make-unary tt 'js2-parse-assign-expr)
-                  elems)
+            ;; rest/spread operator
+            (progn
+              (push (js2-make-unary tt 'js2-parse-assign-expr)
+                    elems)
+              (if js2-is-in-destructuring
+                  (setq was-rest t)))
           (js2-unget-token)
           (push (js2-parse-assign-expr) elems))
         (setq after-lb-or-comma nil
