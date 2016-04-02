@@ -1076,6 +1076,7 @@ Not currently used."
   "Face used to highlight undeclared variable identifiers.")
 
 (defcustom js2-init-hook nil
+  ;; FIXME: We don't really need this anymore.
   "List of functions to be called after `js2-mode' or
 `js2-minor-mode' has initialized all variables, before parsing
 the buffer for the first time."
@@ -11566,7 +11567,9 @@ Selecting an error will jump it to the corresponding source-buffer error.
 
   (run-hooks 'js2-init-hook)
 
-  (js2-reparse))
+  (let ((js2-idle-timer-delay 0))
+    ;; Schedule parsing for after when the mode hooks run.
+    (js2-mode-reset-timer)))
 
 ;; We may eventually want js2-jsx-mode to derive from js-jsx-mode, but that'd be
 ;; a bit more complicated and it doesn't net us much yet.
