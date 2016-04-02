@@ -179,6 +179,13 @@
   |}"
   :bind ((js2-indent-switch-body t)))
 
+(js2-deftest-indent continued-expression-vs-unary-minus
+  "var arr = [
+  |  -1, 2,
+  |  -3, 4 +
+  |    -5
+  |];")
+
 (js2-deftest-indent jsx-one-line
   "var foo = <div></div>;")
 

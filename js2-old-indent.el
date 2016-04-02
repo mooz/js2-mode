@@ -239,20 +239,16 @@ and comments have been removed."
   "Return non-nil if the current line continues an expression."
   (save-excursion
     (back-to-indentation)
-    (or (js2-looking-at-operator-p)
-        (when (catch 'found
-                (while (and (re-search-backward "\n" nil t)
-                            (let ((state (syntax-ppss)))
-                              (when (nth 4 state)
-                                (goto-char (nth 8 state))) ;; skip comments
-                              (skip-chars-backward " \t")
-                              (if (bolp)
-                                  t
-                                (throw 'found t))))))
-          (backward-char)
-          (when (js2-looking-at-operator-p)
-            (backward-char)
-            (not (looking-at "\\*\\|\\+\\+\\|--\\|/[/*]")))))))
+    (if (js2-looking-at-operator-p)
+        (or (not (memq (char-after) '(?- ?+)))
+            (progn
+              (forward-comment (- (point)))
+              (not (memq (char-before) '(?, ?\[ ?\()))))
+      (forward-comment (- (point)))
+      (or (bobp) (backward-char))
+      (when (js2-looking-at-operator-p)
+        (backward-char)
+        (not (looking-at "\\*\\|\\+\\+\\|--\\|/[/*]"))))))
 
 (defun js2-end-of-do-while-loop-p ()
   "Return non-nil if word after point is `while' of a do-while
