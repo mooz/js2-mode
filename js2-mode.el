@@ -7259,6 +7259,7 @@ are ignored."
                js2-additional-externs)))
 
 (defun js2-get-jslint-globals ()
+  (js2-reparse)
   (cl-loop for node in (js2-ast-root-comments js2-mode-ast)
            when (and (eq 'block (js2-comment-node-format node))
                      (save-excursion

@@ -35,9 +35,13 @@
              ,@body)
          (fundamental-mode)))))
 
+(defun js2-mode--and-parse ()
+  (js2-mode)
+  (js2-reparse))
+
 (defun js2-test-string-to-ast (s)
   (insert s)
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (null js2-mode-buffer-dirty-p))
   js2-mode-ast)
 
@@ -206,12 +210,12 @@ the test."
   "\"use strict\";\nvar {a=1,a=2} = {};" :syntax-error "a" :errors-count 1)
 
 (js2-deftest destruct-name-conflict-is-warning-in-array "\"use strict\";\nvar [a=1,a=2] = [];"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (equal '("msg.var.redecl" "a")
                  (caar js2-parsed-warnings))))
 
 (js2-deftest initializer-outside-destruct-is-error "({a=1});"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (equal "msg.init.no.destruct"
                  (car (caar js2-parsed-errors)))))
 
@@ -227,7 +231,7 @@ the test."
   "var x = {f(y) {  return y;\n}};")
 
 (js2-deftest object-literal-method-own-name-in-scope "({f(){f();}});"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (equal '("msg.undeclared.variable" "f")
                  (caar js2-parsed-warnings))))
 
@@ -255,11 +259,11 @@ the test."
 ;;; Function definition
 
 (js2-deftest function-redeclaring-var "var gen = 3; function gen() {};"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (= (length (js2-ast-root-warnings js2-mode-ast)) 1)))
 
 (js2-deftest function-expression-var-same-name "var gen = function gen() {};"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (null (js2-ast-root-warnings js2-mode-ast))))
 
 ;;; Function parameters
@@ -415,7 +419,7 @@ the test."
 
 (js2-deftest no-label-node-inside-expr "x = y:"
   (let (js2-parse-interruptable-p)
-    (js2-mode))
+    (js2-mode--and-parse))
   (let ((assignment (js2-expr-stmt-node-expr (car (js2-scope-kids js2-mode-ast)))))
     (should (js2-name-node-p (js2-assign-node-right assignment)))))
 
@@ -816,20 +820,20 @@ the test."
     (should (js2-export-node-default export-node))))
 
 (js2-deftest export-function-no-semicolon "export default function foo() {}"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (equal nil js2-parsed-warnings)))
 (js2-deftest export-default-function-no-semicolon "export function foo() {}"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (equal nil js2-parsed-warnings)))
 (js2-deftest export-anything-else-does-require-a-semicolon "export var obj = {}"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (not (equal nil js2-parsed-warnings))))
 
 (js2-deftest export-default-async-function-no-semicolon "export default async function foo() {}"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (equal nil js2-parsed-warnings)))
 (js2-deftest export-async-function-no-semicolon "export async function foo() {}"
-  (js2-mode)
+  (js2-mode--and-parse)
   (should (equal nil js2-parsed-warnings)))
 
 (js2-deftest-parse parse-export-rexport "export * from 'other/lib';")
@@ -918,7 +922,7 @@ the test."
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"
-  (js2-mode)
+  (js2-mode--and-parse)
   (let ((entry (js2-scope-get-symbol js2-mode-ast 'foo)))
     (should (= (js2-symbol-decl-type entry) js2-FUNCTION))
     (should (equal (js2-symbol-name entry) "foo"))
@@ -928,7 +932,7 @@ the test."
   function bar() {}
   var x;
 }"
-  (js2-mode)
+  (js2-mode--and-parse)
   (let* ((scope (js2-node-at-point (point-min)))
          (fn-entry (js2-scope-get-symbol scope 'bar))
          (var-entry (js2-scope-get-symbol scope 'x)))
@@ -946,36 +950,36 @@ the test."
     (should (funcall predicate (js2-get-defining-scope scope variable)))))
 
 (js2-deftest for-node-is-declaration-scope "for (let i = 0; i; ++i) {};"
-  (js2-mode)
+  (js2-mode--and-parse)
   (js2-test-scope-of-nth-variable-satisifies-predicate "i" 0 #'js2-for-node-p))
 
 (js2-deftest const-scope-sloppy-script "{const a;} a;"
-  (js2-mode)
+  (js2-mode--and-parse)
   (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-script-node-p)
   (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'js2-script-node-p))
 
 (js2-deftest const-scope-strict-script "'use strict'; { const a; } a;"
-  (js2-mode)
+  (js2-mode--and-parse)
   (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-block-node-p)
   (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'null))
 
 (js2-deftest const-scope-sloppy-function "function f() { { const a; } a; }"
-  (js2-mode)
+  (js2-mode--and-parse)
   (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-function-node-p)
   (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'js2-function-node-p))
 
 (js2-deftest const-scope-strict-function "function f() { 'use strict'; { const a; } a; }"
-  (js2-mode)
+  (js2-mode--and-parse)
   (js2-test-scope-of-nth-variable-satisifies-predicate "a" 0 #'js2-block-node-p)
   (js2-test-scope-of-nth-variable-satisifies-predicate "a" 1 #'null))
 
 (js2-deftest array-comp-is-result-scope "[x * 2 for (x in y)];"
-  (js2-mode)
+  (js2-mode--and-parse)
   (js2-test-scope-of-nth-variable-satisifies-predicate "x" 0 #'js2-comp-loop-node-p))
 
 (js2-deftest array-comp-has-parent-scope
              "var a,b=[for (i of [[1,2]]) for (j of i) j * a];"
-  (js2-mode)
+  (js2-mode--and-parse)
   (search-forward "for")
   (forward-char -3)
   (let ((node (js2-node-at-point)))
@@ -1045,23 +1049,23 @@ the test."
 ;;; Error handling
 
 (js2-deftest for-node-with-error-len "for "
-  (js2-mode)
+  (js2-mode--and-parse)
   (let ((node (js2-node-at-point (point-min))))
     (should (= (js2-node-len (js2-node-parent node)) 4))))
 
 (js2-deftest function-without-parens-error "function b {}"
   ;; Should finish the parse.
-  (js2-mode))
+  (js2-mode--and-parse))
 
 ;;; Comments
 
 (js2-deftest comment-node-length "//"
-  (js2-mode)
+  (js2-mode--and-parse)
   (let ((node (js2-node-at-point (point-min))))
     (should (= (js2-node-len node) 2))))
 
 (js2-deftest comment-node-length-newline "//\n"
-  (js2-mode)
+  (js2-mode--and-parse)
   (let ((node (js2-node-at-point (point-min))))
     (should (= (js2-node-len node) 3))))
 
@@ -1100,7 +1104,7 @@ the test."
          (insert ,buffer-contents))
        (unwind-protect
            (progn
-             (js2-mode)
+             (js2-mode--and-parse)
              (should (equal ,summary (js2--variables-summary
                                       (js2--classify-variables)))))
          (fundamental-mode)))))
