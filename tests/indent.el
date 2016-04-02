@@ -32,6 +32,7 @@
            s
          (replace-regexp-in-string "^ *" "" s)))
       (js2-jsx-mode)
+      (js2-reparse) ; solely for js2-jsx-self-closing, for some reason
       (indent-region (point-min) (point-max))
       (should (string= s (buffer-substring-no-properties
                           (point-min) (point)))))))
