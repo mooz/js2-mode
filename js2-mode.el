@@ -12569,7 +12569,9 @@ it marks the next defun after the ones already marked."
 (defun js2-jump-to-definition (&optional arg)
   "Jump to the definition of an object's property, variable or function."
   (interactive "P")
-  (ring-insert find-tag-marker-ring (point-marker))
+  (if (eval-when-compile (fboundp 'xref-push-marker-stack))
+      (xref-push-marker-stack)
+    (ring-insert find-tag-marker-ring (point-marker)))
   (js2-reparse)
   (let* ((node (js2-node-at-point))
          (parent (js2-node-parent node))
