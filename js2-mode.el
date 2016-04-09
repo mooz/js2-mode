@@ -11026,6 +11026,7 @@ And, if CHECK-ACTIVATION-P is non-nil, use the value of TOKEN."
   "Print the path to the JSON value under point, and save it in the kill ring.
 If HARDCODED-ARRAY-INDEX provided, array index in JSON path is replaced with it."
   (interactive "P")
+  (js2-reparse)
   (let (previous-node current-node
         key-name
         rlt)
@@ -12569,6 +12570,7 @@ it marks the next defun after the ones already marked."
   "Jump to the definition of an object's property, variable or function."
   (interactive "P")
   (ring-insert find-tag-marker-ring (point-marker))
+  (js2-reparse)
   (let* ((node (js2-node-at-point))
          (parent (js2-node-parent node))
          (names (if (js2-prop-get-node-p parent)
