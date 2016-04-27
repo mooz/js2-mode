@@ -8599,7 +8599,7 @@ imports or a namespace import that follows it.
               (js2-define-symbol
                js2-LET (js2-name-node-name name-node) name-node t))))))
      ((= (js2-peek-token) js2-NAME)
-      (let ((binding (js2-maybe-parse-export-binding)))
+      (let ((binding (js2-maybe-parse-export-binding t)))
         (let ((node-name (js2-export-binding-node-local-name binding)))
           (js2-define-symbol js2-LET (js2-name-node-name node-name) node-name t))
         (setf (js2-import-clause-node-default-binding clause) binding)
@@ -8680,7 +8680,7 @@ The current token must be js2-MUL."
 js2-LC. Return a lisp list of js2-export-binding-node"
   (let ((bindings (list)))
     (while
-        (let ((binding (js2-maybe-parse-export-binding)))
+        (let ((binding (js2-maybe-parse-export-binding import-p)))
           (when binding
             (push binding bindings))
           (js2-match-token js2-COMMA)))
@@ -8689,7 +8689,7 @@ js2-LC. Return a lisp list of js2-export-binding-node"
                                    "msg.mod.rc.after.export.spec.list"))
       (reverse bindings))))
 
-(defun js2-maybe-parse-export-binding ()
+(defun js2-maybe-parse-export-binding (&optional import-p)
   "Attempt to parse a binding expression found inside an import/export statement.
 This can take the form of either as single js2-NAME token as in 'foo' or as in a
 rebinding expression 'bar as foo'. If it matches, it will return an instance of
@@ -8722,6 +8722,9 @@ consumes no tokens."
                      node
                      (js2-export-binding-node-local-name node)
                      (js2-export-binding-node-extern-name node))
+                    (if import-p
+                        (js2-set-face (js2-current-token-beg) (js2-current-token-end)
+                                      'font-lock-variable-name-face 'record))
                     node)
                 (js2-unget-token)
                 nil))
@@ -8737,6 +8740,9 @@ consumes no tokens."
             (when is-reserved-name
               (js2-report-error "msg.mod.as.after.reserved.word" extern-name))
             (js2-node-add-children node name-node)
+            (if import-p
+                (js2-set-face (js2-current-token-beg) (js2-current-token-end)
+                              'font-lock-variable-name-face 'record))
             node))
       nil)))
 
