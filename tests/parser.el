@@ -46,7 +46,7 @@
   js2-mode-ast)
 
 (cl-defun js2-test-parse-string (code-string &key syntax-error errors-count
-                                             reference)
+                                             reference warnings-count)
   (ert-with-test-buffer (:name 'origin)
     (let ((ast (js2-test-string-to-ast code-string)))
       (if syntax-error
@@ -61,10 +61,13 @@
           (skip-chars-backward " \t\n")
           (should (string= (or reference code-string)
                            (buffer-substring-no-properties
-                            (point-min) (point)))))))))
+                            (point-min) (point)))))
+        (when warnings-count
+          (should (= warnings-count
+                     (length (js2-ast-root-warnings ast)))))))))
 
 (cl-defmacro js2-deftest-parse (name code-string &key bind syntax-error errors-count
-                                     reference)
+                                     reference warnings-count)
   "Parse CODE-STRING.  If SYNTAX-ERROR is nil, print syntax tree
 with `js2-print-tree' and assert the result to be equal to
 REFERENCE, if present, or the original string.  If SYNTAX-ERROR
@@ -77,6 +80,7 @@ the test."
        (js2-test-parse-string ,code-string
                               :syntax-error ,syntax-error
                               :errors-count ,errors-count
+                              :warnings-count ,warnings-count
                               :reference ,reference))))
 
 ;;; Basics
@@ -180,7 +184,8 @@ the test."
 ;;; Destructuring binding
 
 (js2-deftest-parse destruct-in-declaration
-  "var {a, b} = {a: 1, b: 2};")
+  "var {a, b} = {a: 1, b: 2};"
+  :warnings-count 0)
 
 (js2-deftest-parse destruct-in-arguments
   "function f({a: aa, b: bb}) {\n}")
@@ -189,13 +194,16 @@ the test."
   "[a + b for ([a, b] in [[0, 1], [1, 2]])];")
 
 (js2-deftest-parse destruct-in-catch-clause
-  "try {\n} catch ({a, b}) {\n  a + b;\n}")
+  "try {\n} catch ({a, b}) {\n  a + b;\n}"
+  :warnings-count 0)
 
 (js2-deftest-parse destruct-with-initializer-in-object
-  "var {a, b = 2, c} = {};")
+  "var {a, b = 2, c} = {};\nb;"
+  :warnings-count 0)
 
 (js2-deftest-parse destruct-with-initializer-in-array
-  "var [a, b = 2, c] = [];")
+  "var [a, b = 2, c] = [];\nb;"
+  :warnings-count 0)
 
 (js2-deftest-parse destruct-non-name-target-is-error
   "var {1=1} = {};" :syntax-error "1" :errors-count 1)
