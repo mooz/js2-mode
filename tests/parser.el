@@ -188,7 +188,8 @@ the test."
   :warnings-count 0)
 
 (js2-deftest-parse destruct-in-arguments
-  "function f({a: aa, b: bb}) {\n}")
+  "function f({a: aa, b: bb}) {\n}"
+  :warnings-count 0)
 
 (js2-deftest-parse destruct-in-array-comp-loop
   "[a + b for ([a, b] in [[0, 1], [1, 2]])];")

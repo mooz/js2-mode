@@ -8100,11 +8100,19 @@ declared; probably to check them for errors."
       (dolist (elem (js2-object-node-elems node))
         ;; js2-infix-node-p catches both object prop node and initialized
         ;; binding element (which is directly an infix node).
-        (when (js2-infix-node-p elem)
+        (cond
+         ((js2-object-prop-node-p elem)
+          (push (js2-define-destruct-symbols
+                 ;; In abbreviated destructuring {a, b}, right == left.
+                 (js2-object-prop-node-right elem)
+                 decl-type face ignore-not-in-block)
+                name-nodes))
+         ;; Destructuring with default argument.
+         ((js2-infix-node-p elem)
           (push (js2-define-destruct-symbols
                  (js2-infix-node-left elem)
                  decl-type face ignore-not-in-block)
-                name-nodes)))
+                name-nodes))))
       (apply #'append (nreverse name-nodes)))
      ((js2-array-node-p node)
       (dolist (elem (js2-array-node-elems node))
