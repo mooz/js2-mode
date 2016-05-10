@@ -131,7 +131,7 @@ switch statement body are indented one additional level."
 followed by an opening brace.")
 
 (defconst js2-indent-operator-re
-  (concat "[-+*/%<>&^|?:.]\\([^-+*/]\\|$\\)\\|!?=\\|"
+  (concat "[-+*/%<>&^|?:.]\\([^-+*/.]\\|$\\)\\|!?=\\|"
           (regexp-opt '("in" "instanceof") 'symbols))
   "Regular expression matching operators that affect indentation
 of continued expressions.")
