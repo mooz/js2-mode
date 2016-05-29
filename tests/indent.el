@@ -187,6 +187,13 @@
   |    -5
   |];")
 
+(js2-deftest-indent spread-inside-array
+  "var z = [
+  |  ...iterableObj,
+  |  4,
+  |  5
+  |]")
+
 (js2-deftest-indent jsx-one-line
   "var foo = <div></div>;")
 
