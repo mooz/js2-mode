@@ -390,6 +390,12 @@ the test."
 (js2-deftest-parse array-destructure-expr-default
   "let [[x] = [3]] = y;")
 
+(js2-deftest-parse spread-in-object-literal
+  "f({x, y, ...z});")
+
+(js2-deftest-parse rest-in-object-literal
+  "const {x, y, ...z} = f();")
+
 ;;; Arrow functions
 
 (js2-deftest-parse arrow-function-with-empty-args-and-no-curlies
