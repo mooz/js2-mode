@@ -277,6 +277,11 @@ end of the line, otherwise, at the beginning of the next line."
   :type 'boolean
   :group 'js2-mode)
 
+(defcustom js2-mode-assume-strict nil
+  "Non-nil to start files in strict mode automatically."
+  :type 'boolean
+  :group 'js2-mode)
+
 (defcustom js2-mode-show-strict-warnings t
   "Non-nil to emit Ecma strict-mode warnings.
 Some of the warnings can be individually disabled by other flags,
@@ -7988,7 +7993,7 @@ Scanner should be initialized."
           js2-nesting-of-function 0
           js2-labeled-stmt nil
           js2-recorded-identifiers nil  ; for js2-highlight
-          js2-in-use-strict-directive nil)
+          js2-in-use-strict-directive js2-mode-assume-strict)
     (while (/= (setq tt (js2-get-token)) js2-EOF)
       (if (= tt js2-FUNCTION)
           (progn
