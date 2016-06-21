@@ -260,7 +260,7 @@ the test."
   "var x = {get [foo + bar]() {  return 42;\n}};")
 
 (js2-deftest-parse object-literal-generator
-  "var x = {*foo() {  yield 42;\n}};")
+  "var x = {*foo() {  yield* 42;\n}};")
 
 (js2-deftest-parse object-literal-computed-generator-key
   "var x = {*[foo + bar]() {  yield 42;\n}};")
