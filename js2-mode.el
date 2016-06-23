@@ -10871,7 +10871,8 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
      ;; method definition: {f() {...}}
      ((and (= (js2-peek-token) js2-LP)
            (>= js2-language-version 200))
-      (when (or (js2-name-node-p key) (js2-string-node-p key)) ; highlight function name properties
+      (when (or (js2-name-node-p key) (js2-string-node-p key))
+        ;; highlight function name properties
         (js2-record-face 'font-lock-function-name-face))
       (js2-parse-method-prop pos key property-type))
      ;; binding element with initializer
