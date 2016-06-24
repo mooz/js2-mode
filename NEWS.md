@@ -1,5 +1,9 @@
 # History of user-visible changes
 
+## Next
+
+* Support for ES7 exponentiation operator.
+
 ## 2016-06-23
 
 * New variable `js2-mode-assume-strict`, for use with ES6 modules.

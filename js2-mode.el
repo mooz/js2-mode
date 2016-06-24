@@ -539,11 +539,11 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-ASSIGN_MUL 98)     ; *=
 (defvar js2-ASSIGN_DIV 99)     ; /=
 (defvar js2-ASSIGN_MOD 100)    ; %=
+(defvar js2-ASSIGN_EXPON 101)
 
 (defvar js2-first-assign js2-ASSIGN)
-(defvar js2-last-assign js2-ASSIGN_MOD)
+(defvar js2-last-assign js2-ASSIGN_EXPON)
 
-(defvar js2-HOOK 101)          ; conditional (?:)
 (defvar js2-COLON 102)
 (defvar js2-OR 103)            ; logical or (||)
 (defvar js2-AND 104)           ; logical and (&&)
@@ -624,7 +624,10 @@ which doesn't seem particularly useful, but Rhino permits it."
 
 (defvar js2-AWAIT 169)  ; await (pseudo keyword)
 
-(defconst js2-num-tokens (1+ js2-AWAIT))
+(defvar js2-HOOK 170)          ; conditional (?:)
+(defvar js2-EXPON 171)
+
+(defconst js2-num-tokens (1+ js2-EXPON))
 
 (defconst js2-debug-print-trees nil)
 
@@ -3507,6 +3510,7 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-ADD "+")       ; infix plus
                (cons js2-SUB "-")       ; infix minus
                (cons js2-MUL "*")
+               (cons js2-EXPON "**")
                (cons js2-DIV "/")
                (cons js2-MOD "%")
                (cons js2-NOT "!")
@@ -3526,6 +3530,7 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-ASSIGN_ADD "+=")
                (cons js2-ASSIGN_SUB "-=")
                (cons js2-ASSIGN_MUL "*=")
+               (cons js2-ASSIGN_EXPON "**=")
                (cons js2-ASSIGN_DIV "/=")
                (cons js2-ASSIGN_MOD "%="))))
     (cl-loop for (k . v) in tokens do
@@ -5083,6 +5088,7 @@ You should use `js2-print-tree' instead of this function."
                       js2-ASSIGN_RSH
                       js2-ASSIGN_SUB
                       js2-ASSIGN_URSH
+                      js2-ASSIGN_EXPON
                       js2-BLOCK
                       js2-BREAK
                       js2-CALL
@@ -6194,7 +6200,11 @@ its relevant fields and puts it into `js2-ti-tokens'."
                           (?*
                            (if (js2-match-char ?=)
                                js2-ASSIGN_MUL
-                             (throw 'return js2-MUL)))
+                             (if (js2-match-char ?*)
+                                 (if (js2-match-char ?=)
+                                     js2-ASSIGN_EXPON
+                                   js2-EXPON)
+                               (throw 'return js2-MUL))))
                           (?/
                            ;; is it a // comment?
                            (when (js2-match-char ?/)
@@ -9907,7 +9917,7 @@ FIXME: The latter option is unused?"
   (list js2-MUL js2-DIV js2-MOD))
 
 (defun js2-parse-mul-expr ()
-  (let ((pn (js2-parse-unary-expr))
+  (let ((pn (js2-parse-expon-expr))
         tt
         (continue t))
     (while continue
@@ -9916,6 +9926,18 @@ FIXME: The latter option is unused?"
           (setq pn (js2-make-binary tt pn 'js2-parse-unary-expr))
         (js2-unget-token)
         (setq continue nil)))
+    pn))
+
+(defun js2-parse-expon-expr ()
+  (let ((pn (js2-parse-unary-expr)))
+    (when (>= js2-language-version 200)
+      (while (js2-match-token js2-EXPON)
+        (when (and (js2-unary-node-p pn)
+                   (not (memq (js2-node-type pn) '(js2-INC js2-DEC))))
+          (js2-report-error "msg.syntax" nil
+                            (js2-node-abs-pos pn) (js2-node-len pn)))
+        ;; Make it right-associative.
+        (setq pn (js2-make-binary js2-EXPON pn 'js2-parse-expon-expr))))
     pn))
 
 (defun js2-make-unary (type parser &rest args)

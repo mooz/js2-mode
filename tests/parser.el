@@ -934,6 +934,12 @@ the test."
 (js2-deftest-parse parse-harmony-class-allow-semicolon-element
   "class Foo {;}" :reference "class Foo {\n}")
 
+(js2-deftest-parse exponentiation
+  "a **= b ** c ** d;")
+
+(js2-deftest-parse exponentiation-prohibits-unary-op
+  "var a = -b ** c" :syntax-error "b")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"
