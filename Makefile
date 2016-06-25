@@ -3,7 +3,7 @@
 EMACS = emacs
 
 # Compile with noninteractive and relatively clean environment.
-BATCHFLAGS = -batch -q --no-site-file
+BATCHFLAGS = -batch -Q
 
 SRCS = js2-mode.el js2-imenu-extras.el
 
