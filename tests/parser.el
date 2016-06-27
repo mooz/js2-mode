@@ -935,7 +935,7 @@ the test."
   "class Foo {;}" :reference "class Foo {\n}")
 
 (js2-deftest-parse exponentiation
-  "a **= b ** c ** d;")
+  "a **= b ** c ** d * e ** f;")
 
 (js2-deftest-parse exponentiation-prohibits-unary-op
   "var a = -b ** c" :syntax-error "b")
