@@ -10743,7 +10743,8 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
                                   :name name
                                   :extends extends
                                   :elems elems))
-    (apply #'js2-node-add-children pn (js2-class-node-elems pn))
+    (apply #'js2-node-add-children
+           pn name extends (js2-class-node-elems pn))
     pn))
 
 (defun js2-parse-object-literal ()
