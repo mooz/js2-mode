@@ -1130,7 +1130,7 @@ information."
 
 (defvar js2-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-1] #'js2-mode-show-node)
+    ;;(define-key map [mouse-1] #'js2-mode-show-node) ;; commented to workaround #356
     (define-key map (kbd "M-j") #'js2-line-break)
     (define-key map (kbd "C-c C-e") #'js2-mode-hide-element)
     (define-key map (kbd "C-c C-s") #'js2-mode-show-element)
@@ -11400,7 +11400,7 @@ If so, we don't ever want to use bounce-indent."
 (defvar js2-minor-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-`") #'js2-next-error)
-    (define-key map [mouse-1] #'js2-mode-show-node)
+    ;;(define-key map [mouse-1] #'js2-mode-show-node) ;; commented to workaround #356
     map)
   "Keymap used when `js2-minor-mode' is active.")
 
