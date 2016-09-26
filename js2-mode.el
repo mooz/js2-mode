@@ -1130,7 +1130,6 @@ information."
 
 (defvar js2-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-1] #'js2-mode-show-node)
     (define-key map (kbd "M-j") #'js2-line-break)
     (define-key map (kbd "C-c C-e") #'js2-mode-hide-element)
     (define-key map (kbd "C-c C-s") #'js2-mode-show-element)
@@ -11400,7 +11399,6 @@ If so, we don't ever want to use bounce-indent."
 (defvar js2-minor-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-`") #'js2-next-error)
-    (define-key map [mouse-1] #'js2-mode-show-node)
     map)
   "Keymap used when `js2-minor-mode' is active.")
 
@@ -11732,11 +11730,15 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
         (unless interrupted-p
           (setq js2-mode-parse-timer nil))))))
 
-(defun js2-mode-show-node (event)
+;; We bound it to [mouse-1] previously.  But the signature of
+;; mouse-set-point changed around 24.4, so it's kind of hard to keep
+;; it working in 24.1-24.3.  Since the command is not hugely
+;; important, we removed the binding (#356).  Maybe we'll bring it
+;; back when supporting <24.4 is not a goal anymore.
+(defun js2-mode-show-node (event &optional promote-to-region)
   "Debugging aid:  highlight selected AST node on mouse click."
-  (interactive "e")
-  (mouse-set-point event)
-  (setq deactivate-mark t)
+  (interactive "e\np")
+  (mouse-set-point event promote-to-region)
   (when js2-mode-show-overlay
     (let ((node (js2-node-at-point))
           beg end)
