@@ -49,6 +49,13 @@
     (should (equal (js2-get-jslint-globals)
                    '("foo" "bar" "baz")))))
 
+(ert-deftest js2-finds-jslint-globals-with-newline ()
+  (with-temp-buffer
+    (insert "/* global\nfoo, bar")
+    (js2-mode)
+    (should (equal (js2-get-jslint-globals)
+                   '("foo" "bar")))))
+
 ;;;TODO
 ;; ensure that any symbols bound with the import syntax are added to the extern list
 ;; ensure that any symbols bound with the export syntax exist in the file scope
