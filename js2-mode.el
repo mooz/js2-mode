@@ -6395,14 +6395,14 @@ its relevant fields and puts it into `js2-ti-tokens'."
           js2-TEMPLATE_HEAD
         js2-NO_SUBS_TEMPLATE))))
 
-(defun js2-read-regexp (start-tt)
+(defun js2-read-regexp (start-tt start-pos)
   "Called by parser when it gets / or /= in literal context."
   (let (c err
         in-class  ; inside a '[' .. ']' character-class
         flags
         (continue t)
         (token (js2-new-token 0)))
-    (js2-record-text-property (1- js2-ts-cursor) js2-ts-cursor
+    (js2-record-text-property start-pos (1+ start-pos)
                               'syntax-table (string-to-syntax "\"/"))
     (setq js2-ts-string-buffer nil)
     (if (eq start-tt js2-ASSIGN_DIV)
@@ -10425,9 +10425,9 @@ array-literals, array comprehensions and regular expressions."
       (js2-parse-template-literal))
      ((or (= tt js2-DIV) (= tt js2-ASSIGN_DIV))
       ;; Got / or /= which in this context means a regexp literal
-      (let ((px-pos (js2-current-token-beg))
-            (flags (js2-read-regexp tt))
-            (end (js2-current-token-end)))
+      (let* ((px-pos (js2-current-token-beg))
+             (flags (js2-read-regexp tt px-pos))
+             (end (js2-current-token-end)))
         (prog1
             (make-js2-regexp-node :pos px-pos
                                   :len (- end px-pos)
