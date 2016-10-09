@@ -497,6 +497,9 @@ the test."
 (js2-deftest-parse async-method-in-object-literal
   "({async f() {}});")
 
+(js2-deftest-parse async-method-kwname-in-object-literal
+  "({async delete() {}});")
+
 (js2-deftest-parse async-method-in-class-body
   "class C {\n  async foo() {}\n}")
 
