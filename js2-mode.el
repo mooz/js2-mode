@@ -7088,13 +7088,13 @@ The list of externs consists of the following:
 See especially `js2-additional-externs' for further details about externs."
   (let ((default-externs
           (append js2-ecma-262-externs
-                  (if js2-include-browser-externs js2-browser-externs)
                   (if (and js2-include-browser-externs
                            (>= js2-language-version 200)) js2-harmony-externs)
                   (if js2-include-rhino-externs js2-rhino-externs)
                   (if js2-include-node-externs js2-node-externs)
                   (if (or js2-include-browser-externs js2-include-node-externs)
-                      js2-typed-array-externs)))
+                      js2-typed-array-externs)
+                  (if js2-include-browser-externs js2-browser-externs)))
         name)
     (dolist (entry js2-recorded-identifiers)
       (cl-destructuring-bind (name-node scope pos end) entry
