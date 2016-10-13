@@ -3,9 +3,9 @@
 ## Next
 
 * Support for ES7 exponentiation operator.
-* The `js2-include-?-externs` are now evaluated on demand.
-  In particular, they can now effectively be used
-  as file- or directory-local variables.
+* `js2-include-*-externs` are now evaluated on demand.  As a result,
+  they can now be effectively used as file- or directory-local
+  variables.
 
 ## 2016-06-23
 

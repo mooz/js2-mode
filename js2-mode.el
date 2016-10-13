@@ -115,7 +115,7 @@
           decodeURI decodeURIComponent encodeURI
           encodeURIComponent escape eval isFinite isNaN
           parseFloat parseInt undefined unescape))
-"Ecma-262 externs.  Never highlighted by `js2-highlight-undeclared-vars'.")
+"Ecma-262 externs.  Never highlighted as undeclared variables.")
 
 (defvar js2-browser-externs
   (mapcar 'symbol-name
@@ -7072,18 +7072,20 @@ later. NODE must be a name node."
 (defun js2-highlight-undeclared-vars ()
   "After entire parse is finished, look for undeclared variable references.
 We have to wait until entire buffer is parsed, since JavaScript permits var
-decls to occur after they're used.
+declarations to occur after they're used.
 
 Some identifiers may be assumed to be externally defined.
 These externs are not highlighted, even if there is no declaration
-for them in the source code.
+for them in the source code (in the current file).
+
 The list of externs consists of the following:
-- the list `js2-ecma262-externs' for basic names from the ECMAScript language standard
-- depending on the buffer-local variables `js2-include-?-externs'
-  the corresponding `js2-?-externs' to add names for certain environments
-  like the browser or node/rhino
-- two user-customizable lists `js2-global-externs' and `js2-additional-externs'
-  of which the latter is a buffer-local variable
+
+  - `js2-ecma262-externs' for basic names from the ECMAScript language standard.
+  - Depending on the buffer-local variables `js2-include-*-externs'
+    the corresponding `js2-*-externs' to add names for certain environments
+    like the browser, Node or Rhino.
+  - Two customizable lists `js2-global-externs' and `js2-additional-externs',
+    the latter of which should be set per-buffer.
 
 See especially `js2-additional-externs' for further details about externs."
   (let ((default-externs
