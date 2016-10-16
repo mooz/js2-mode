@@ -3773,7 +3773,7 @@ You can tell the quote type by looking at the first character."
                (:include js2-node)
                (:constructor nil)
                (:constructor make-js2-template-node (&key (type js2-TEMPLATE_HEAD)
-                                                          beg len kids)))
+                                                          pos len kids)))
   "Template literal."
   kids)  ; `js2-string-node' is used for string segments, other nodes
          ; for substitutions inside.
@@ -3796,7 +3796,7 @@ You can tell the quote type by looking at the first character."
                (:include js2-node)
                (:constructor nil)
                (:constructor make-js2-tagged-template-node (&key (type js2-TAGGED_TEMPLATE)
-                                                                 beg len tag template)))
+                                                                 pos len tag template)))
   "Tagged template literal."
   tag       ; `js2-node' with the tag expression.
   template) ; `js2-template-node' with the template.
@@ -10157,9 +10157,9 @@ Returns an expression tree that includes PN, the parent node."
 
 (defun js2-parse-tagged-template (tag-node tpl-node)
   "Parse tagged template expression."
-  (let* ((beg (js2-node-pos tag-node))
-         (pn (make-js2-tagged-template-node :beg beg
-                                            :len (- (js2-current-token-end) beg)
+  (let* ((pos (js2-node-pos tag-node))
+         (pn (make-js2-tagged-template-node :pos pos
+                                            :len (- (js2-current-token-end) pos)
                                             :tag tag-node
                                             :template tpl-node)))
     (js2-node-add-children pn tag-node tpl-node)
@@ -10466,7 +10466,7 @@ array-literals, array comprehensions and regular expressions."
       (setq tt (js2-get-token 'TEMPLATE_TAIL))
       (push (make-js2-string-node :type tt) kids))
     (setq kids (nreverse kids))
-    (let ((tpl (make-js2-template-node :beg beg
+    (let ((tpl (make-js2-template-node :pos beg
                                        :len (- (js2-current-token-end) beg)
                                        :kids kids)))
       (apply #'js2-node-add-children tpl kids)
