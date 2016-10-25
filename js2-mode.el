@@ -8654,19 +8654,22 @@ imports or a namespace import that follows it.
   "Parse a namespace import expression such as  '* as bar'.
 The current token must be js2-MUL."
   (let ((beg (js2-current-token-beg)))
-    (if (js2-match-contextual-kwd "as")
-        (when (js2-must-match-prop-name "msg.syntax")
-          (let ((node (make-js2-namespace-import-node
-                       :pos beg
-                       :len (- (js2-current-token-end) beg)
-                       :name (make-js2-name-node
-                              :pos (js2-current-token-beg)
-                              :len (js2-current-token-end)
-                              :name (js2-current-token-string)))))
-            (js2-node-add-children node (js2-namespace-import-node-name node))
-            node))
-      (js2-unget-token)
-      (js2-report-error "msg.syntax"))))
+    (cond
+      ((and (js2-match-contextual-kwd "as")
+            (js2-must-match-prop-name "msg.syntax"))
+       (let ((node (make-js2-namespace-import-node
+                    :pos beg
+                    :len (- (js2-current-token-end) beg)
+                    :name (make-js2-name-node
+                           :pos (js2-current-token-beg)
+                           :len (- (js2-current-token-end)
+                                   (js2-current-token-beg))
+                           :name (js2-current-token-string)))))
+         (js2-node-add-children node (js2-namespace-import-node-name node))
+         node))
+      (t
+       (js2-unget-token)
+       (js2-report-error "msg.syntax")))))
 
 
 (defun js2-parse-from-clause ()
