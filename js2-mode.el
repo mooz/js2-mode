@@ -2094,13 +2094,13 @@ Returns nil if element is not found in the list."
   "Signal a syntax error or record a parse error."
   (if js2-recover-from-parse-errors
       (js2-record-parse-error msg msg-arg pos len)
-  (signal 'js2-syntax-error
-          (list msg
-                js2-ts-lineno
-                (save-excursion
-                  (goto-char js2-ts-cursor)
-                  (current-column))
-                js2-ts-hit-eof))))
+      (signal 'js2-syntax-error
+              (list msg
+                    js2-ts-lineno
+                    (save-excursion
+                     (goto-char js2-ts-cursor)
+                     (current-column))
+                    js2-ts-hit-eof))))
 
 (defun js2-report-warning (msg &optional msg-arg pos len face)
   (if js2-compiler-report-warning-as-error
@@ -8655,18 +8655,18 @@ imports or a namespace import that follows it.
 The current token must be js2-MUL."
   (let ((beg (js2-current-token-beg)))
     (cond
-      ((and (js2-match-contextual-kwd "as")
-            (js2-must-match-prop-name "msg.syntax"))
-       (let ((node (make-js2-namespace-import-node
-                    :pos beg
-                    :len (- (js2-current-token-end) beg)
-                    :name (make-js2-name-node
-                           :pos (js2-current-token-beg)
-                           :len (- (js2-current-token-end)
-                                   (js2-current-token-beg))
-                           :name (js2-current-token-string)))))
-         (js2-node-add-children node (js2-namespace-import-node-name node))
-         node))
+      ((js2-match-contextual-kwd "as")
+       (when (js2-must-match-prop-name "msg.syntax")
+         (let ((node (make-js2-namespace-import-node
+                      :pos beg
+                      :len (- (js2-current-token-end) beg)
+                      :name (make-js2-name-node
+                             :pos (js2-current-token-beg)
+                             :len (- (js2-current-token-end)
+                                     (js2-current-token-beg))
+                             :name (js2-current-token-string)))))
+           (js2-node-add-children node (js2-namespace-import-node-name node))
+           node)))
       (t
        (js2-unget-token)
        (js2-report-error "msg.syntax")))))
