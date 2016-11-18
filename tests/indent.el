@@ -194,6 +194,10 @@
   |  5
   |]")
 
+(js2-deftest-indent no-continued-expression-after-regexp
+  "var re = /some value/
+  |str.match(re)")
+
 (js2-deftest-indent jsx-one-line
   "var foo = <div></div>;")
 

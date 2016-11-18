@@ -224,6 +224,10 @@ and comments have been removed."
              (and (js2-re-search-backward "[?:{]\\|\\_<case\\_>" nil t)
                   (eq (char-after) ??))))
        (not (and
+             (eq (char-after) ?/)
+             (save-excursion
+               (eq (nth 3 (syntax-ppss)) ?/))))
+       (not (and
              (eq (char-after) ?*)
              ;; Generator method (possibly using computed property).
              (looking-at (concat "\\* *\\(?:\\[\\|"
