@@ -7136,6 +7136,22 @@ in the cdr of the entry.
             (setq used nil))
           (puthash sym (cons inition (if used (list symbol))) vars))))))
 
+(defun js2--add-or-update-symbols (targets inition used vars)
+  "Determine the state of each symbol in TARGETS.
+TARGETS may be either a single js2-name-node, a js2-array-node or a js2-object-node.
+In the first case simply call `js2--add-or-update-symbol' forwarding the same arguments.
+The latter two cases happen in destructuring assignments: recursively update the symbols."
+  (cond
+   ((js2-name-node-p targets)
+    (js2--add-or-update-symbol targets inition used vars))
+   ((js2-array-node-p targets)
+    (dolist (elt (js2-array-node-elems targets))
+      (when elt
+        (js2--add-or-update-symbols elt inition used vars))))
+   ((js2-object-node-p targets)
+    (dolist (elt (js2-object-node-elems targets))
+      (js2--add-or-update-symbols (js2-object-prop-node-right elt) inition used vars)))))
+
 (defun js2--classify-variables ()
   "Collect and classify variables declared or used within js2-mode-ast.
 Traverse the whole ast tree returning a summary of the variables
@@ -7168,19 +7184,19 @@ are ignored."
                                     (mapcar #'js2-var-init-node-target
                                             (js2-var-decl-node-kids
                                              (js2-for-in-node-iterator grandparent)))))))
-                 (js2--add-or-update-symbol target inited nil vars)))))
+                 (js2--add-or-update-symbols target inited nil vars)))))
 
           ((js2-assign-node-p node)
            ;; take note about assignments
            (let ((left (js2-assign-node-left node)))
              (when (js2-name-node-p left)
-               (js2--add-or-update-symbol left t nil vars))))
+               (js2--add-or-update-symbols left t nil vars))))
 
           ((js2-prop-get-node-p node)
            ;; handle x.y.z nodes, considering only x
            (let ((left (js2-prop-get-node-left node)))
              (when (js2-name-node-p left)
-               (js2--add-or-update-symbol left nil t vars))))
+               (js2--add-or-update-symbols left nil t vars))))
 
           ((js2-name-node-p node)
            ;; take note about used variables
@@ -7210,7 +7226,7 @@ are ignored."
                        (when grandparent
                          (setq used (js2-return-node-p grandparent)))))
 
-                   (js2--add-or-update-symbol node inited used vars))))))))
+                   (js2--add-or-update-symbols node inited used vars))))))))
        t))
     vars))
 

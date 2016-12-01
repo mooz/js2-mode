@@ -1218,3 +1218,11 @@ the test."
 (js2-deftest-classify-variables named-wrapper-function
   "function foo() { var a; (function bar() { a=42; })(); return a; }"
   '("foo@10:U" "a@22:I" 62 "bar@35:I" 35))
+
+(js2-deftest-classify-variables destructure-array
+  "function foo(x,y) { let [u,v] = [x,y]; }"
+  '("foo@10:U" "x@14:P" 34 "y@16:P" 36 "u@26:I" 26 "v@28:I" 28))
+
+(js2-deftest-classify-variables destructure-object
+  "function foo(x,y) { var {p: [, w], q: z} = {p: [x, 2, 3], q: y}; }"
+  '("foo@10:U" "x@14:P" 49 "y@16:P" 62 "w@32:I" 32 "z@39:I" 39))
