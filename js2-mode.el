@@ -7141,27 +7141,27 @@ in the cdr of the entry.
 TARGETS may be either a single js2-name-node, a js2-array-node or a js2-object-node.
 In the first case simply call `js2--add-or-update-symbol' forwarding the same arguments.
 The latter two cases happen in destructuring assignments: recursively update the symbols."
-  (dolist (elt (js2--collect-target-name-nodes targets))
+  (dolist (elt (js2--collect-declared-symbols targets))
     (js2--add-or-update-symbol elt inition used vars)))
 
-(defun js2--collect-target-name-nodes (target)
-  "Collect the target js-name-nodes in a list and return that."
-  ;; TODO: refactor js2-define-destruct-symbols on top of this?
+(defun js2--collect-declared-symbols (node)
+  "Collect the `js-name-node' symbols declared in NODE and return a list of them.
+NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
   (let (targets)
     (cond
-     ((js2-name-node-p target)
-      (push target targets))
-     ((js2-array-node-p target)
-      (dolist (elt (js2-array-node-elems target))
+     ((js2-name-node-p node)
+      (push node targets))
+     ((js2-array-node-p node)
+      (dolist (elt (js2-array-node-elems node))
         (when elt
           (setq elt (cond ((js2-infix-node-p elt) ;; default (=)
                            (js2-infix-node-left elt))
                           ((js2-unary-node-p elt) ;; rest (...)
                            (js2-unary-node-operand elt))
                           (t elt)))
-          (setq targets (append (js2--collect-target-name-nodes elt) targets)))))
-     ((js2-object-node-p target)
-      (dolist (elt (js2-object-node-elems target))
+          (setq targets (append (js2--collect-declared-symbols elt) targets)))))
+     ((js2-object-node-p node)
+      (dolist (elt (js2-object-node-elems node))
         (let ((subexpr (cond
                         ((and (js2-infix-node-p elt)
                               (= js2-ASSIGN (js2-infix-node-type elt)))
@@ -7179,8 +7179,11 @@ The latter two cases happen in destructuring assignments: recursively update the
                          (js2-unary-node-operand elt)))))
           (when subexpr
             (setq targets (append
-                           (js2--collect-target-name-nodes subexpr)
-                           targets)))))))
+                           (js2--collect-declared-symbols subexpr)
+                           targets))))))
+     (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
+                          (js2-node-len node))
+        nil))
     targets))
 
 (defun js2--classify-variables ()
@@ -7232,10 +7235,10 @@ are ignored."
            (let ((parent (js2-node-parent node)))
              (when parent
                (unless (or (and (js2-var-init-node-p parent) ; handled above
-                                (memq node (js2--collect-target-name-nodes
+                                (memq node (js2--collect-declared-symbols
                                             (js2-var-init-node-target parent))))
                            (and (js2-assign-node-p parent)
-                                (memq node (js2--collect-target-name-nodes
+                                (memq node (js2--collect-declared-symbols
                                             (js2-assign-node-left parent))))
                            (js2-prop-get-node-p parent))
                  (let ((used t) inited)
@@ -8142,54 +8145,16 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
 
 Return a list of `js2-name-node' nodes representing the symbols
 declared; probably to check them for errors."
-  (let (name-nodes)
-    (cond
-     ((js2-name-node-p node)
+  (let ((name-nodes (js2--collect-declared-symbols node)))
+    (dolist (node name-nodes)
       (let (leftpos)
         (js2-define-symbol decl-type (js2-name-node-name node)
                            node ignore-not-in-block)
         (when face
           (js2-set-face (setq leftpos (js2-node-abs-pos node))
                         (+ leftpos (js2-node-len node))
-                        face 'record))
-        (list node)))
-     ((js2-object-node-p node)
-      (dolist (elem (js2-object-node-elems node))
-        (let ((subexpr (cond
-                        ((and (js2-infix-node-p elem)
-                              (= js2-ASSIGN (js2-infix-node-type elem)))
-                         ;; Destructuring with default argument.
-                         (js2-infix-node-left elem))
-                        ((and (js2-infix-node-p elem)
-                              (= js2-COLON (js2-infix-node-type elem)))
-                         ;; In regular destructuring {a: aa, b: bb},
-                         ;; the var is on the right.  In abbreviated
-                         ;; destructuring {a, b}, right == left.
-                         (js2-infix-node-right elem))
-                        ((and (js2-unary-node-p elem)
-                              (= js2-TRIPLEDOT (js2-unary-node-type elem)))
-                         ;; Destructuring with spread.
-                         (js2-unary-node-operand elem)))))
-          (when subexpr
-            (push (js2-define-destruct-symbols
-                   subexpr decl-type face ignore-not-in-block)
-                  name-nodes))))
-      (apply #'append (nreverse name-nodes)))
-     ((js2-array-node-p node)
-      (dolist (elem (js2-array-node-elems node))
-        (when elem
-          (setq elem (cond ((js2-infix-node-p elem) ;; default (=)
-                            (js2-infix-node-left elem))
-                           ((js2-unary-node-p elem) ;; rest (...)
-                            (js2-unary-node-operand elem))
-                           (t elem)))
-          (push (js2-define-destruct-symbols
-                 elem decl-type face ignore-not-in-block)
-                name-nodes)))
-      (apply #'append (nreverse name-nodes)))
-     (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
-                          (js2-node-len node))
-        nil))))
+                        face 'record))))
+    name-nodes))
 
 (defvar js2-illegal-strict-identifiers
   '("eval" "arguments")
