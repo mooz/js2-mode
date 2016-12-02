@@ -1226,3 +1226,15 @@ the test."
 (js2-deftest-classify-variables destructure-object
   "function foo(x,y) { var {p: [, w], q: z} = {p: [x, 2, 3], q: y}; }"
   '("foo@10:U" "x@14:P" 49 "y@16:P" 62 "w@32:I" 32 "z@39:I" 39))
+
+(js2-deftest-classify-variables destructure-object-shorthand
+  "function foo(x,y) { var {p, q} = {p: x, q: y}; }"
+  ;; FIXME: this is imprecise although harmless: it should really be
+  ;; ("foo@10:U" "x@14:P" 38 "y@16:P" 44 "p@26:I" 35 "q@29:I" 41)
+  '("foo@10:U" "x@14:P" 38 "y@16:P" 44 "p@26:I" 26 35 "q@29:I" 29 41))
+
+(js2-deftest-classify-variables destructure-object-mixed
+  "function foo() { let {a, b, c = 3} = {a: 1, b: 2}; }"
+  ;; FIXME: this is imprecise although harmless: it should really be
+  ;; ("foo@10:U" "a@23:I" 23 39 "b@26:I" 45 "c@29:I"))
+  '("foo@10:U" "a@23:I" 23 39 "b@26:I" 26 45 "c@29:I" 29))

@@ -7129,7 +7129,7 @@ in the cdr of the entry.
             (progn
               (when (and inition (not (equal (car var) ?P)))
                 (setcar var inition))
-              (when used
+              (when (and used (not (memq symbol (cdr var))))
                 (push symbol (cdr var))))
           ;; do not consider the declaration of catch parameter as an usage
           (when (and err-var-p used)
@@ -7141,16 +7141,47 @@ in the cdr of the entry.
 TARGETS may be either a single js2-name-node, a js2-array-node or a js2-object-node.
 In the first case simply call `js2--add-or-update-symbol' forwarding the same arguments.
 The latter two cases happen in destructuring assignments: recursively update the symbols."
-  (cond
-   ((js2-name-node-p targets)
-    (js2--add-or-update-symbol targets inition used vars))
-   ((js2-array-node-p targets)
-    (dolist (elt (js2-array-node-elems targets))
-      (when elt
-        (js2--add-or-update-symbols elt inition used vars))))
-   ((js2-object-node-p targets)
-    (dolist (elt (js2-object-node-elems targets))
-      (js2--add-or-update-symbols (js2-object-prop-node-right elt) inition used vars)))))
+  (dolist (elt (js2--collect-target-name-nodes targets))
+    (js2--add-or-update-symbol elt inition used vars)))
+
+(defun js2--collect-target-name-nodes (target)
+  "Collect the target js-name-nodes in a list and return that."
+  ;; TODO: refactor js2-define-destruct-symbols on top of this?
+  (let (targets)
+    (cond
+     ((js2-name-node-p target)
+      (push target targets))
+     ((js2-array-node-p target)
+      (dolist (elt (js2-array-node-elems target))
+        (when elt
+          (setq elt (cond ((js2-infix-node-p elt) ;; default (=)
+                           (js2-infix-node-left elt))
+                          ((js2-unary-node-p elt) ;; rest (...)
+                           (js2-unary-node-operand elt))
+                          (t elt)))
+          (setq targets (append (js2--collect-target-name-nodes elt) targets)))))
+     ((js2-object-node-p target)
+      (dolist (elt (js2-object-node-elems target))
+        (let ((subexpr (cond
+                        ((and (js2-infix-node-p elt)
+                              (= js2-ASSIGN (js2-infix-node-type elt)))
+                         ;; Destructuring with default argument.
+                         (js2-infix-node-left elt))
+                        ((and (js2-infix-node-p elt)
+                              (= js2-COLON (js2-infix-node-type elt)))
+                         ;; In regular destructuring {a: aa, b: bb},
+                         ;; the var is on the right.  In abbreviated
+                         ;; destructuring {a, b}, right == left.
+                         (js2-infix-node-right elt))
+                        ((and (js2-unary-node-p elt)
+                              (= js2-TRIPLEDOT (js2-unary-node-type elt)))
+                         ;; Destructuring with spread.
+                         (js2-unary-node-operand elt)))))
+          (when subexpr
+            (setq targets (append
+                           (js2--collect-target-name-nodes subexpr)
+                           targets)))))))
+    targets))
 
 (defun js2--classify-variables ()
   "Collect and classify variables declared or used within js2-mode-ast.
@@ -7188,9 +7219,7 @@ are ignored."
 
           ((js2-assign-node-p node)
            ;; take note about assignments
-           (let ((left (js2-assign-node-left node)))
-             (when (js2-name-node-p left)
-               (js2--add-or-update-symbols left t nil vars))))
+           (js2--add-or-update-symbols (js2-assign-node-left node) t nil vars))
 
           ((js2-prop-get-node-p node)
            ;; handle x.y.z nodes, considering only x
@@ -7203,9 +7232,11 @@ are ignored."
            (let ((parent (js2-node-parent node)))
              (when parent
                (unless (or (and (js2-var-init-node-p parent) ; handled above
-                                (eq node (js2-var-init-node-target parent)))
+                                (memq node (js2--collect-target-name-nodes
+                                            (js2-var-init-node-target parent))))
                            (and (js2-assign-node-p parent)
-                                (eq node (js2-assign-node-left parent)))
+                                (memq node (js2--collect-target-name-nodes
+                                            (js2-assign-node-left parent))))
                            (js2-prop-get-node-p parent))
                  (let ((used t) inited)
                    (cond
