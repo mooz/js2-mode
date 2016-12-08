@@ -7911,9 +7911,11 @@ Returns t on match, nil if no match."
   (js2-pop-scope))
 
 (defsubst js2-enter-switch (switch-node)
+  (js2-push-scope switch-node)
   (push switch-node js2-loop-and-switch-set))
 
 (defsubst js2-exit-switch ()
+  (js2-pop-scope)
   (pop js2-loop-and-switch-set))
 
 (defsubst js2-get-directive (node)
