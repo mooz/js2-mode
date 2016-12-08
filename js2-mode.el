@@ -3014,7 +3014,7 @@ modules metadata itself."
     (insert pad "}\n")))
 
 (cl-defstruct (js2-switch-node
-               (:include js2-node)
+               (:include js2-scope)
                (:constructor nil)
                (:constructor make-js2-switch-node (&key (type js2-SWITCH)
                                                         (pos js2-ts-cursor)
