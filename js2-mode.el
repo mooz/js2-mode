@@ -7136,14 +7136,6 @@ in the cdr of the entry.
             (setq used nil))
           (puthash sym (cons inition (if used (list symbol))) vars))))))
 
-(defun js2--add-or-update-symbols (targets inition used vars)
-  "Determine the state of each symbol in TARGETS.
-TARGETS may be either a single js2-name-node, a js2-array-node or a js2-object-node.
-In the first case simply call `js2--add-or-update-symbol' forwarding the same arguments.
-The latter two cases happen in destructuring assignments: recursively update the symbols."
-  (dolist (elt (js2--collect-declared-symbols targets))
-    (js2--add-or-update-symbol elt inition used vars)))
-
 (defun js2--collect-declared-symbols (node strict)
   "Collect the `js-name-node' symbols declared in NODE and return a list of them.
 NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
@@ -7202,67 +7194,91 @@ are ignored."
     (js2-visit-ast
      js2-mode-ast
      (lambda (node end-p)
-       (when (null end-p)
-         (cond
-          ((js2-var-init-node-p node)
-           ;; take note about possibly initialized declarations
-           (let ((target (js2-var-init-node-target node))
-                 (initializer (js2-var-init-node-initializer node)))
-             (when target
-               (let* ((parent (js2-node-parent node))
-                      (grandparent (if parent (js2-node-parent parent)))
-                      (inited (not (null initializer))))
-                 (unless inited
-                   (setq inited
-                         (and grandparent
-                              (js2-for-in-node-p grandparent)
-                              (memq target
-                                    (mapcar #'js2-var-init-node-target
-                                            (js2-var-decl-node-kids
-                                             (js2-for-in-node-iterator grandparent)))))))
-                 (js2--add-or-update-symbols target inited nil vars)))))
-
-          ((js2-assign-node-p node)
-           ;; take note about assignments
-           (js2--add-or-update-symbols (js2-assign-node-left node) t nil vars))
-
-          ((js2-prop-get-node-p node)
-           ;; handle x.y.z nodes, considering only x
-           (let ((left (js2-prop-get-node-left node)))
-             (when (js2-name-node-p left)
-               (js2--add-or-update-symbols left nil t vars))))
-
-          ((js2-name-node-p node)
-           ;; take note about used variables
-           (let ((parent (js2-node-parent node)))
-             (when parent
-               (unless (or (and (js2-var-init-node-p parent) ; handled above
-                                (memq node (js2--collect-declared-symbols
-                                            (js2-var-init-node-target parent))))
-                           (and (js2-assign-node-p parent)
-                                (memq node (js2--collect-declared-symbols
-                                            (js2-assign-node-left parent))))
-                           (js2-prop-get-node-p parent))
-                 (let ((used t) inited)
+       (when (and (null end-p) (js2-name-node-p node))
+         (let* ((parent (js2-node-parent node))
+                (function-param (and (js2-function-node-p parent)
+                                     (memq node (js2-function-node-params parent)))))
+           (when parent
+             (if (js2-prop-get-node-p parent)
+                 ;; If we are within a prop-get, e.g. the "bar" in "foo.bar",
+                 ;; just mark "foo" as used
+                 (let ((left (js2-prop-get-node-left parent)))
+                   (when (js2-name-node-p left)
+                     (js2--add-or-update-symbol left nil t vars)))
+               (let ((granparent parent)
+                     var-init-node
+                     assign-node
+                     object-key         ; is name actually an object prop key?
+                     declared           ; is it declared in narrowest scope?
+                     assigned
+                     (used (null function-param)))
+                 ;; Determine the closest var-init-node and assign-node: this
+                 ;; is needed because the name may be within a "destructured"
+                 ;; declaration/assignment, so we cannot just take its parent
+                 (while (and granparent (not (js2-scope-p granparent)))
                    (cond
-                    ((and (js2-function-node-p parent)
-                          (js2-wrapper-function-p parent))
-                     (setq inited (if (memq node (js2-function-node-params parent)) ?P t)))
+                    ((js2-var-init-node-p granparent)
+                     (when (null var-init-node)
+                       (setq var-init-node granparent)))
+                    ((js2-assign-node-p granparent)
+                     (when (null assign-node)
+                       (setq assign-node granparent))))
+                   (setq granparent (js2-node-parent granparent)))
 
-                    ((js2-for-in-node-p parent)
-                     (if (eq node (js2-for-in-node-iterator parent))
-                         (setq inited t used nil)))
+                 ;; If we are within a var-init-node, determine if the name is
+                 ;; declared and initialized
+                 (when var-init-node
+                   (let ((target (js2-var-init-node-target var-init-node)))
+                     (setq declared (memq node (js2--collect-declared-symbols target nil)))
+                     ;; Is there an initializer for the declared variable?
+                     (when (js2-var-init-node-initializer var-init-node)
+                       (setq assigned declared)
+                       ;; Determine if the name is actually a literal object key
+                       ;; that we shall ignore later
+                       (when (and (not declared)
+                                  (js2-object-prop-node-p parent)
+                                  (eq node (js2-object-prop-node-left parent)))
+                         (setq object-key t)))
+                     ;; Maybe this is a for loop and the variable is one of its iterators?
+                     (unless assigned
+                       (let* ((gp (js2-node-parent parent))
+                              (ggp (if gp (js2-node-parent gp))))
+                         (when (and ggp (js2-for-in-node-p ggp))
+                           (setq assigned
+                                 (memq node
+                                       (cl-loop for kid in (js2-var-decl-node-kids
+                                                            (js2-for-in-node-iterator ggp))
+                                                with syms = '()
+                                                do (setq syms
+                                                         (append syms
+                                                                 (js2--collect-declared-symbols
+                                                                  (js2-var-init-node-target kid)
+                                                                  nil)))
+                                                finally return syms))))))))
 
-                    ((js2-function-node-p parent)
-                     (setq inited (if (memq node (js2-function-node-params parent)) ?P t)
-                           used nil)))
+                 ;; Ignore literal object keys, which are not really variables
+                 (unless object-key
+                   (when function-param
+                     (setq assigned ?P))
 
-                   (unless used
-                     (let ((grandparent (js2-node-parent parent)))
-                       (when grandparent
-                         (setq used (js2-return-node-p grandparent)))))
+                   (when (null assigned)
+                     (cond
+                      ((js2-for-in-node-p parent)
+                       (setq assigned (eq node (js2-for-in-node-iterator parent))
+                             used (not assigned)))
+                      ((js2-function-node-p parent)
+                       (setq assigned t
+                             used (js2-wrapper-function-p parent)))
+                      (assign-node
+                       (setq assigned (memq node (js2--collect-declared-symbols
+                                                  (js2-assign-node-left assign-node)
+                                                  nil))
+                             used (not assigned)))))
 
-                   (js2--add-or-update-symbols node inited used vars))))))))
+                   (when declared
+                     (setq used nil))
+
+                   (js2--add-or-update-symbol node assigned used vars)))))))
        t))
     vars))
 
