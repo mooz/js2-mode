@@ -7144,9 +7144,10 @@ The latter two cases happen in destructuring assignments: recursively update the
   (dolist (elt (js2--collect-declared-symbols targets))
     (js2--add-or-update-symbol elt inition used vars)))
 
-(defun js2--collect-declared-symbols (node)
+(defun js2--collect-declared-symbols (node strict)
   "Collect the `js-name-node' symbols declared in NODE and return a list of them.
-NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
+NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
+When STRICT, signal an error if NODE is not one of the expected types."
   (let (targets)
     (cond
      ((js2-name-node-p node)
@@ -7159,7 +7160,7 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
                           ((js2-unary-node-p elt) ;; rest (...)
                            (js2-unary-node-operand elt))
                           (t elt)))
-          (setq targets (append (js2--collect-declared-symbols elt) targets)))))
+          (setq targets (append (js2--collect-declared-symbols elt strict) targets)))))
      ((js2-object-node-p node)
       (dolist (elt (js2-object-node-elems node))
         (let ((subexpr (cond
@@ -7179,10 +7180,11 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'."
                          (js2-unary-node-operand elt)))))
           (when subexpr
             (setq targets (append
-                           (js2--collect-declared-symbols subexpr)
+                           (js2--collect-declared-symbols subexpr strict)
                            targets))))))
-     (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
-                          (js2-node-len node))
+     (strict
+      (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
+                        (js2-node-len node))
         nil))
     targets))
 
@@ -8145,7 +8147,7 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
 
 Return a list of `js2-name-node' nodes representing the symbols
 declared; probably to check them for errors."
-  (let ((name-nodes (js2--collect-declared-symbols node)))
+  (let ((name-nodes (js2--collect-declared-symbols node t)))
     (dolist (node name-nodes)
       (let (leftpos)
         (js2-define-symbol decl-type (js2-name-node-name node)
