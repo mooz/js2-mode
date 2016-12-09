@@ -7136,7 +7136,7 @@ in the cdr of the entry.
             (setq used nil))
           (puthash sym (cons inition (if used (list symbol))) vars))))))
 
-(defun js2--collect-declared-symbols (node strict)
+(defun js2--collect-target-symbols (node strict)
   "Collect the `js-name-node' symbols declared in NODE and return a list of them.
 NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
 When STRICT, signal an error if NODE is not one of the expected types."
@@ -7152,7 +7152,7 @@ When STRICT, signal an error if NODE is not one of the expected types."
                           ((js2-unary-node-p elt) ;; rest (...)
                            (js2-unary-node-operand elt))
                           (t elt)))
-          (setq targets (append (js2--collect-declared-symbols elt strict) targets)))))
+          (setq targets (append (js2--collect-target-symbols elt strict) targets)))))
      ((js2-object-node-p node)
       (dolist (elt (js2-object-node-elems node))
         (let ((subexpr (cond
@@ -7172,7 +7172,7 @@ When STRICT, signal an error if NODE is not one of the expected types."
                          (js2-unary-node-operand elt)))))
           (when subexpr
             (setq targets (append
-                           (js2--collect-declared-symbols subexpr strict)
+                           (js2--collect-target-symbols subexpr strict)
                            targets))))))
      (strict
       (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
@@ -7229,7 +7229,7 @@ are ignored."
                  ;; declared and initialized
                  (when var-init-node
                    (let ((target (js2-var-init-node-target var-init-node)))
-                     (setq declared (memq node (js2--collect-declared-symbols target nil)))
+                     (setq declared (memq node (js2--collect-target-symbols target nil)))
                      ;; Is there an initializer for the declared variable?
                      (when (js2-var-init-node-initializer var-init-node)
                        (setq assigned declared)
@@ -7251,7 +7251,7 @@ are ignored."
                                                 with syms = '()
                                                 do (setq syms
                                                          (append syms
-                                                                 (js2--collect-declared-symbols
+                                                                 (js2--collect-target-symbols
                                                                   (js2-var-init-node-target kid)
                                                                   nil)))
                                                 finally return syms))))))))
@@ -7270,7 +7270,7 @@ are ignored."
                        (setq assigned t
                              used (js2-wrapper-function-p parent)))
                       (assign-node
-                       (setq assigned (memq node (js2--collect-declared-symbols
+                       (setq assigned (memq node (js2--collect-target-symbols
                                                   (js2-assign-node-left assign-node)
                                                   nil))
                              used (not assigned)))))
@@ -8163,7 +8163,7 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
 
 Return a list of `js2-name-node' nodes representing the symbols
 declared; probably to check them for errors."
-  (let ((name-nodes (js2--collect-declared-symbols node t)))
+  (let ((name-nodes (js2--collect-target-symbols node t)))
     (dolist (node name-nodes)
       (let (leftpos)
         (js2-define-symbol decl-type (js2-name-node-name node)
