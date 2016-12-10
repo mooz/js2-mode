@@ -7152,7 +7152,8 @@ When STRICT, signal an error if NODE is not one of the expected types."
                           ((js2-unary-node-p elt) ;; rest (...)
                            (js2-unary-node-operand elt))
                           (t elt)))
-          (setq targets (append (js2--collect-target-symbols elt strict) targets)))))
+          (setq targets (append (js2--collect-target-symbols elt strict)
+                                targets)))))
      ((js2-object-node-p node)
       (dolist (elt (js2-object-node-elems node))
         (let ((subexpr (cond
@@ -7196,8 +7197,9 @@ are ignored."
      (lambda (node end-p)
        (when (and (null end-p) (js2-name-node-p node))
          (let* ((parent (js2-node-parent node))
-                (function-param (and (js2-function-node-p parent)
-                                     (memq node (js2-function-node-params parent)))))
+                (function-param
+                 (and (js2-function-node-p parent)
+                      (memq node (js2-function-node-params parent)))))
            (when parent
              (if (js2-prop-get-node-p parent)
                  ;; If we are within a prop-get, e.g. the "bar" in "foo.bar",
@@ -7229,7 +7231,8 @@ are ignored."
                  ;; declared and initialized
                  (when var-init-node
                    (let ((target (js2-var-init-node-target var-init-node)))
-                     (setq declared (memq node (js2--collect-target-symbols target nil)))
+                     (setq declared
+                           (memq node (js2--collect-target-symbols target nil)))
                      ;; Is there an initializer for the declared variable?
                      (when (js2-var-init-node-initializer var-init-node)
                        (setq assigned declared)
@@ -7239,22 +7242,26 @@ are ignored."
                                   (js2-object-prop-node-p parent)
                                   (eq node (js2-object-prop-node-left parent)))
                          (setq object-key t)))
-                     ;; Maybe this is a for loop and the variable is one of its iterators?
+                     ;; Maybe this is a for loop and the variable is one of
+                     ;; its iterators?
                      (unless assigned
                        (let* ((gp (js2-node-parent parent))
                               (ggp (if gp (js2-node-parent gp))))
                          (when (and ggp (js2-for-in-node-p ggp))
                            (setq assigned
-                                 (memq node
-                                       (cl-loop for kid in (js2-var-decl-node-kids
-                                                            (js2-for-in-node-iterator ggp))
-                                                with syms = '()
-                                                do (setq syms
-                                                         (append syms
-                                                                 (js2--collect-target-symbols
-                                                                  (js2-var-init-node-target kid)
-                                                                  nil)))
-                                                finally return syms))))))))
+                                 (memq
+                                  node
+                                  (cl-loop
+                                   for kid in (js2-var-decl-node-kids
+                                               (js2-for-in-node-iterator ggp))
+                                   with syms = '()
+                                   do (setq
+                                       syms
+                                       (append syms
+                                               (js2--collect-target-symbols
+                                                (js2-var-init-node-target kid)
+                                                nil)))
+                                   finally return syms))))))))
 
                  ;; Ignore literal object keys, which are not really variables
                  (unless object-key
@@ -7270,9 +7277,10 @@ are ignored."
                        (setq assigned t
                              used (js2-wrapper-function-p parent)))
                       (assign-node
-                       (setq assigned (memq node (js2--collect-target-symbols
-                                                  (js2-assign-node-left assign-node)
-                                                  nil))
+                       (setq assigned (memq node
+                                            (js2--collect-target-symbols
+                                             (js2-assign-node-left assign-node)
+                                             nil))
                              used (not assigned)))))
 
                    (when declared
