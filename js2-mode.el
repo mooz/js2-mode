@@ -7129,12 +7129,156 @@ in the cdr of the entry.
             (progn
               (when (and inition (not (equal (car var) ?P)))
                 (setcar var inition))
-              (when used
+              (when (and used (not (memq symbol (cdr var))))
                 (push symbol (cdr var))))
           ;; do not consider the declaration of catch parameter as an usage
           (when (and err-var-p used)
             (setq used nil))
           (puthash sym (cons inition (if used (list symbol))) vars))))))
+
+(defun js2--collect-target-symbols (node strict)
+  "Collect the `js-name-node' symbols declared in NODE and return a list of them.
+NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
+When STRICT, signal an error if NODE is not one of the expected types."
+  (let (targets)
+    (cond
+     ((js2-name-node-p node)
+      (push node targets))
+     ((js2-array-node-p node)
+      (dolist (elt (js2-array-node-elems node))
+        (when elt
+          (setq elt (cond ((js2-infix-node-p elt) ;; default (=)
+                           (js2-infix-node-left elt))
+                          ((js2-unary-node-p elt) ;; rest (...)
+                           (js2-unary-node-operand elt))
+                          (t elt)))
+          (setq targets (append (js2--collect-target-symbols elt strict)
+                                targets)))))
+     ((js2-object-node-p node)
+      (dolist (elt (js2-object-node-elems node))
+        (let ((subexpr (cond
+                        ((and (js2-infix-node-p elt)
+                              (= js2-ASSIGN (js2-infix-node-type elt)))
+                         ;; Destructuring with default argument.
+                         (js2-infix-node-left elt))
+                        ((and (js2-infix-node-p elt)
+                              (= js2-COLON (js2-infix-node-type elt)))
+                         ;; In regular destructuring {a: aa, b: bb},
+                         ;; the var is on the right.  In abbreviated
+                         ;; destructuring {a, b}, right == left.
+                         (js2-infix-node-right elt))
+                        ((and (js2-unary-node-p elt)
+                              (= js2-TRIPLEDOT (js2-unary-node-type elt)))
+                         ;; Destructuring with spread.
+                         (js2-unary-node-operand elt)))))
+          (when subexpr
+            (setq targets (append
+                           (js2--collect-target-symbols subexpr strict)
+                           targets))))))
+     (strict
+      (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
+                        (js2-node-len node))
+        nil))
+    targets))
+
+(defun js2--examine-variable (parent node var-init-node)
+  "Examine the usage of the variable NODE, a js2-name-node.
+PARENT is its direct ancestor and VAR-INIT-NODE is the node to be
+examined: return a list of three values, respectively if the
+variable is declared and/or assigned or whether it is simply a
+key of a literal object."
+  (let ((target (js2-var-init-node-target var-init-node))
+        declared assigned object-key)
+    (setq declared (memq node (js2--collect-target-symbols target nil)))
+    ;; Is there an initializer for the declared variable?
+    (when (js2-var-init-node-initializer var-init-node)
+      (setq assigned declared)
+      ;; Determine if the name is actually a literal object key that we shall
+      ;; ignore later
+      (when (and (not declared)
+                 (js2-object-prop-node-p parent)
+                 (eq node (js2-object-prop-node-left parent)))
+        (setq object-key t)))
+    ;; Maybe this is a for loop and the variable is one of its iterators?
+    (unless assigned
+      (let* ((gp (js2-node-parent parent))
+             (ggp (if gp (js2-node-parent gp))))
+        (when (and ggp (js2-for-in-node-p ggp))
+          (setq assigned (memq node
+                               (cl-loop
+                                for kid in (js2-var-decl-node-kids
+                                            (js2-for-in-node-iterator ggp))
+                                with syms = '()
+                                do
+                                (setq syms (append syms
+                                                   (js2--collect-target-symbols
+                                                    (js2-var-init-node-target kid)
+                                                    nil)))
+                                finally return syms))))))
+    (list declared assigned object-key)))
+
+(defun js2--classify-variable (parent node)
+  "Classify the single variable NODE, a js2-name-node."
+  (let ((function-param (and (js2-function-node-p parent)
+                             (memq node (js2-function-node-params parent)))))
+    (if (js2-prop-get-node-p parent)
+        ;; If we are within a prop-get, e.g. the "bar" in "foo.bar",
+        ;; just mark "foo" as used
+        (let ((left (js2-prop-get-node-left parent)))
+          (when (js2-name-node-p left)
+            (js2--add-or-update-symbol left nil t vars)))
+      (let ((granparent parent)
+            var-init-node
+            assign-node
+            object-key         ; is name actually an object prop key?
+            declared           ; is it declared in narrowest scope?
+            assigned           ; does it get assigned or initialized?
+            (used (null function-param)))
+        ;; Determine the closest var-init-node and assign-node: this
+        ;; is needed because the name may be within a "destructured"
+        ;; declaration/assignment, so we cannot just take its parent
+        (while (and granparent (not (js2-scope-p granparent)))
+          (cond
+           ((js2-var-init-node-p granparent)
+            (when (null var-init-node)
+              (setq var-init-node granparent)))
+           ((js2-assign-node-p granparent)
+            (when (null assign-node)
+              (setq assign-node granparent))))
+          (setq granparent (js2-node-parent granparent)))
+
+        ;; If we are within a var-init-node, determine if the name is
+        ;; declared and initialized
+        (when var-init-node
+          (let ((result (js2--examine-variable parent node var-init-node)))
+            (setq declared (car result)
+                  assigned (cadr result)
+                  object-key (car (cddr result)))))
+
+        ;; Ignore literal object keys, which are not really variables
+        (unless object-key
+          (when function-param
+            (setq assigned ?P))
+
+          (when (null assigned)
+            (cond
+             ((js2-for-in-node-p parent)
+              (setq assigned (eq node (js2-for-in-node-iterator parent))
+                    used (not assigned)))
+             ((js2-function-node-p parent)
+              (setq assigned t
+                    used (js2-wrapper-function-p parent)))
+             (assign-node
+              (setq assigned (memq node
+                                   (js2--collect-target-symbols
+                                    (js2-assign-node-left assign-node)
+                                    nil))
+                    used (not assigned)))))
+
+          (when declared
+            (setq used nil))
+
+          (js2--add-or-update-symbol node assigned used vars))))))
 
 (defun js2--classify-variables ()
   "Collect and classify variables declared or used within js2-mode-ast.
@@ -7150,67 +7294,10 @@ are ignored."
     (js2-visit-ast
      js2-mode-ast
      (lambda (node end-p)
-       (when (null end-p)
-         (cond
-          ((js2-var-init-node-p node)
-           ;; take note about possibly initialized declarations
-           (let ((target (js2-var-init-node-target node))
-                 (initializer (js2-var-init-node-initializer node)))
-             (when target
-               (let* ((parent (js2-node-parent node))
-                      (grandparent (if parent (js2-node-parent parent)))
-                      (inited (not (null initializer))))
-                 (unless inited
-                   (setq inited
-                         (and grandparent
-                              (js2-for-in-node-p grandparent)
-                              (memq target
-                                    (mapcar #'js2-var-init-node-target
-                                            (js2-var-decl-node-kids
-                                             (js2-for-in-node-iterator grandparent)))))))
-                 (js2--add-or-update-symbol target inited nil vars)))))
-
-          ((js2-assign-node-p node)
-           ;; take note about assignments
-           (let ((left (js2-assign-node-left node)))
-             (when (js2-name-node-p left)
-               (js2--add-or-update-symbol left t nil vars))))
-
-          ((js2-prop-get-node-p node)
-           ;; handle x.y.z nodes, considering only x
-           (let ((left (js2-prop-get-node-left node)))
-             (when (js2-name-node-p left)
-               (js2--add-or-update-symbol left nil t vars))))
-
-          ((js2-name-node-p node)
-           ;; take note about used variables
-           (let ((parent (js2-node-parent node)))
-             (when parent
-               (unless (or (and (js2-var-init-node-p parent) ; handled above
-                                (eq node (js2-var-init-node-target parent)))
-                           (and (js2-assign-node-p parent)
-                                (eq node (js2-assign-node-left parent)))
-                           (js2-prop-get-node-p parent))
-                 (let ((used t) inited)
-                   (cond
-                    ((and (js2-function-node-p parent)
-                          (js2-wrapper-function-p parent))
-                     (setq inited (if (memq node (js2-function-node-params parent)) ?P t)))
-
-                    ((js2-for-in-node-p parent)
-                     (if (eq node (js2-for-in-node-iterator parent))
-                         (setq inited t used nil)))
-
-                    ((js2-function-node-p parent)
-                     (setq inited (if (memq node (js2-function-node-params parent)) ?P t)
-                           used nil)))
-
-                   (unless used
-                     (let ((grandparent (js2-node-parent parent)))
-                       (when grandparent
-                         (setq used (js2-return-node-p grandparent)))))
-
-                   (js2--add-or-update-symbol node inited used vars))))))))
+       (when (and (null end-p) (js2-name-node-p node))
+         (let ((parent (js2-node-parent node)))
+           (when parent
+             (js2--classify-variable parent node))))
        t))
     vars))
 
@@ -8097,54 +8184,16 @@ NODE is either `js2-array-node', `js2-object-node', or `js2-name-node'.
 
 Return a list of `js2-name-node' nodes representing the symbols
 declared; probably to check them for errors."
-  (let (name-nodes)
-    (cond
-     ((js2-name-node-p node)
+  (let ((name-nodes (js2--collect-target-symbols node t)))
+    (dolist (node name-nodes)
       (let (leftpos)
         (js2-define-symbol decl-type (js2-name-node-name node)
                            node ignore-not-in-block)
         (when face
           (js2-set-face (setq leftpos (js2-node-abs-pos node))
                         (+ leftpos (js2-node-len node))
-                        face 'record))
-        (list node)))
-     ((js2-object-node-p node)
-      (dolist (elem (js2-object-node-elems node))
-        (let ((subexpr (cond
-                        ((and (js2-infix-node-p elem)
-                              (= js2-ASSIGN (js2-infix-node-type elem)))
-                         ;; Destructuring with default argument.
-                         (js2-infix-node-left elem))
-                        ((and (js2-infix-node-p elem)
-                              (= js2-COLON (js2-infix-node-type elem)))
-                         ;; In regular destructuring {a: aa, b: bb},
-                         ;; the var is on the right.  In abbreviated
-                         ;; destructuring {a, b}, right == left.
-                         (js2-infix-node-right elem))
-                        ((and (js2-unary-node-p elem)
-                              (= js2-TRIPLEDOT (js2-unary-node-type elem)))
-                         ;; Destructuring with spread.
-                         (js2-unary-node-operand elem)))))
-          (when subexpr
-            (push (js2-define-destruct-symbols
-                   subexpr decl-type face ignore-not-in-block)
-                  name-nodes))))
-      (apply #'append (nreverse name-nodes)))
-     ((js2-array-node-p node)
-      (dolist (elem (js2-array-node-elems node))
-        (when elem
-          (setq elem (cond ((js2-infix-node-p elem) ;; default (=)
-                            (js2-infix-node-left elem))
-                           ((js2-unary-node-p elem) ;; rest (...)
-                            (js2-unary-node-operand elem))
-                           (t elem)))
-          (push (js2-define-destruct-symbols
-                 elem decl-type face ignore-not-in-block)
-                name-nodes)))
-      (apply #'append (nreverse name-nodes)))
-     (t (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
-                          (js2-node-len node))
-        nil))))
+                        face 'record))))
+    name-nodes))
 
 (defvar js2-illegal-strict-identifiers
   '("eval" "arguments")

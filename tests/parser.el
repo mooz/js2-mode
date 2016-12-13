@@ -1157,7 +1157,7 @@ the test."
 
 (js2-deftest-classify-variables prop-get-function-assignment
   "(function(w) { w.f = function() { var a=42, m; return a; }; })(window);"
-  '("w@11:P" 11 16 "a@39:I" 55 "m@45:U"))
+  '("w@11:P" 16 "a@39:I" 55 "m@45:U"))
 
 (js2-deftest-classify-variables let-declaration
   "function foo () { let x,y=1; return x; }"
@@ -1184,8 +1184,8 @@ the test."
   '("foo@10:U" "e@47:I" 64))
 
 (js2-deftest-classify-variables prop-get-assignment
-  "function foo () { var x={y:{z:{}}}; x.y.z=42; }"
-  '("foo@10:U" "x@23:I" 37))
+  "function foo () { var y,x={y:{z:{}}}; x.y.z=42; }"
+  '("foo@10:U" "y@23:U" "x@25:I" 39))
 
 (js2-deftest-classify-variables unused-function-argument
   "function foo (a) { return 42; }"
@@ -1212,9 +1212,25 @@ the test."
   '("foo@10:U" "j@22:N" 30 "a@24:U" "i@38:I" 28))
 
 (js2-deftest-classify-variables return-named-function
-  "function foo() { var a=42; return function bar() { return a; } }"
-  '("foo@10:U" "a@22:I" 59 "bar@44:I" 44))
+  "function foo() { var a=42; return function bar() { return a; }; }"
+  '("foo@10:U" "a@22:I" 59 "bar@44:U"))
 
 (js2-deftest-classify-variables named-wrapper-function
   "function foo() { var a; (function bar() { a=42; })(); return a; }"
   '("foo@10:U" "a@22:I" 62 "bar@35:I" 35))
+
+(js2-deftest-classify-variables destructure-array
+  "function foo(x,y) { let [u,v] = [x,y]; }"
+  '("foo@10:U" "x@14:P" 34 "y@16:P" 36 "u@26:U" "v@28:U"))
+
+(js2-deftest-classify-variables destructure-object
+  "function foo(x,y) { var {p: [, w], q: z} = {p: [x, 2, 3], q: y}; }"
+  '("foo@10:U" "x@14:P" 49 "y@16:P" 62 "w@32:U" "z@39:U"))
+
+(js2-deftest-classify-variables destructure-object-shorthand
+  "function foo(x,y) { var {p, q} = {p: x, q: y}; }"
+  '("foo@10:U" "x@14:P" 38 "y@16:P" 44 "p@26:U" "q@29:U"))
+
+(js2-deftest-classify-variables destructure-object-mixed
+  "function foo() { let {a, b, c = 3} = {a: 1, b: 2}; }"
+  '("foo@10:U" "a@23:U" "b@26:U" "c@29:U"))
