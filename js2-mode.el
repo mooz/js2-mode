@@ -4962,7 +4962,20 @@ Function returns nil if POS was not in any comment node."
               end (+ beg (js2-node-len comment)))
         (if (and (>= x beg)
                  (<= x end))
-            (throw 'done comment))))))
+          (throw 'done comment))))))
+
+(defun js2-comments-between (start end comments-list)
+  "Return comment nodes between START and END, nil if not found.
+START and END are absolute positions in current buffer.
+COMMENTS-LIST is the comments list to check."
+  (let (comments c-start c-end)
+    (nreverse
+      (dolist (comment comments-list comments)
+        (setq c-start (js2-node-abs-pos comment)
+              c-end (1- (+ c-start (js2-node-len comment))))
+        (unless (or (< c-end start)
+                    (> c-start end))
+          (push comment comments))))))
 
 (defun js2-mode-find-parent-fn (node)
   "Find function enclosing NODE.
