@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## Next
+## 2017-01-16
 
 * `js2-include-*-externs` are now evaluated on demand.  As a result,
   they can now be effectively used as file- or directory-local
