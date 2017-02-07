@@ -456,6 +456,9 @@ the test."
 
 (js2-deftest-parse harmony-generator-yield-star "(function*(a) {  yield* a;\n});")
 
+(js2-deftest-parse harmony-generator-yield-assign-expr
+  "(function*() {  return {a: yield a, b: yield b, c: yield c};\n});")
+
 ;;; Comprehensions
 
 (js2-deftest-parse parse-legacy-array-comp-loop-with-filter

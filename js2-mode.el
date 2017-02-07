@@ -9388,7 +9388,9 @@ but not BEFORE."
       (setq yield-star-p t))
     ;; This is ugly, but we don't want to require a semicolon.
     (unless (memq (js2-peek-token-or-eol) js2-parse-return-stmt-enders)
-      (setq e (js2-parse-expr)
+      (setq e (if (eq gen-type 'STAR)
+                  (js2-parse-assign-expr)
+                (js2-parse-expr))
             end (js2-node-end e)))
     (cond
      ((eq tt js2-RETURN)
