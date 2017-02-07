@@ -1359,9 +1359,6 @@ the correct number of ARGS must be provided."
 (js2-msg "msg.bad.yield"
          "yield must be in a function.")
 
-(js2-msg "msg.yield.parenthesized"
-         "yield expression must be parenthesized.")
-
 (js2-msg "msg.bad.await"
          "await must be in async functions.")
 
@@ -9772,8 +9769,6 @@ If NODE is non-nil, it is the AST node associated with the symbol."
     (while (and (not oneshot)
                 (js2-match-token js2-COMMA))
       (setq op-pos (- (js2-current-token-beg) pos))  ; relative
-      (if (= (js2-peek-token) js2-YIELD)
-          (js2-report-error "msg.yield.parenthesized"))
       (setq right (js2-parse-assign-expr)
             left pn
             pn (make-js2-infix-node :type js2-COMMA
@@ -10162,8 +10157,6 @@ Returns the list in reverse order.  Consumes the right-paren token."
     (unless (js2-match-token js2-RP)
       (cl-loop do
                (let ((tt (js2-get-token)))
-                 (if (= tt js2-YIELD)
-                     (js2-report-error "msg.yield.parenthesized"))
                  (if (and (= tt js2-TRIPLEDOT)
                           (>= js2-language-version 200))
                      (push (js2-make-unary tt 'js2-parse-assign-expr) result)
