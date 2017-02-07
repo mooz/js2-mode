@@ -9360,7 +9360,7 @@ Last matched token must be js2-CONST or js2-VAR."
   (js2-parse-return-or-yield (js2-current-token-type) nil))
 
 (defconst js2-parse-return-stmt-enders
-  (list js2-SEMI js2-RC js2-EOF js2-EOL js2-ERROR js2-RB js2-RP js2-YIELD))
+  (list js2-SEMI js2-RC js2-EOF js2-EOL js2-ERROR js2-RB js2-RP))
 
 (defsubst js2-now-all-set (before after mask)
   "Return whether or not the bits in the mask have changed to all set.
