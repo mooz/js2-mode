@@ -946,6 +946,16 @@ the test."
 (js2-deftest-parse exponentiation-prohibits-unary-op
   "var a = -b ** c" :syntax-error "b")
 
+(js2-deftest-parse parse-class-public-field-with-init
+  "class C {\n  x = 42;\n  y = 24;\n  \"z\" = 1\n  456 = 789\n}"
+  :reference "class C {\n  x = 42\n  y = 24\n  \"z\" = 1\n  456 = 789\n}")
+
+(js2-deftest-parse parse-class-public-field-no-init
+  "class C {\n  x\n  y\n  \"z\"\n  456\n}")
+
+(js2-deftest-parse parse-class-public-field-computed
+  "class C {\n  [a + b] = c\n}")
+
 ;;; Scopes
 
 (js2-deftest ast-symbol-table-includes-fn-node "function foo() {}"

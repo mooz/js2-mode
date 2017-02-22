@@ -10890,7 +10890,7 @@ expression)."
        ;; Found a key/value property (of any sort)
        ((member tt (list js2-NAME js2-STRING js2-NUMBER js2-LB))
         (setq after-comma nil
-              elem (js2-parse-named-prop tt previous-token))
+              elem (js2-parse-named-prop tt previous-token class-p))
         (if (and (null elem)
                  (not js2-recover-from-parse-errors))
             (setq continue nil)))
@@ -10949,7 +10949,7 @@ expression)."
     (js2-must-match js2-RC "msg.no.brace.prop")
     (nreverse elems)))
 
-(defun js2-parse-named-prop (tt previous-token)
+(defun js2-parse-named-prop (tt previous-token &optional class-p)
   "Parse a name, string, or getter/setter object property.
 When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
   (let ((key (js2-parse-prop-name tt))
@@ -10972,17 +10972,18 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
         ;; highlight function name properties
         (js2-record-face 'font-lock-function-name-face))
       (js2-parse-method-prop pos key property-type))
-     ;; binding element with initializer
+     ;; class field or binding element with initializer
      ((and (= (js2-peek-token) js2-ASSIGN)
            (>= js2-language-version 200))
-      (if (not js2-is-in-destructuring)
+      (if (not (or class-p
+                   js2-is-in-destructuring))
           (js2-report-error "msg.init.no.destruct"))
       (js2-parse-initialized-binding key))
      ;; regular prop
      (t
       (let ((beg (js2-current-token-beg))
             (end (js2-current-token-end))
-            (expr (js2-parse-plain-property key)))
+            (expr (js2-parse-plain-property key class-p)))
         (when (and (= tt js2-NAME)
                    (not js2-is-in-destructuring)
                    js2-highlight-external-variables
@@ -11024,20 +11025,22 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
    ;; Anything else is an error
    (t (js2-report-error "msg.bad.prop"))))
 
-(defun js2-parse-plain-property (prop)
+(defun js2-parse-plain-property (prop &optional class-p)
   "Parse a non-getter/setter property in an object literal.
 PROP is the node representing the property: a number, name,
 string or expression."
-  (let* ((tt (js2-get-token))
+  (let* (tt
          (pos (js2-node-pos prop))
          colon expr result)
     (cond
-     ;; Abbreviated property, as in {foo, bar}
+     ;; Abbreviated property, as in {foo, bar} or class {a; b}
      ((and (>= js2-language-version 200)
-           (or (= tt js2-COMMA)
-               (= tt js2-RC))
-           (not (js2-number-node-p prop)))
-      (js2-unget-token)
+           (if class-p
+               (and (setq tt (js2-peek-token-or-eol))
+                    (member tt (list js2-EOL js2-RC js2-SEMI)))
+             (and (setq tt (js2-peek-token))
+                  (member tt (list js2-COMMA js2-RC))
+                  (js2-name-node-p prop))))
       (setq result (make-js2-object-prop-node
                     :pos pos
                     :left prop
@@ -11048,6 +11051,7 @@ string or expression."
       result)
      ;; Normal property
      (t
+      (setq tt (js2-get-token))
       (if (= tt js2-COLON)
           (setq colon (- (js2-current-token-beg) pos)
                 expr (js2-parse-assign-expr))
