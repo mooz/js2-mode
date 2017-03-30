@@ -1,5 +1,9 @@
 # History of user-visible changes
 
+## Next
+
+* Support for trailing commas in function parameter lists.
+
 ## 2017-01-16
 
 * `js2-include-*-externs` are now evaluated on demand.  As a result,
