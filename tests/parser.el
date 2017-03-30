@@ -300,6 +300,10 @@ the test."
 (js2-deftest-parse function-with-rest-after-default-parameter
   "function foo(a = 1, ...rest) {\n}")
 
+(js2-deftest-parse function-with-trailing-comma-in-param-list
+  "function foo(a, b,) {\n}"
+  :reference "function foo(a, b) {\n}")
+
 ;;; Strict mode errors
 
 (js2-deftest-parse function-bad-strict-parameters
