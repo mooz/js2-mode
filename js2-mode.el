@@ -8310,7 +8310,9 @@ represented by FN-NODE at POS."
                  (js2-report-error "msg.param.after.rest" nil
                                    (js2-node-pos param) (js2-node-len param)))
                while
-               (js2-match-token js2-COMMA))
+               (and (js2-match-token js2-COMMA)
+                    (or (< js2-language-version 200)
+                        (not (= js2-RP (js2-peek-token))))))
       (when (and (not paren-free-arrow)
                  (js2-must-match js2-RP "msg.no.paren.after.parms"))
         (setf (js2-function-node-rp fn-node) (- (js2-current-token-beg) pos)))
