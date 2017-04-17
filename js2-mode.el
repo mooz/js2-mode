@@ -220,12 +220,6 @@ are enabled, these will also be included.")
 
 ;;; Variables
 
-(defun js2-mark-safe-local (name pred)
-  "Make the variable NAME buffer-local and mark it as safe file-local
-variable with predicate PRED."
-  (make-variable-buffer-local name)
-  (put name 'safe-local-variable pred))
-
 (defcustom js2-ignored-warnings nil
   "A list of warning message types that will not be reported.
 

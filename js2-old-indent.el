@@ -58,7 +58,6 @@
 
 (defvar js2-language-version)
 
-(declare-function js2-mark-safe-local "js2-mode")
 (declare-function js2-backward-sws "js2-mode")
 (declare-function js2-forward-sws "js2-mode")
 (declare-function js2-same-line "js2-mode")
