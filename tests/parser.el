@@ -1251,3 +1251,40 @@ the test."
 (js2-deftest-classify-variables destructure-object-mixed
   "function foo() { let {a, b, c = 3} = {a: 1, b: 2}; }"
   '("foo@10:U" "a@23:U" "b@26:U" "c@29:U"))
+
+;; Side effects
+
+(js2-deftest no-side-effects-at-top-level
+  "var x; x.foo;"
+  (js2-mode--and-parse)
+  (should (null js2-parsed-warnings)))
+
+(js2-deftest getprop-has-no-side-effects
+  "function f() { this.x; }"
+  (js2-mode--and-parse)
+  (should (equal "msg.no.side.effects"
+                 (car (caar js2-parsed-warnings)))))
+
+(js2-deftest getprop-has-side-effects-option
+  "function f() { this.x; }"
+  (let ((js2-getprop-has-side-effects t))
+    (js2-mode--and-parse)
+    (should (null js2-parsed-warnings))))
+
+(js2-deftest arithmetic-has-no-side-effects
+  "function f() { 1 + 2; }"
+  (js2-mode--and-parse)
+  (should (equal "msg.no.side.effects"
+                 (car (caar js2-parsed-warnings)))))
+
+(js2-deftest instanceof-has-no-side-effects
+  "function f() { this instanceof f; }"
+  (js2-mode--and-parse)
+  (should (equal "msg.no.side.effects"
+                 (car (caar js2-parsed-warnings)))))
+
+(js2-deftest instanceof-has-side-effects-option
+  "function f() { this instanceof f; }"
+  (let ((js2-instanceof-has-side-effects t))
+    (js2-mode--and-parse)
+    (should (null js2-parsed-warnings))))
