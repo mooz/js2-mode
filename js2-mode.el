@@ -359,6 +359,13 @@ This is useful for xulrunner apps."
   :type 'boolean
   :group 'js2-mode)
 
+(defcustom js2-getprop-has-side-effects nil
+  "If non-nil, treats the getprop operator as having side effects.
+This is useful for testing libraries with nontrivial getters and for
+compilers that use empty getprops to declare interface properties."
+  :type 'boolean
+  :group 'js2-mode)
+
 (defcustom js2-move-point-on-right-click t
   "Non-nil to move insertion point when you right-click.
 This makes right-click context menu behavior a bit more intuitive,
@@ -5143,8 +5150,6 @@ You should use `js2-print-tree' instead of this function."
                       js2-WITHEXPR
                       js2-YIELD))
       (aset tokens tt t))
-    (if js2-instanceof-has-side-effects
-        (aset tokens js2-INSTANCEOF t))
     tokens))
 
 (defun js2-node-has-side-effects (node)
@@ -5176,6 +5181,9 @@ You should use `js2-print-tree' instead of this function."
         (js2-node-has-side-effects (js2-paren-node-expr node)))
        ((= tt js2-ERROR) ; avoid cascaded error messages
         nil)
+       ((or (and js2-instanceof-has-side-effects (= tt js2-INSTANCEOF))
+            (and js2-getprop-has-side-effects (= tt js2-GETPROP)))
+        t)
        (t
         (aref js2-side-effecting-tokens tt))))))
 
