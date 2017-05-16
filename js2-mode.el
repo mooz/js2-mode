@@ -6951,7 +6951,7 @@ of a simple name.  Called before EXPR has a parent node."
              "throws"
              "type"
              "version"))
-          "\\)\\)\\s-+\\([^ \t]+\\)")
+          "\\)\\)\\s-+\\([^ \t\n]+\\)")
   "Matches jsdoc tags with a single argument.")
 
 (defconst js2-jsdoc-empty-tag-regexp
