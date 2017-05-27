@@ -764,6 +764,7 @@ parser as a frontend to an interpreter or byte compiler.")
 (js2-deflocal js2-compiler-use-dynamic-scope nil)
 (js2-deflocal js2-compiler-reserved-keywords-as-identifier nil)
 (js2-deflocal js2-compiler-xml-available t)
+(js2-deflocal js2-compiler-e4x-accessor-available nil)
 (js2-deflocal js2-compiler-optimization-level 0)
 (js2-deflocal js2-compiler-generating-source t)
 (js2-deflocal js2-compiler-strict-mode nil)
@@ -3522,7 +3523,8 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-ASSIGN_MUL "*=")
                (cons js2-ASSIGN_EXPON "**=")
                (cons js2-ASSIGN_DIV "/=")
-               (cons js2-ASSIGN_MOD "%="))))
+               (cons js2-ASSIGN_MOD "%=")
+               (cons js2-COLONCOLON "::"))))
     (cl-loop for (k . v) in tokens do
              (puthash k v table))
     table))
@@ -8356,7 +8358,7 @@ Last token scanned is the close-curly for the function body."
        ((js2-match-token js2-LP)
         (js2-parse-function 'FUNCTION_STATEMENT pos star-p async-p name))
        (js2-allow-member-expr-as-function-name
-        (setq member-expr (js2-parse-member-expr-tail nil name))
+        (setq member-expr (js2-parse-member-or-new-expr-tail name))
         (js2-parse-highlight-member-expr-fn-name member-expr)
         (js2-must-match js2-LP "msg.no.paren.parms")
         (setf pn (js2-parse-function 'FUNCTION_STATEMENT pos star-p async-p)
@@ -10086,7 +10088,7 @@ to parse the operand (for prefix operators)."
       (prog1
           (setq beg (js2-current-token-beg)
                 end (js2-current-token-end)
-                expr (js2-make-unary tt 'js2-parse-member-expr t))
+                expr (js2-make-unary tt 'js2-parse-lhs-expr))
         (js2-check-bad-inc-dec tt beg end expr)))
      ((= tt js2-DELPROP)
       (js2-get-token)
@@ -10098,9 +10100,9 @@ to parse the operand (for prefix operators)."
      ((and (= tt js2-LT)
            js2-compiler-xml-available)
       ;; XML stream encountered in expression.
-      (js2-parse-member-expr-tail t (js2-parse-xml-initializer)))
+      (js2-parse-lhs-expr-tail (js2-parse-xml-initializer)))
      (t
-      (setq pn (js2-parse-member-expr t)
+      (setq pn (js2-parse-lhs-expr)
             ;; Don't look across a newline boundary for a postfix incop.
             tt (js2-peek-token-or-eol))
       (when (or (= tt js2-INC) (= tt js2-DEC))
@@ -10180,7 +10182,44 @@ Returns the list in reverse order.  Consumes the right-paren token."
       (js2-must-match js2-RP "msg.no.paren.arg")
       result)))
 
-(defun js2-parse-member-expr (&optional allow-call-syntax)
+(defun js2-parse-lhs-expr ()
+  "Parse a `LeftHandSideExpression'.
+
+The three possible productions are collectively handled like a
+`CallExpression' with optional `Arguments' at end.  Unary bind is
+handled specially because it is the only one not beginning with a
+`NewExpression'."
+  (let ((pn (if (= (js2-current-token-type) js2-COLONCOLON)
+                ;; A unary bind, in the form of `::NewExpression'.
+                (progn
+                  (js2-get-token)
+                  (js2-make-unary js2-COLONCOLON 'js2-parse-member-or-new-expr))
+              ;; otherwise
+              (js2-parse-member-or-new-expr))))
+    (js2-parse-lhs-expr-tail pn)))
+
+(defun js2-parse-lhs-expr-tail (pn)
+  "Continues a `LeftHandSideExpression' after `pn'."
+  (let (tt
+        (continue t))
+    (while continue
+      (setq tt (js2-peek-token))
+      (cond
+       ((= tt js2-LP)
+        (setq pn (js2-parse-function-call pn)))
+       ((= tt js2-COLONCOLON)
+        (setq pn (js2-parse-binary-bind pn)))
+       (t
+        (setq continue nil)))))
+  pn)
+
+(defun js2-parse-binary-bind (pn)
+  "Complete a binary function bind after `pn'."
+  (cl-assert (= js2-COLONCOLON (js2-get-token)))
+  (js2-make-binary js2-COLONCOLON pn 'js2-parse-member-or-new-expr))
+
+(defun js2-parse-member-or-new-expr ()
+  "Parse a `MemberExpression' or `NewExpression'."
   (let ((tt (js2-current-token-type))
         pn pos target args beg end init)
     (if (/= tt js2-NEW)
@@ -10189,7 +10228,7 @@ Returns the list in reverse order.  Consumes the right-paren token."
       (js2-get-token)
       (setq pos (js2-current-token-beg)
             beg pos
-            target (js2-parse-member-expr)
+            target (js2-parse-member-or-new-expr)
             end (js2-node-end target)
             pn (make-js2-new-node :pos pos
                                   :target target
@@ -10213,12 +10252,12 @@ Returns the list in reverse order.  Consumes the right-paren token."
               (js2-new-node-initializer pn) init)
         (js2-node-add-children pn init))
         (setf (js2-node-len pn) (- end beg)))  ; end outer if
-    (js2-parse-member-expr-tail allow-call-syntax pn)))
+    (js2-parse-member-or-new-expr-tail pn)))
 
-(defun js2-parse-member-expr-tail (allow-call-syntax pn)
-  "Parse a chain of property/array accesses or function calls.
+(defun js2-parse-member-or-new-expr-tail (pn)
+  "Continues a `MemberExpression' or `NewExpression' after `pn'.
+
 Includes parsing for E4X operators like `..' and `.@'.
-If ALLOW-CALL-SYNTAX is nil, stops when we encounter a left-paren.
 Returns an expression tree that includes PN, the parent node."
   (let (tt
         (continue t))
@@ -10231,11 +10270,6 @@ Returns an expression tree that includes PN, the parent node."
         (setq pn (js2-parse-dot-query pn)))
        ((= tt js2-LB)
         (setq pn (js2-parse-element-get pn)))
-       ((= tt js2-LP)
-        (js2-unget-token)
-        (if allow-call-syntax
-            (setq pn (js2-parse-function-call pn))
-          (setq continue nil)))
        ((= tt js2-TEMPLATE_HEAD)
         (setq pn (js2-parse-tagged-template pn (js2-parse-template-literal))))
        ((= tt js2-NO_SUBS_TEMPLATE)
@@ -10332,7 +10366,7 @@ Last token parsed must be `js2-RB'."
     (when (= tt js2-DOTDOT)
       (js2-must-have-xml)
       (setq member-type-flags js2-descendants-flag))
-    (if (not js2-compiler-xml-available)
+    (if (not js2-compiler-e4x-accessor-available)
         (progn
           (js2-must-match-prop-name "msg.no.name.after.dot")
           (setq name (js2-create-name-node t js2-GETPROP)
@@ -10567,7 +10601,7 @@ array-literals, array comprehensions and regular expressions."
 (defun js2-parse-name (_tt)
   (let ((name (js2-current-token-string))
         node)
-    (setq node (if js2-compiler-xml-available
+    (setq node (if js2-compiler-e4x-accessor-available
                    (js2-parse-property-name nil name 0)
                  (js2-create-name-node 'check-activation nil name)))
     (if js2-highlight-external-variables
