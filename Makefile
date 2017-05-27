@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 
-EMACS = emacs
+EMACS ?= emacs
 
 # Compile with noninteractive and relatively clean environment.
 BATCHFLAGS = -batch -Q
