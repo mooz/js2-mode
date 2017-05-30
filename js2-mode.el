@@ -12771,13 +12771,20 @@ i.e. ('name' 'value') = {name : { value: 3}}"
 NAMES is a list of property values to search for. For functions
 and variables NAMES will contain one element."
   (let (node-init
-        (val (js2-name-node-name (car names))))
-    (setq node-init (js2-get-symbol-declaration node val))
+        val
+        (first-name (car names)))
+    (cond
+     ((js2-name-node-p first-name)
+      (setq val (js2-name-node-name first-name))
+      (setq node-init (js2-get-symbol-declaration node val)))
+     ((js2-keyword-node-p first-name)
+      (setq node-init (js2-node-get-enclosing-scope (js2-node-get-enclosing-scope node))))
+     (t (error "Can't search scope")))
 
     (when (> (length names) 1)
 
       ;; Check var declarations
-      (when (and node-init (string= val (js2-name-node-name node-init)))
+      (when (and node-init val (string= val (js2-name-node-name node-init)))
         (let ((parent (js2-node-parent node-init))
               (temp-names names))
           (pop temp-names) ;; First element is var name
@@ -12798,9 +12805,12 @@ and variables NAMES will contain one element."
                  (when (js2-prop-get-node-p left)
                    (let* ((prop-list (js2-compute-nested-prop-get left))
                           (found (cl-loop for prop in prop-list
-                                          until (not (string= (js2-name-node-name
-                                                               (pop temp-names))
-                                                              (js2-name-node-name prop)))
+                                          for temp-name = (pop temp-names)
+                                          until (if (or (js2-keyword-node-p temp-name)
+                                                        (js2-keyword-node-p prop))
+                                                    nil
+                                                  (not (string= (js2-name-node-name temp-name)
+                                                                (js2-name-node-name prop))))
                                           if (not temp-names) return prop))
                           (found-node (or found
                                           (when (js2-object-node-p right)
