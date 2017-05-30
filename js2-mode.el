@@ -12743,7 +12743,9 @@ it marks the next defun after the ones already marked."
   (cl-assert (js2-object-node-p node))
   ;; Only support name-node and nodes for the time being
   (cl-loop for elem in (js2-object-node-elems node)
-           for left = (js2-object-prop-node-left elem)
+           for left = (if (js2-method-node-p elem)
+                          (js2-method-node-left elem)
+                        (js2-object-prop-node-left elem))
            if (or (and (js2-name-node-p left)
                        (equal (js2-name-node-name name-node)
                               (js2-name-node-name left)))
@@ -12760,10 +12762,13 @@ i.e. ('name' 'value') = {name : { value: 3}}"
         (temp-object object)
         (temp t) ;temporay node
         (names prop-names))
-    (while (and temp names (js2-object-node-p temp-object))
+    (while (and temp names (or (js2-object-node-p temp-object)
+                               (js2-method-node-p temp-object)))
       (setq temp (js2-search-object temp-object (pop names)))
       (and (setq node temp)
-         (setq temp-object (js2-object-prop-node-right temp))))
+           (setq temp-object (if (js2-method-node-p temp)
+                                 (js2-method-node-right temp)
+                               (js2-object-prop-node-right temp)))))
     (unless names node)))
 
 (defun js2-search-scope (node names)
