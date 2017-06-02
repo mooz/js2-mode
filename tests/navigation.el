@@ -67,8 +67,8 @@
 (ert-deftest js2-jump-to-property-object-property ()
   (js2-navigation-helper "aObject.value = {prop:1};aObject.value.prop" 18))
 
-(ert-deftest js2-jump-to-property-function-constructor-property ()
+(ert-deftest js2-jump-to-function-constructor-member ()
   (js2-navigation-helper "function Foo() { this.value = 42; } var foo = new Foo(); foo.value" 23))
 
-(ert-deftest js2-jump-to-property-class-property ()
+(ert-deftest js2-jump-to-class-member ()
   (js2-navigation-helper "class Foo { constructor() { this.value = 42; } } const foo = new Foo(); foo.value" 34))
