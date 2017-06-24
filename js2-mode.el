@@ -1118,6 +1118,13 @@ information."
   :type 'boolean
   :group 'js2-mode)
 
+(defcustom js2-include-jslint-declaration-externs t
+  "Non-nil to include the identifiers JSLint assumes to be there
+under certain declarations in the buffer-local externs list.  See
+`js2-additional-externs' for more information."
+  :type 'boolean
+  :group 'js2-mode)
+
 (defvar js2-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map [remap indent-new-comment-line] #'js2-line-break)
@@ -7372,23 +7379,23 @@ are ignored."
     (remove-hook 'js2-post-parse-callbacks
                  #'js2-highlight-unused-variables t)))
 
-(defun js2-apply-jslint-globals ()
+(defun js2-add-additional-externs (externs)
   (setq js2-additional-externs
-        (nconc (js2-get-jslint-globals)
+        (nconc externs
                js2-additional-externs)))
 
-(defun js2-get-jslint-globals ()
+(defun js2-get-jslint-comment-identifiers (comment)
   (js2-reparse)
   (cl-loop for node in (js2-ast-root-comments js2-mode-ast)
            when (and (eq 'block (js2-comment-node-format node))
                      (save-excursion
                        (goto-char (js2-node-abs-pos node))
-                       (looking-at "/\\* *global\\(?: \\|$\\)")))
-           append (js2-get-jslint-globals-in
+                       (looking-at (concat "/\\* *" comment "\\(?: \\|$\\)"))))
+           append (js2-get-jslint-comment-identifiers-in
                    (match-end 0)
                    (js2-node-abs-end node))))
 
-(defun js2-get-jslint-globals-in (beg end)
+(defun js2-get-jslint-comment-identifiers-in (beg end)
   (let (res)
     (save-excursion
       (goto-char beg)
@@ -7397,6 +7404,48 @@ are ignored."
           (unless (member match '("true" "false"))
             (push match res)))))
     (nreverse res)))
+
+(defun js2-apply-jslint-globals ()
+  (js2-add-additional-externs (js2-get-jslint-globals)))
+
+(defun js2-get-jslint-globals ()
+  (js2-get-jslint-comment-identifiers "global"))
+
+(defun js2-apply-jslint-declaration-externs ()
+  (js2-add-additional-externs (js2-get-jslint-declaration-externs)))
+
+(defvar js2-jslint-declaration-externs
+  `(("browser" . ,(mapcar 'symbol-name
+                          '(Audio clearInterval clearTimeout document
+                            event history Image location name
+                            navigator Option screen setInterval
+                            setTimeout XMLHttpRequest)))
+    ("node" . ,(mapcar 'symbol-name
+                       '(Buffer clearImmediate clearInterval
+                         clearTimeout console exports global module
+                         process querystring require setImmediate
+                         setInterval setTimeout __dirname
+                         __filename)))
+    ("es6" . ,(mapcar 'symbol-name
+                      '(ArrayBuffer DataView Float32Array
+                        Float64Array Int8Array Int16Array Int32Array
+                        Intl Map Promise Proxy Reflect Set Symbol
+                        System Uint8Array Uint8ClampedArray
+                        Uint16Array Uint32Array WeakMap WeakSet)))
+    ("couch" . ,(mapcar 'symbol-name
+                        '(emit getRow isArray log provides
+                          registerType require send start sum
+                          toJSON)))
+    ("devel" . ,(mapcar 'symbol-name
+                        '(alert confirm console Debug opera prompt
+                          WSH)))))
+
+(defun js2-get-jslint-declaration-externs ()
+  (apply 'append
+         (mapcar (lambda (identifier)
+                   (cdr (assoc identifier
+                               js2-jslint-declaration-externs)))
+                 (js2-get-jslint-comment-identifiers "jslint"))))
 
 ;;; IMenu support
 
@@ -11519,6 +11568,8 @@ highlighting features of `js2-mode'."
   (add-hook 'change-major-mode-hook #'js2-minor-mode-exit nil t)
   (when js2-include-jslint-globals
     (add-hook 'js2-post-parse-callbacks 'js2-apply-jslint-globals nil t))
+  (when js2-include-jslint-declaration-externs
+    (add-hook 'js2-post-parse-callbacks 'js2-apply-jslint-declaration-externs nil t))
   (run-hooks 'js2-init-hook)
   (js2-reparse))
 
@@ -11532,6 +11583,7 @@ highlighting features of `js2-mode'."
     (setq js2-mode-node-overlay nil))
   (js2-remove-overlays)
   (remove-hook 'js2-post-parse-callbacks 'js2-apply-jslint-globals t)
+  (remove-hook 'js2-post-parse-callbacks 'js2-apply-jslint-declaration-externs t)
   (setq js2-mode-ast nil))
 
 (defvar js2-source-buffer nil "Linked source buffer for diagnostics view")
@@ -11687,6 +11739,8 @@ Selecting an error will jump it to the corresponding source-buffer error.
 
   (when js2-include-jslint-globals
     (add-hook 'js2-post-parse-callbacks 'js2-apply-jslint-globals nil t))
+  (when js2-include-jslint-declaration-externs
+    (add-hook 'js2-post-parse-callbacks 'js2-apply-jslint-declaration-externs nil t))
 
   (run-hooks 'js2-init-hook)
 
