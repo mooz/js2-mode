@@ -53,3 +53,4 @@ Some third-party modes that use the generated syntax tree:
 
 * [js2-refactor](https://github.com/magnars/js2-refactor.el)
 * [skewer-mode](https://github.com/skeeto/skewer-mode)
+* [smart-tabs-mode](https://github.com/jcsalomon/smarttabs)
