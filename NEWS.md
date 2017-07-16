@@ -2,6 +2,7 @@
 
 ## Next
 
+* Support async arrow function without parentheses.
 * Support for trailing commas in function parameter lists.
 
 ## 2017-01-16

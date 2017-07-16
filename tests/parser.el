@@ -501,6 +501,9 @@ the test."
 (js2-deftest-parse async-arrow-function-expression
   "a = async (b) => {  b;\n};")
 
+(js2-deftest-parse async-arrow-function-without-parens
+  "a = async b => 3;" :reference "a = async (b) => {3};")
+
 (js2-deftest-parse async-method-in-object-literal
   "({async f() {}});")
 
