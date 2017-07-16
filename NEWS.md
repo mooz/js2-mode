@@ -2,8 +2,12 @@
 
 ## Next
 
-* Support async arrow function without parentheses.
+* Support for async arrow function without parentheses.
+* Support for `/*jslint` declarations.
+* User option `js2-getprop-has-side-effects`.
 * Support for trailing commas in function parameter lists.
+* Support for ES7 public class fields.
+* New user option `js2-ignored-warnings`.
 
 ## 2017-01-16
 
