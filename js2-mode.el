@@ -7205,6 +7205,10 @@ When STRICT, signal an error if NODE is not one of the expected types."
             (setq targets (append
                            (js2--collect-target-symbols subexpr strict)
                            targets))))))
+     ((js2-assign-node-p node)
+      (setq targets (append (js2--collect-target-symbols
+                             (js2-assign-node-left node) strict)
+                            targets)))
      (strict
       (js2-report-error "msg.no.parm" nil (js2-node-abs-pos node)
                         (js2-node-len node))
