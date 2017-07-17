@@ -1255,6 +1255,10 @@ the test."
   "function foo() { let {a, b, c = 3} = {a: 1, b: 2}; }"
   '("foo@10:U" "a@23:U" "b@26:U" "c@29:U"))
 
+(js2-deftest-classify-variables destructure-object-missing
+  "function foo() { let {foo: missing = 10} = {}; }"
+  '("foo@10:U" "missing@28:U"))
+
 ;; Side effects
 
 (js2-deftest no-side-effects-at-top-level
