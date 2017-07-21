@@ -1295,3 +1295,8 @@ the test."
   (let ((js2-instanceof-has-side-effects t))
     (js2-mode--and-parse)
     (should (null js2-parsed-warnings))))
+
+(js2-deftest await-has-side-effects
+  "const p = new Promise();\nasync function f() { await p; return null; }"
+  (js2-mode--and-parse)
+  (should (null js2-parsed-warnings)))
