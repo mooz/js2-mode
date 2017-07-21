@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## Next
+## 2017-07-21
 
 * Support for async arrow function without parentheses.
 * Support for `/*jslint` declarations.
