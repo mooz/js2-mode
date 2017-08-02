@@ -869,8 +869,9 @@ the test."
 (js2-deftest-parse parse-re-export-named-list "export {foo, bar as bang} from 'other/lib';")
 (js2-deftest-parse parse-export-const-declaration "export const PI = Math.PI;")
 (js2-deftest-parse parse-export-let-declaration "export let foo = [1];")
-(js2-deftest-parse parse-export-function-declaration "export default function doStuff() {\n}")
-(js2-deftest-parse parse-export-generator-declaration "export default function* one() {\n}")
+(js2-deftest-parse parse-export-default-function "export default function() {}")
+(js2-deftest-parse parse-export-default-generator "export default function*() {}")
+(js2-deftest-parse parse-export-default-class "export default class {\n}")
 (js2-deftest-parse parse-export-assignment-expression "export default a = b;")
 
 (js2-deftest-parse parse-export-function-declaration-no-semi
@@ -883,7 +884,7 @@ the test."
   "export async function f() {\n  await f();\n}")
 
 (js2-deftest-parse parse-export-default-async-function-allow-await
-  "export default async function f() {\n  await f();\n}")
+  "export default async function f() {  await f();\n}")
 
 ;;; Strings
 
