@@ -66,7 +66,6 @@
     (js2-mode--and-parse)
     (let (visit-log)
      (js2-visit-ast js2-mode-ast (lambda (node end-p)
-                                   (message (js2-node-short-name node))
                                    (when (and (not end-p) (js2-name-node-p node))
                                      (let* ((start (js2-node-abs-pos node))
                                             (end (+ start (js2-node-len node))))
