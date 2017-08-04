@@ -57,3 +57,20 @@
       (setq comments (js2-comments-between 8 9 comments))
       (should (= (length comments) 1))
       )))
+
+;;; Visitors
+
+(ert-deftest js2-visit-import-clause-in-order ()
+  (with-temp-buffer
+    (insert "import defaultImport, { a, b, c} from 'xyz';")
+    (js2-mode--and-parse)
+    (let (visit-log)
+     (js2-visit-ast js2-mode-ast (lambda (node end-p)
+                                   (message (js2-node-short-name node))
+                                   (when (and (not end-p) (js2-name-node-p node))
+                                     (let* ((start (js2-node-abs-pos node))
+                                            (end (+ start (js2-node-len node))))
+                                       (push (buffer-substring-no-properties start end) visit-log)))
+                                   t))
+     (setq visit-log (nreverse visit-log))
+     (should (equal visit-log (list "defaultImport" "a" "b" "c"))))))
