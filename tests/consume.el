@@ -20,6 +20,7 @@
 ;;; Code:
 
 (require 'ert)
+(require 'ert-x)
 (require 'js2-mode)
 
 (defun js2-mode--and-parse ()
@@ -73,3 +74,11 @@
                                    t))
      (setq visit-log (nreverse visit-log))
      (should (equal visit-log (list "defaultImport" "a" "b" "c"))))))
+
+(ert-deftest js2-node-parent-stmt/arrow-function ()
+  (ert-with-test-buffer (:name 'js2-node-parent-stmt/arrow-function)
+    (insert "expect(() => ")
+    (save-excursion (insert "func(undefined)).toThrow(/undefined/);"))
+    (js2-mode--and-parse)
+    (let ((parent-stmt (js2-node-parent-stmt (js2-node-at-point))))
+      (should (= (js2-node-abs-pos parent-stmt) 1)))))
