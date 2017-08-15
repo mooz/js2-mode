@@ -6924,6 +6924,8 @@ of a simple name.  Called before EXPR has a parent node."
              "requires"
              "return"
              "returns"
+             "yield"
+             "yields"
              "throw"
              "throws"))
           "\\)\\)\\s-*\\({[^}]+}\\)?")
