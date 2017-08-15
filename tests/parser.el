@@ -884,7 +884,7 @@ the test."
   "export async function f() {\n  await f();\n}")
 
 (js2-deftest-parse parse-export-default-async-function-allow-await
-  "export default async function f() {  await f();\n}")
+  "export default async function f() {\n  await f();\n}")
 
 ;;; Strings
 
