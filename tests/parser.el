@@ -106,6 +106,10 @@ the test."
 (js2-deftest-parse function-statement
   "function foo() {\n}")
 
+(js2-deftest-parse trailing-comma-in-function-arguments
+   "f(a, b,);"
+   :reference "f(a, b);")
+
 (js2-deftest-parse function-statement-inside-block
   "if (true) {\n  function foo() {\n  }\n}")
 
