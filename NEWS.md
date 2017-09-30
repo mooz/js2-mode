@@ -1,5 +1,9 @@
 # History of user-visible changes
 
+## Next
+
+* Support for trailing comma in function arguments
+
 ## 2017-07-21
 
 * Support for async arrow function without parentheses.

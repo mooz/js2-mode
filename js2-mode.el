@@ -10238,7 +10238,9 @@ Returns the list in reverse order.  Consumes the right-paren token."
                    (js2-unget-token)
                    (push (js2-parse-assign-expr) result)))
                while
-               (js2-match-token js2-COMMA))
+               (and (js2-match-token js2-COMMA)
+                    (or (< js2-language-version 200)
+                        (not (= js2-RP (js2-peek-token))))))
       (js2-must-match js2-RP "msg.no.paren.arg")
       result)))
 
