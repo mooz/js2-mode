@@ -1031,6 +1031,11 @@ in large files.")
   "Face used to highlight named property in object literal."
   :group 'js2-mode)
 
+(defface js2-object-property-access
+  '((t :inherit js2-object-property))
+  "Face used to highlight property access with dot on an object."
+  :group 'js2-mode)
+
 (defface js2-instance-member
   '((t :foreground "DarkOrchid"))
   "Face used to highlight instance variables in javascript.
@@ -6835,7 +6840,7 @@ Shown at or above `js2-highlight-level' 3.")
                  (if (string-match js2-ecma-object-props prop-name)
                      'font-lock-constant-face))))))
         (when (and (not face) target (not call-p) prop-name)
-          (setq face 'js2-object-property))
+          (setq face 'js2-object-property-access))
         (when face
           (let ((pos (+ (js2-node-pos parent)  ; absolute
                         (js2-node-pos prop)))) ; relative
