@@ -7962,7 +7962,7 @@ string is NAME.  Returns nil and keeps current token otherwise."
              (end (js2-current-token-end))
              pn)
          (js2-get-token)
-         (setq pn (js2-make-unary js2-AWAIT 'js2-parse-unary-expr))
+         (setq pn (js2-make-unary beg js2-AWAIT 'js2-parse-unary-expr))
          (if (= (js2-node-type (js2-unary-node-operand pn)) js2-ERROR)
              ;; The parse failed, so pretend like nothing happened and restore
              ;; the previous parsing state.
@@ -10095,11 +10095,13 @@ FIXME: The latter option is unused?"
         (setq pn (js2-make-binary js2-EXPON pn 'js2-parse-expon-expr))))
     pn))
 
-(defun js2-make-unary (type parser &rest args)
-  "Make a unary node of type TYPE.
-PARSER is either a node (for postfix operators) or a function to call
-to parse the operand (for prefix operators)."
-  (let* ((pos (js2-current-token-beg))
+(defun js2-make-unary (beg type parser &rest args)
+  "Make a unary node starting at BEG of type TYPE.
+If BEG is nil, `(js2-current-token-beg)' is used for the node
+start position.  PARSER is either a node (for postfix operators)
+or a function to call to parse the operand (for prefix
+operators)."
+  (let* ((pos (or beg (js2-current-token-beg)))
          (postfix (js2-node-p parser))
          (expr (if postfix
                    parser
@@ -10131,33 +10133,33 @@ to parse the operand (for prefix operators)."
 
 (defun js2-parse-unary-expr ()
   (let ((tt (js2-current-token-type))
-        pn expr beg end)
+        (beg (js2-current-token-beg)))
     (cond
      ((or (= tt js2-VOID)
           (= tt js2-NOT)
           (= tt js2-BITNOT)
           (= tt js2-TYPEOF))
       (js2-get-token)
-      (js2-make-unary tt 'js2-parse-unary-expr))
+      (js2-make-unary beg tt 'js2-parse-unary-expr))
      ((= tt js2-ADD)
       (js2-get-token)
       ;; Convert to special POS token in decompiler and parse tree
-      (js2-make-unary js2-POS 'js2-parse-unary-expr))
+      (js2-make-unary beg js2-POS 'js2-parse-unary-expr))
      ((= tt js2-SUB)
       (js2-get-token)
       ;; Convert to special NEG token in decompiler and parse tree
-      (js2-make-unary js2-NEG 'js2-parse-unary-expr))
+      (js2-make-unary beg js2-NEG 'js2-parse-unary-expr))
      ((or (= tt js2-INC)
           (= tt js2-DEC))
       (js2-get-token)
-      (prog1
-          (setq beg (js2-current-token-beg)
-                end (js2-current-token-end)
-                expr (js2-make-unary tt 'js2-parse-member-expr t))
-        (js2-check-bad-inc-dec tt beg end expr)))
+      (let ((beg2 (js2-current-token-beg))
+            (end (js2-current-token-end))
+            (expr (js2-make-unary beg tt 'js2-parse-member-expr t)))
+        (js2-check-bad-inc-dec tt beg2 end expr)
+        expr))
      ((= tt js2-DELPROP)
       (js2-get-token)
-      (js2-make-unary js2-DELPROP 'js2-parse-unary-expr))
+      (js2-make-unary beg js2-DELPROP 'js2-parse-unary-expr))
      ((js2-parse-await-maybe tt))
      ((= tt js2-ERROR)
       (js2-get-token)
@@ -10167,16 +10169,17 @@ to parse the operand (for prefix operators)."
       ;; XML stream encountered in expression.
       (js2-parse-member-expr-tail t (js2-parse-xml-initializer)))
      (t
-      (setq pn (js2-parse-member-expr t)
+      (let ((pn (js2-parse-member-expr t))
             ;; Don't look across a newline boundary for a postfix incop.
-            tt (js2-peek-token-or-eol))
-      (when (or (= tt js2-INC) (= tt js2-DEC))
-        (js2-get-token)
-        (setf expr pn
-              pn (js2-make-unary tt expr))
-        (js2-node-set-prop pn 'postfix t)
-        (js2-check-bad-inc-dec tt (js2-current-token-beg) (js2-current-token-end) pn))
-      pn))))
+            (tt (js2-peek-token-or-eol))
+            expr)
+        (when (or (= tt js2-INC) (= tt js2-DEC))
+          (js2-get-token)
+          (setf expr pn
+                pn (js2-make-unary (js2-node-pos expr) tt expr))
+          (js2-node-set-prop pn 'postfix t)
+          (js2-check-bad-inc-dec tt (js2-current-token-beg) (js2-current-token-end) pn))
+        pn)))))
 
 (defun js2-parse-xml-initializer ()
   "Parse an E4X XML initializer.
@@ -10236,10 +10239,11 @@ Returns the list in reverse order.  Consumes the right-paren token."
   (let (result)
     (unless (js2-match-token js2-RP)
       (cl-loop do
-               (let ((tt (js2-get-token)))
+               (let ((tt (js2-get-token))
+                     (beg (js2-current-token-beg)))
                  (if (and (= tt js2-TRIPLEDOT)
                           (>= js2-language-version 200))
-                     (push (js2-make-unary tt 'js2-parse-assign-expr) result)
+                     (push (js2-make-unary beg tt 'js2-parse-assign-expr) result)
                    (js2-unget-token)
                    (push (js2-parse-assign-expr) result)))
                while
@@ -10712,7 +10716,7 @@ array-literals, array comprehensions and regular expressions."
                  (>= js2-language-version 200))
             ;; rest/spread operator
             (progn
-              (push (js2-make-unary tt 'js2-parse-assign-expr)
+              (push (js2-make-unary nil tt 'js2-parse-assign-expr)
                     elems)
               (if js2-is-in-destructuring
                   (setq was-rest t)))
@@ -10966,7 +10970,7 @@ expression)."
              (not class-p) (not static) (not previous-token)
              (= js2-TRIPLEDOT tt))
         (setq after-comma nil
-              elem (js2-make-unary js2-TRIPLEDOT 'js2-parse-assign-expr)))
+              elem (js2-make-unary nil js2-TRIPLEDOT 'js2-parse-assign-expr)))
        ;; Found a key/value property (of any sort)
        ((member tt (list js2-NAME js2-STRING js2-NUMBER js2-LB))
         (setq after-comma nil

@@ -83,6 +83,21 @@ the test."
                               :warnings-count ,warnings-count
                               :reference ,reference))))
 
+(defun js2-find-node (node predicate)
+  "Find the first descendant of NODE meeting PREDICATE."
+  (let (target)
+    (js2-visit-ast node (lambda (n end-p)
+                          (unless end-p
+                            (if (funcall predicate n)
+                              (progn (setq target n) nil)
+                              t))))
+    target))
+
+(defun js2-node-text (node)
+  "Return the part of the buffer corresponding to NODE as a string."
+  (let ((beg (js2-node-abs-pos node)))
+   (buffer-substring-no-properties beg (+ beg (js2-node-len node)))))
+
 ;;; Basics
 
 (js2-deftest-parse variable-assignment
@@ -952,12 +967,6 @@ the test."
 (js2-deftest-parse parse-harmony-class-allow-semicolon-element
   "class Foo {;}" :reference "class Foo {\n}")
 
-(js2-deftest-parse exponentiation
-  "a **= b ** c ** d * e ** f;")
-
-(js2-deftest-parse exponentiation-prohibits-unary-op
-  "var a = -b ** c" :syntax-error "b")
-
 (js2-deftest-parse parse-class-public-field-with-init
   "class C {\n  x = 42;\n  y = 24;\n  \"z\" = 1\n  456 = 789\n}"
   :reference "class C {\n  x = 42\n  y = 24\n  \"z\" = 1\n  456 = 789\n}")
@@ -967,6 +976,86 @@ the test."
 
 (js2-deftest-parse parse-class-public-field-computed
   "class C {\n  [a + b] = c\n}")
+
+;;; Operators
+
+(js2-deftest-parse exponentiation
+  "a **= b ** c ** d * e ** f;")
+
+(js2-deftest-parse exponentiation-prohibits-unary-op
+  "var a = -b ** c" :syntax-error "-b")
+
+(js2-deftest unary-void-node-start
+  "var c = void 0"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-unary-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "void 0"))
+    (should (string= (js2-node-text (js2-unary-node-operand node)) "0"))))
+
+(js2-deftest unary-pos-node-start
+  "var a = +1;"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-unary-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "+1"))
+    (should (string= (js2-node-text (js2-unary-node-operand node)) "1"))))
+
+(js2-deftest unary-minus-node-start
+  "var a = -1;"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-unary-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "-1"))
+    (should (string= (js2-node-text (js2-unary-node-operand node)) "1"))))
+
+(js2-deftest unary-await-node-start
+  "var f = async () => await p;"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-unary-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "await p"))
+    (should (string= (js2-node-text (js2-unary-node-operand node)) "p"))))
+
+(js2-deftest unary-inc-node-start
+  "var a = 1; a++;"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-unary-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "a++"))
+    (should (string= (js2-node-text (js2-unary-node-operand node)) "a"))))
+
+(js2-deftest unary-delete-node-start
+  "var a = {b: 2}; delete a.b;"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-unary-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "delete a.b"))
+    (should (string= (js2-node-text (js2-unary-node-operand node)) "a.b"))))
+
+(js2-deftest unary-triple-dot-arg-node-start
+  "var b = f(...args)"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-unary-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "...args"))
+    (should (string= (js2-node-text (js2-unary-node-operand node)) "args"))))
+
+(js2-deftest unary-triple-dot-array-node-start
+  "var a = [1, 2, ...b]"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-unary-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "...b"))
+    (should (string= (js2-node-text (js2-unary-node-operand node)) "b"))))
+
+(js2-deftest unary-triple-dot-object-node-start
+  "var a = {x: 1, y: 2, ...z}"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-unary-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "...z"))
+    (should (string= (js2-node-text (js2-unary-node-operand node)) "z"))))
 
 ;;; Scopes
 
