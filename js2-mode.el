@@ -11127,9 +11127,10 @@ string or expression."
                   (js2-name-node-p prop))))
       (setq result (make-js2-object-prop-node
                     :pos pos
+                    :len (js2-node-len prop)
                     :left prop
                     :right prop
-                    :op-pos (js2-current-token-len)))
+                    :op-pos (- (js2-current-token-beg) pos)))
       (js2-node-add-children result prop)
       (js2-node-set-prop result 'SHORTHAND t)
       result)
