@@ -6969,7 +6969,8 @@ of a simple name.  Called before EXPR has a parent node."
 (defconst js2-jsdoc-empty-tag-regexp
   (concat "^\\s-*\\*+\\s-*\\(@\\(?:"
           (regexp-opt
-           '("addon"
+           '("abstract"
+             "addon"
              "author"
              "class"
              "const"
@@ -7007,6 +7008,7 @@ of a simple name.  Called before EXPR has a parent node."
              "public"
              "static"
              "supported"
+             "virtual"
              ))
           "\\)\\)\\s-*")
   "Matches empty jsdoc tags.")
