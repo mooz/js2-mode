@@ -49,7 +49,7 @@ BEG and END are the current buffer boundaries to use."
                         ,fontification))))))
 
 (js2-jsdoc-deftest param
-  "/**\n * @prop {string} p - The property\n */"
+  "/**\n * @prop {string} p - The property\n */\n"
   '((1 8 font-lock-doc-face)
     (8 13 js2-jsdoc-tag)
     (13 15 font-lock-doc-face)
@@ -59,7 +59,7 @@ BEG and END are the current buffer boundaries to use."
     (24 43 font-lock-doc-face)))
 
 (js2-jsdoc-deftest typed
-  "/**\n * @implements {Interface}\n */"
+  "/**\n * @implements {Interface}\n */\n"
   '((1 8 font-lock-doc-face)
     (8 19 js2-jsdoc-tag)
     (19 21 font-lock-doc-face)
@@ -67,7 +67,7 @@ BEG and END are the current buffer boundaries to use."
     (30 35 font-lock-doc-face)))
 
 (js2-jsdoc-deftest arg
-  "/**\n * @name TheName \n */"
+  "/**\n * @name TheName \n */\n"
   '((1 8 font-lock-doc-face)
     (8 13 js2-jsdoc-tag)
     (13 14 font-lock-doc-face)
@@ -75,7 +75,39 @@ BEG and END are the current buffer boundaries to use."
     (21 26 font-lock-doc-face)))
 
 (js2-jsdoc-deftest empty
-  "/**\n * @class \n */"
+  "/**\n * @class \n */\n"
   '((1 8 font-lock-doc-face)
     (8 14 js2-jsdoc-tag)
     (14 19 font-lock-doc-face)))
+
+(js2-jsdoc-deftest param-same-line
+  "/** @prop {string} p - The property */\n"
+  '((1 5 font-lock-doc-face)
+    (5 10 js2-jsdoc-tag)
+    (10 12 font-lock-doc-face)
+    (12 18 js2-jsdoc-type)
+    (18 20 font-lock-doc-face)
+    (20 21 js2-jsdoc-value)
+    (21 39 font-lock-doc-face)))
+
+(js2-jsdoc-deftest typed-same-line
+  "/** @implements {Interface} */\n"
+  '((1 5 font-lock-doc-face)
+    (5 16 js2-jsdoc-tag)
+    (16 18 font-lock-doc-face)
+    (18 27 js2-jsdoc-type)
+    (27 31 font-lock-doc-face)))
+
+(js2-jsdoc-deftest arg-same-line
+  "/** @name TheName */\n"
+  '((1 5 font-lock-doc-face)
+    (5 10 js2-jsdoc-tag)
+    (10 11 font-lock-doc-face)
+    (11 18 js2-jsdoc-value)
+    (18 21 font-lock-doc-face)))
+
+(js2-jsdoc-deftest empty-same-line
+  "/** @class */\n"
+  '((1 5 font-lock-doc-face)
+    (5 11 js2-jsdoc-tag)
+    (11 14 font-lock-doc-face)))
