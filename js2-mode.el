@@ -6931,6 +6931,7 @@ of a simple name.  Called before EXPR has a parent node."
              "returns"
              "yield"
              "yields"
+             "type"
              "throw"
              "throws"))
           "\\)\\)\\s-*\\({[^}]+}\\)?")
@@ -6961,7 +6962,6 @@ of a simple name.  Called before EXPR has a parent node."
              "suppress"
              "this"
              "throws"
-             "type"
              "version"))
           "\\)\\)\\s-+\\([^ \t\n]+\\)")
   "Matches jsdoc tags with a single argument.")
