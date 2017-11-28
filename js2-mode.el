@@ -8761,9 +8761,9 @@ imports or a namespace import that follows it.
         (when ns-import
           (let ((name-node (js2-namespace-import-node-name ns-import)))
             (js2-define-symbol
-             js2-LET (js2-name-node-name name-node) name-node t)))
-        (setf (js2-import-clause-node-namespace-import clause) ns-import)
-        (push ns-import children)))
+             js2-LET (js2-name-node-name name-node) name-node t))
+          (setf (js2-import-clause-node-namespace-import clause) ns-import)
+          (push ns-import children))))
      ((js2-match-token js2-LC)
       (let ((imports (js2-parse-export-bindings t)))
         (setf (js2-import-clause-node-named-imports clause) imports)
@@ -8822,7 +8822,8 @@ The current token must be js2-MUL."
            node)))
       (t
        (js2-unget-token)
-       (js2-report-error "msg.syntax")))))
+       (js2-report-error "msg.syntax")
+       nil))))
 
 
 (defun js2-parse-from-clause ()
