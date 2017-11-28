@@ -647,6 +647,11 @@ the test."
       (should (equal "lib" (js2-name-node-name name-node)))
       (should (= 5 (js2-node-pos name-node))))))
 
+(js2-deftest-parse parse-namespace-import-error
+  "import * lib from 'lib';"
+  :syntax-error "import"
+  :errors-count 7)
+
 (js2-deftest parse-from-clause "from 'foo/bar';"
   (js2-init-scanner)
   (let ((from (js2-parse-from-clause)))
