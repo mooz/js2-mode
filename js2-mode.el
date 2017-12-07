@@ -2344,6 +2344,15 @@ If any given node in NODES is nil, doesn't record that link."
 (defun js2-node-get-enclosing-scope (node)
   "Return the innermost `js2-scope' node surrounding NODE.
 Returns nil if there is no enclosing scope node."
+  ;; when node is the name of a function statement, the enclosing
+  ;; scope is not that function itself but the surrounding scope.
+  (let ((parent (js2-node-parent node)))
+    (when (and (js2-name-node-p node)
+               (js2-function-node-p parent)
+               (eq 'FUNCTION_STATEMENT (js2-function-node-form parent))
+               (eq node (js2-function-node-name parent)))
+      (setq node parent)))
+  ;; dig up to find the closest scope parent
   (while (and (setq node (js2-node-parent node))
               (not (js2-scope-p node))))
   node)

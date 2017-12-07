@@ -1214,11 +1214,14 @@ the test."
     (should (= (js2-symbol-decl-type var-entry) js2-VAR))
     (should (js2-name-node-p (js2-symbol-ast-node var-entry)))))
 
-(defun js2-test-scope-of-nth-variable-satisifies-predicate (variable nth predicate)
+(defun js2-get-nth-variable-enclosing-scope (variable nth)
   (goto-char (point-min))
   (dotimes (_ (1+ nth)) (search-forward variable))
   (forward-char -1)
-  (let ((scope (js2-node-get-enclosing-scope (js2-node-at-point))))
+  (js2-node-get-enclosing-scope (js2-node-at-point)))
+
+(defun js2-test-scope-of-nth-variable-satisifies-predicate (variable nth predicate)
+  (let ((scope (js2-get-nth-variable-enclosing-scope variable nth)))
     (should (funcall predicate (js2-get-defining-scope scope variable)))))
 
 (js2-deftest for-node-is-declaration-scope "for (let i = 0; i; ++i) {};"
@@ -1238,6 +1241,12 @@ the test."
 (js2-deftest array-comp-is-result-scope "[x * 2 for (x in y)];"
   (js2-mode--and-parse)
   (js2-test-scope-of-nth-variable-satisifies-predicate "x" 0 #'js2-comp-loop-node-p))
+
+(js2-deftest function-name-enclosing-scope-is-parent-scope "(function(){ var bar; function foo(){} })()"
+  (js2-mode--and-parse)
+  (let ((scope1 (js2-get-nth-variable-enclosing-scope "bar" 0))
+        (scope2 (js2-get-nth-variable-enclosing-scope "foo" 0)))
+    (should (eq scope1 scope2))))
 
 (js2-deftest array-comp-has-parent-scope
              "var a,b=[for (i of [[1,2]]) for (j of i) j * a];"
