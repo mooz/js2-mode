@@ -7185,7 +7185,7 @@ key of a literal object."
                                 finally return syms))))))
     (list declared assigned object-key)))
 
-(defun js2--classify-variable (parent node)
+(defun js2--classify-variable (parent node vars)
   "Classify the single variable NODE, a js2-name-node."
   (let ((function-param (and (js2-function-node-p parent)
                              (memq node (js2-function-node-params parent)))))
@@ -7265,7 +7265,7 @@ are ignored."
        (when (and (null end-p) (js2-name-node-p node))
          (let ((parent (js2-node-parent node)))
            (when parent
-             (js2--classify-variable parent node))))
+             (js2--classify-variable parent node vars))))
        t))
     vars))
 
