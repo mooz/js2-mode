@@ -354,8 +354,13 @@ In particular, return the buffer position of the first `for' kwd."
             (if (and (> end (point)) ; not empty literal
                      (re-search-forward "[^,]]* \\(for\\) " end t)
                      ;; not inside comment or string literal
-                     (let ((state (parse-partial-sexp bracket (point))))
-                       (not (or (nth 3 state) (nth 4 state)))))
+                     (let ((bracket-state (parse-partial-sexp bracket bracket))
+                           (state (parse-partial-sexp bracket (point))))
+                       (and
+                        (not (nth 3 state))
+                        (not (nth 4 state))
+                        (eq (nth 0 state)
+                            (1+ (nth 0 state))))))
                 (match-beginning 1))))))))
 
 (defun js2-array-comp-indentation (parse-status for-kwd)
