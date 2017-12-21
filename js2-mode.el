@@ -2306,6 +2306,14 @@ Returns nil if there is no enclosing scope node."
               (not (js2-scope-p node))))
   node)
 
+(defun js2-node-get-enclosing-scope-or-class (node)
+  "Return the innermost `js2-scope' or `js-class' node surrounding NODE.
+Returns nil if there is no enclosing scope node."
+  (while (and (setq node (js2-node-parent node))
+              (not (or (js2-scope-p node)
+                        (js2-class-node-p node)))))
+  node)
+
 (defun js2-get-defining-scope (scope name &optional point)
   "Search up scope chain from SCOPE looking for NAME, a string or symbol.
 Returns `js2-scope' in which NAME is defined, or nil if not found.
@@ -12752,9 +12760,9 @@ it marks the next defun after the ones already marked."
   (cl-assert (js2-object-node-p node))
   ;; Only support name-node and nodes for the time being
   (cl-loop for elem in (js2-object-node-elems node)
-           for left = (js2-object-prop-node-left elem)
+           for left = (js2-infix-node-left elem)
            if (or (and (js2-name-node-p left)
-                       (equal (js2-name-node-name name-node)
+                       (string= (js2-name-node-name name-node)
                               (js2-name-node-name left)))
                   (and (js2-string-node-p left)
                        (string= (js2-name-node-name name-node)
@@ -12769,10 +12777,11 @@ i.e. ('name' 'value') = {name : { value: 3}}"
         (temp-object object)
         (temp t) ;temporay node
         (names prop-names))
-    (while (and temp names (js2-object-node-p temp-object))
+    (while (and temp names (or (js2-object-node-p temp-object)
+                               (js2-method-node-p temp-object)))
       (setq temp (js2-search-object temp-object (pop names)))
       (and (setq node temp)
-         (setq temp-object (js2-object-prop-node-right temp))))
+           (setq temp-object (js2-infix-node-right temp))))
     (unless names node)))
 
 (defun js2-search-scope (node names)
@@ -12780,13 +12789,20 @@ i.e. ('name' 'value') = {name : { value: 3}}"
 NAMES is a list of property values to search for. For functions
 and variables NAMES will contain one element."
   (let (node-init
-        (val (js2-name-node-name (car names))))
-    (setq node-init (js2-get-symbol-declaration node val))
+        val
+        (first-name (car names)))
+    (cond
+     ((js2-name-node-p first-name)
+      (setq val (js2-name-node-name first-name))
+      (setq node-init (js2-get-symbol-declaration node val)))
+     ((js2-this-or-super-node-p first-name)
+      (setq node-init (js2-node-get-enclosing-scope-or-class (js2-node-get-enclosing-scope-or-class node))))
+     (t (error "Can't search scope")))
 
     (when (> (length names) 1)
 
       ;; Check var declarations
-      (when (and node-init (string= val (js2-name-node-name node-init)))
+      (when (and node-init val (string= val (js2-name-node-name node-init)))
         (let ((parent (js2-node-parent node-init))
               (temp-names names))
           (pop temp-names) ;; First element is var name
@@ -12795,7 +12811,7 @@ and variables NAMES will contain one element."
                              (js2-var-init-node-initializer parent)
                              temp-names)))))
 
-      ;; Check all assign nodes
+      ;; Check all assign and method nodes
       (js2-visit-ast
        js2-mode-ast
        (lambda (node endp)
@@ -12807,15 +12823,24 @@ and variables NAMES will contain one element."
                  (when (js2-prop-get-node-p left)
                    (let* ((prop-list (js2-compute-nested-prop-get left))
                           (found (cl-loop for prop in prop-list
-                                          until (not (string= (js2-name-node-name
-                                                               (pop temp-names))
-                                                              (js2-name-node-name prop)))
+                                          for temp-name = (pop temp-names)
+                                          until (if (or (js2-this-or-super-node-p temp-name)
+                                                        (js2-this-or-super-node-p prop))
+                                                    nil
+                                                  (not (string= (js2-name-node-name temp-name)
+                                                                (js2-name-node-name prop))))
                                           if (not temp-names) return prop))
                           (found-node (or found
                                           (when (js2-object-node-p right)
                                             (js2-search-object-for-prop right
                                                                         temp-names)))))
-                     (if found-node (push found-node node-init))))))
+                     (if found-node (push found-node node-init)))))
+             (when (and (js2-this-or-super-node-p first-name)
+                        (= (length names) 2)
+                        (js2-method-node-p node)
+                        (string= (js2-name-node-name (cadr names))
+                                 (js2-name-node-name (js2-method-node-left node))))
+               (push node node-init)))
            t))))
     node-init))
 

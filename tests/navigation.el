@@ -44,6 +44,14 @@
 (ert-deftest js2-jump-to-object-property ()
   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; aObject.prop1" 16))
 
+(ert-deftest js2-jump-to-object-property-with-competitor-object ()
+  (js2-navigation-helper "var foo = {bar: 42}; var bar = {bar: 24}; foo.bar" 12))
+
+(ert-deftest js2-jump-to-object-property-with-competitor-function-constructor ()
+  "Currently this a known misbehaviour."
+  :expected-result :failed
+  (js2-navigation-helper "var foo = {bar: 42}; function Foo() { this.bar = 0; }; foo.bar" 12))
+
 (ert-deftest js2-no-jump-to-object-property ()
   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; anotherObject.prop1"))
 
@@ -58,3 +66,9 @@
 
 (ert-deftest js2-jump-to-property-object-property ()
   (js2-navigation-helper "aObject.value = {prop:1};aObject.value.prop" 18))
+
+(ert-deftest js2-jump-to-function-constructor-member ()
+  (js2-navigation-helper "function Foo() { this.value = 42; } var foo = new Foo(); foo.value" 23))
+
+(ert-deftest js2-jump-to-class-member ()
+  (js2-navigation-helper "class Foo { constructor() { this.value = 42; } } const foo = new Foo(); foo.value" 34))
