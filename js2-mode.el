@@ -11100,7 +11100,6 @@ TYPE-STRING is a string `get', `set', `*', or nil, indicating a found keyword."
                                              ("async" . ASYNC))))
                    'FUNCTION))
          result end
-         (pos (js2-current-token-beg))
          (_ (js2-must-match js2-LP "msg.no.paren.parms"))
          (fn (js2-parse-function 'FUNCTION_EXPRESSION pos
                                  (string= type-string "*")
