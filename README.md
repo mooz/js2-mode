@@ -25,13 +25,16 @@ Bugs
 ====
 
 * See broken syntax highlighting and timer errors? Recently upgraded
-Emacs from version 24.2 or earlier?
-
-* Try
+Emacs from version 24.2 or earlier? Try
 [reinstalling or byte-recompiling](https://github.com/mooz/js2-mode/issues/72)
 the package.
 
-Please report problems at <http://github.com/mooz/js2-mode/issues>.
+* Any indentation problems should be reported with `M-x report-emacs-bug`
+(please try reproducing them with `js-mode` first, for clarity).
+Starting with Emacs 25, `js2-mode` delegates indentation to
+the indentation engine of `js-mode`.
+
+Please report other problems at <http://github.com/mooz/js2-mode/issues>.
 
 Contributing
 ======
