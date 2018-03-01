@@ -7620,7 +7620,7 @@ For instance, processing a nested scope requires a parent function node."
   (let (result fn parent-qname p elem)
     (dolist (entry js2-imenu-recorder)
       ;; function node goes first
-      (cl-destructuring-bind (current-fn &rest (&whole chain head &rest _)) entry
+      (cl-destructuring-bind (current-fn &rest (&whole chain head &rest)) entry
         ;; Examine head's defining scope:
         ;; Pre-processed chain, or top-level/external, keep as-is.
         (if (or (stringp head) (js2-node-top-level-decl-p head))
