@@ -1,8 +1,12 @@
 # History of user-visible changes
 
-## Next
+## 2018-03-01
 
+* Support single-line JSDocs.
+* New face `js2-object-property-access`.
 * Support for trailing comma in function arguments
+* JSDoc highlighting for `@yield`, `@yields`, `@abstract`, `@virtual` and `@typedef`.
+* Support for anonymous class exports.
 
 ## 2017-07-21
 
