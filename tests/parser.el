@@ -635,7 +635,7 @@ the test."
       (should name)
       (should (equal "default" (js2-name-node-name name))))))
 
-(js2-deftest parse-namepsace-import "* as lib;"
+(js2-deftest parse-namespace-import "* as lib;"
   (js2-init-scanner)
   (should (js2-match-token js2-MUL))
   (let ((namespace-import (js2-parse-namespace-import)))
