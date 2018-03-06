@@ -7192,58 +7192,71 @@ key of a literal object."
         (let ((left (js2-prop-get-node-left parent)))
           (when (js2-name-node-p left)
             (js2--add-or-update-symbol left nil t vars)))
-      (let ((granparent parent)
-            var-init-node
-            assign-node
-            object-key         ; is name actually an object prop key?
-            declared           ; is it declared in narrowest scope?
-            assigned           ; does it get assigned or initialized?
-            (used (null function-param)))
-        ;; Determine the closest var-init-node and assign-node: this
-        ;; is needed because the name may be within a "destructured"
-        ;; declaration/assignment, so we cannot just take its parent
-        (while (and granparent (not (js2-scope-p granparent)))
-          (cond
-           ((js2-var-init-node-p granparent)
-            (when (null var-init-node)
-              (setq var-init-node granparent)))
-           ((js2-assign-node-p granparent)
-            (when (null assign-node)
-              (setq assign-node granparent))))
-          (setq granparent (js2-node-parent granparent)))
-
-        ;; If we are within a var-init-node, determine if the name is
-        ;; declared and initialized
-        (when var-init-node
-          (let ((result (js2--examine-variable parent node var-init-node)))
-            (setq declared (car result)
-                  assigned (cadr result)
-                  object-key (car (cddr result)))))
-
-        ;; Ignore literal object keys, which are not really variables
-        (unless object-key
-          (when function-param
-            (setq assigned ?P))
-
-          (when (null assigned)
+      ;; If the node is the external name of an export-binding-node, and
+      ;; it is different from the local name, ignore it
+      (when (or (not (js2-export-binding-node-p parent))
+                (not (and (eq (js2-export-binding-node-extern-name parent) node)
+                          (not (eq (js2-export-binding-node-local-name parent) node)))))
+        (let ((granparent parent)
+              var-init-node
+              assign-node
+              object-key         ; is name actually an object prop key?
+              declared           ; is it declared in narrowest scope?
+              assigned           ; does it get assigned or initialized?
+              (used (null function-param)))
+          ;; Determine the closest var-init-node and assign-node: this
+          ;; is needed because the name may be within a "destructured"
+          ;; declaration/assignment, so we cannot just take its parent
+          (while (and granparent (not (js2-scope-p granparent)))
             (cond
-             ((js2-for-in-node-p parent)
-              (setq assigned (eq node (js2-for-in-node-iterator parent))
-                    used (not assigned)))
-             ((js2-function-node-p parent)
-              (setq assigned t
-                    used (js2-wrapper-function-p parent)))
-             (assign-node
-              (setq assigned (memq node
-                                   (js2--collect-target-symbols
-                                    (js2-assign-node-left assign-node)
-                                    nil))
-                    used (not assigned)))))
+             ((js2-var-init-node-p granparent)
+              (when (null var-init-node)
+                (setq var-init-node granparent)))
+             ((js2-assign-node-p granparent)
+              (when (null assign-node)
+                (setq assign-node granparent))))
+            (setq granparent (js2-node-parent granparent)))
 
-          (when declared
-            (setq used nil))
+          ;; If we are within a var-init-node, determine if the name is
+          ;; declared and initialized
+          (when var-init-node
+            (let ((result (js2--examine-variable parent node var-init-node)))
+              (setq declared (car result)
+                    assigned (cadr result)
+                    object-key (car (cddr result)))))
 
-          (js2--add-or-update-symbol node assigned used vars))))))
+          ;; Ignore literal object keys, which are not really variables
+          (unless object-key
+            (when function-param
+              (setq assigned ?P))
+
+            (when (null assigned)
+              (cond
+               ((js2-for-in-node-p parent)
+                (setq assigned (eq node (js2-for-in-node-iterator parent))
+                      used (not assigned)))
+               ((js2-function-node-p parent)
+                (setq assigned t
+                      used (js2-wrapper-function-p parent)))
+               ((js2-export-binding-node-p parent)
+                (if (js2-import-clause-node-p (js2-node-parent parent))
+                    (setq declared t
+                          assigned t)
+                  (setq used t)))
+               ((js2-namespace-import-node-p parent)
+                (setq assigned t
+                      used nil))
+               (assign-node
+                (setq assigned (memq node
+                                     (js2--collect-target-symbols
+                                      (js2-assign-node-left assign-node)
+                                      nil))
+                      used (not assigned)))))
+
+            (when declared
+              (setq used nil))
+
+            (js2--add-or-update-symbol node assigned used vars)))))))
 
 (defun js2--classify-variables ()
   "Collect and classify variables declared or used within js2-mode-ast.

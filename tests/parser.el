@@ -635,7 +635,7 @@ the test."
       (should name)
       (should (equal "default" (js2-name-node-name name))))))
 
-(js2-deftest parse-namepsace-import "* as lib;"
+(js2-deftest parse-namespace-import "* as lib;"
   (js2-init-scanner)
   (should (js2-match-token js2-MUL))
   (let ((namespace-import (js2-parse-namespace-import)))
@@ -1357,6 +1357,34 @@ the test."
 (js2-deftest-classify-variables destructure-object-missing
   "function foo() { let {foo: missing = 10} = {}; }"
   '("foo@10:U" "missing@28:U"))
+
+(js2-deftest-classify-variables import-unused
+  "import foo from 'module';"
+  '("foo@8:U"))
+
+(js2-deftest-classify-variables named-import-unused
+  "import foo as bar from 'module';"
+  '("bar@15:U"))
+
+(js2-deftest-classify-variables import-unused-many
+  "import {a,b} from 'module';"
+  '("a@9:U" "b@11:U"))
+
+(js2-deftest-classify-variables named-import-unused-many
+  "import {a as b, c as d} from 'module';"
+  '("b@14:U" "d@22:U"))
+
+(js2-deftest-classify-variables import-export
+  "import foo from 'module'; export {foo}"
+  '("foo@8:I" 35))
+
+(js2-deftest-classify-variables import-namespace-unused
+  "import * as foo from 'module';"
+  '("foo@13:U"))
+
+(js2-deftest-classify-variables import-namespace-used
+  "import * as foo from 'module'; function bar() { return foo.x; }"
+  '("foo@13:I" 56 "bar@41:U"))
 
 ;; Side effects
 
