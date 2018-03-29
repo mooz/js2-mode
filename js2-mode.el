@@ -290,7 +290,7 @@ even if this flag is non-nil."
   :type 'boolean
   :group 'js2-mode)
 
-(defcustom js2-strict-trailing-comma-warning t
+(defcustom js2-strict-trailing-comma-warning nil
   "Non-nil to warn about trailing commas in array literals.
 Ecma-262-5.1 allows them, but older versions of IE raise an error."
   :type 'boolean
