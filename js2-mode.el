@@ -12405,6 +12405,8 @@ move backward across N balanced expressions."
     (let (forward-sexp-function
           node (start (point)) pos lp rp child)
       (cond
+       ((js2-string-node-p (js2-node-at-point))
+        (forward-sexp arg))
        ;; backward-sexp
        ;; could probably make this better for some cases:
        ;;  - if in statement block (e.g. function body), go to parent

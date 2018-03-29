@@ -58,3 +58,35 @@
 
 (ert-deftest js2-jump-to-property-object-property ()
   (js2-navigation-helper "aObject.value = {prop:1};aObject.value.prop" 18))
+
+
+;; forward-sexp
+
+(defun js2-test-forward-sexp (pre-point skipped after-sexp)
+  "Test `js2-mode-forward-sexp'.
+The test buffer's contents are set to the concatenation of
+PRE-POINT, SKIPPED, and AFTER-SEXP.  Point is placed after
+PRE-POINT, and `forward-sexp' is called.  Then point should be
+after SKIPPED."
+  (with-temp-buffer
+    (insert pre-point skipped after-sexp)
+    (js2-mode)
+    (goto-char (1+ (length pre-point)))
+    (forward-sexp)
+    (should (= (point) (+ 1 (length pre-point) (length skipped))))))
+
+(ert-deftest js2-forward-sexp-skip-semi ()
+  "Ensure expr-stmt-nodes' semicolons are skipped over."
+  (js2-test-forward-sexp "" "const s = 123;" ""))
+
+(ert-deftest js2-forward-sexp-inside-string ()
+  "Test forward sexp inside a string."
+  (js2-test-forward-sexp "const s = 'some " "(string contents)" " xyz';"))
+
+(ert-deftest js2-backward-sexp-inside-string ()
+  "Test backward sexp inside a string."
+  (with-temp-buffer
+    (insert "const s = 'some (string contents) ")
+    (save-excursion (insert "xyz';"))
+    (backward-sexp)
+    (should (= (point) 17))))
