@@ -853,6 +853,9 @@ Your post-parse callback may of course also use the simpler and
 faster (but perhaps less robust) approach of simply scanning the
 buffer text for your imports, using regular expressions.")
 
+(put 'js2-additional-externs 'safe-local-variable
+     (lambda (val) (cl-every #'stringp val)))
+
 ;; SKIP:  decompiler
 ;; SKIP:  encoded-source
 
