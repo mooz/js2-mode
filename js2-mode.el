@@ -10586,7 +10586,9 @@ array-literals, array comprehensions and regular expressions."
     (setq node (if js2-compiler-xml-available
                    (js2-parse-property-name nil name 0)
                  (js2-create-name-node 'check-activation nil name)))
-    (if js2-highlight-external-variables
+    (if (and js2-highlight-external-variables
+             ;; FIXME: What's TRT for `js2-xml-ref-node'?
+             (js2-name-node-p node))
         (js2-record-name-node node))
     node))
 
