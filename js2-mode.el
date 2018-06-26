@@ -4551,8 +4551,11 @@ If N has no parent pointer, returns N."
 
 (defsubst js2-node-short-name (n)
   "Return the short name of node N as a string, e.g. `js2-if-node'."
-  (substring (symbol-name (aref n 0))
-             (length "cl-struct-")))
+  (let ((name (symbol-name (aref n 0))))
+    (if (string-prefix-p "cl-struct-" name)
+        (substring (symbol-name (aref n 0))
+                   (length "cl-struct-"))
+      name)))
 
 (defun js2-node-child-list (node)
   "Return the child list for NODE, a Lisp list of nodes.
