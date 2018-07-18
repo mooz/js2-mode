@@ -12747,7 +12747,8 @@ it marks the next defun after the ones already marked."
     (push (or (and names (pop names))
               (unless (and (js2-object-prop-node-p parent)
                            (eq node (js2-object-prop-node-left parent)))
-                node)) names)
+                node)
+              (error "Node is not a supported jump node")) names)
     (setq node-init (js2-search-scope node names))
 
     ;; todo: display list of results in buffer
