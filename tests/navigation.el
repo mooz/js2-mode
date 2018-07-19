@@ -74,6 +74,9 @@
    "function aFunction(p1, p2) {return p1+p2}; module.exports = {aFunction:aFunction};"
    67 16 "Node is not a supported jump node"))
 
+(ert-deftest js2-jump-to-function-inside-property-value-syntax ()
+  (js2-navigation-helper "function aFunction(p1, p2) {return p1+p2}; module.exports = {aFunction};" 1 6))
+
 
 ;; forward-sexp
 
