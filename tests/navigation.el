@@ -22,15 +22,20 @@
 (require 'ert)
 (require 'js2-mode)
 
-(cl-defun js2-navigation-helper (buffer-content &optional expected-point (point-offset 1))
+(cl-defun js2-navigation-helper (buffer-content &optional expected-point (point-offset 1) expected-error-msg)
   (with-temp-buffer
     (insert buffer-content)
-    (let ((start-point (or (- (point) point-offset))))
+    (let ((start-point (or (- (point) point-offset)))
+          actual-error-msg)
       (js2-mode)
       (goto-char start-point)
-      (ignore-errors (js2-jump-to-definition))
+      (if expected-error-msg
+          (setq actual-error-msg
+                (cadr (should-error (js2-jump-to-definition) :type 'error)))
+        (js2-jump-to-definition))
       (print (format "%d %d" (point) start-point))
-      (should (= (point) (or expected-point start-point))))))
+      (should (= (point) (or expected-point start-point)))
+      (should (string= actual-error-msg expected-error-msg)))))
 
 (ert-deftest js2-jump-to-var ()
   (js2-navigation-helper "var soup = 2; soup" 5))
@@ -45,7 +50,8 @@
   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; aObject.prop1" 16))
 
 (ert-deftest js2-no-jump-to-object-property ()
-  (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; anotherObject.prop1"))
+  (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; anotherObject.prop1"
+                         61 1 "No jump location found"))
 
 (ert-deftest js2-jump-to-nested-property ()
   (js2-navigation-helper "var aObject = {prop1: {prop2: { prop3: 4}}}; aObject.prop1.prop2.prop3" 33))
@@ -58,6 +64,18 @@
 
 (ert-deftest js2-jump-to-property-object-property ()
   (js2-navigation-helper "aObject.value = {prop:1};aObject.value.prop" 18))
+
+(ert-deftest js2-jump-to-function-definition-inside-object-value ()
+  (js2-navigation-helper
+   "function aFunction(p1, p2) {return p1+p2}; module.exports = {aFunction:aFunction};" 1 6))
+
+(ert-deftest js2-no-jump-to-function-definition-object-property ()
+  (js2-navigation-helper
+   "function aFunction(p1, p2) {return p1+p2}; module.exports = {aFunction:aFunction};"
+   67 16 "Node is not a supported jump node"))
+
+(ert-deftest js2-jump-to-function-inside-property-value-syntax ()
+  (js2-navigation-helper "function aFunction(p1, p2) {return p1+p2}; module.exports = {aFunction};" 1 6))
 
 
 ;; forward-sexp
