@@ -3,7 +3,7 @@ About [![Build Status](https://travis-ci.org/mooz/js2-mode.svg?branch=master)](h
 
 Improved JavaScript editing mode for GNU Emacs ([description here](http://elpa.gnu.org/packages/js2-mode.html)).
 
-For some of the latest changes, see [latest user-visible changes](https://github.com/mooz/js2-mode/wiki/Latest-user-visible-changes).
+For some of the latest changes, see [latest user-visible changes](https://github.com/mooz/js2-mode/blob/master/NEWS.md).
 
 Installation
 ======
