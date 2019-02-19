@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## Next
+## 2019-02-19
 
 * Changed the default of `js2-strict-trailing-comma-warning` to nil.
 
