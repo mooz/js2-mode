@@ -1404,6 +1404,23 @@ function foo([var0, {var1}]) {
 }"
   '("foo@10:U" "var0@15:P" 43 "var1@22:P" 50))
 
+(js2-deftest-classify-variables uninitialized-class
+  "\
+import React from 'react';
+import PropTypes from 'prop-types';
+
+class SomeComponent extends React.Component {
+    render() {
+        return <div></div>;
+    }
+}
+
+SomeComponent.propTypes = {
+};
+
+export default SomeComponent;"
+  '("React@8:I" 93 "PropTypes@35:U" "SomeComponent@71:I" 163 210))
+
 ;; Side effects
 
 (js2-deftest no-side-effects-at-top-level

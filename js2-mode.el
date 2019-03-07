@@ -7284,6 +7284,9 @@ key of a literal object."
                ((js2-namespace-import-node-p parent)
                 (setq assigned t
                       used nil))
+               ((js2-class-node-p parent)
+                (setq declared t
+                      assigned t))
                (assign-node
                 (setq assigned (memq node
                                      (js2--collect-target-symbols
