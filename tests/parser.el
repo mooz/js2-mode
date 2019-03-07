@@ -1386,6 +1386,24 @@ the test."
   "import * as foo from 'module'; function bar() { return foo.x; }"
   '("foo@13:I" 56 "bar@41:U"))
 
+(js2-deftest-classify-variables destructured-function-params-1
+  "\
+function foo({var1}, var0) {
+    const bar = {var1},
+          var2 = {bar},
+          var3 = {var2},
+          var4 = {bar, var1, var2, var3, var4};
+    return({var4});
+}"
+  '("foo@10:U" "var1@15:P" 47 126 "var0@22:P" "bar@40:I" 72 121 "var2@64:I" 96 132 "var3@88:I" 138 "var4@113:I" 144 163))
+
+(js2-deftest-classify-variables destructured-function-params-2
+  "\
+function foo([var0, {var1}]) {
+    return var0 * var1;
+}"
+  '("foo@10:U" "var0@15:P" 43 "var1@22:P" 50))
+
 ;; Side effects
 
 (js2-deftest no-side-effects-at-top-level
