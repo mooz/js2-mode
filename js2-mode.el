@@ -7168,7 +7168,8 @@ key of a literal object."
       ;; ignore later
       (when (and (not declared)
                  (js2-object-prop-node-p parent)
-                 (eq node (js2-object-prop-node-left parent)))
+                 (eq node (js2-object-prop-node-left parent))
+                 (not (eq node (js2-object-prop-node-right parent))))
         (setq object-key t)))
     ;; Maybe this is a for loop and the variable is one of its iterators?
     (unless assigned
@@ -7188,10 +7189,41 @@ key of a literal object."
                                 finally return syms))))))
     (list declared assigned object-key)))
 
+(defun js2--is-param (var-node params)
+  "Recursively determine whether VAR-NODE is contained in PARAMS."
+  (cond ((js2-object-prop-node-p params)
+         (eq var-node (js2-object-prop-node-left params)))
+        ((js2-name-node-p params)
+         (eq var-node params))
+        (t
+         (let ((isparam (if (listp params)
+                            (memq var-node params)
+                          (cl-loop with found = nil
+                                   for p in (js2-node-child-list params)
+                                   while (null found)
+                                   do (setq found (eq var-node p))))))
+           (unless isparam
+             (let ((kids (if (listp params)
+                             params
+                           (js2-node-child-list params))))
+               (cl-loop for p in kids
+                        while (null isparam)
+                        do (setq isparam (js2--is-param var-node p)))))
+           isparam))))
+
+(defun js2--is-function-param (parent var-node)
+  "Determine whether VAR-NODE is a function parameter."
+  (while (and parent (not (js2-function-node-p parent)))
+    (if (or (js2-var-init-node-p parent)
+            (js2-assign-node-p parent))
+        (setq parent nil)
+    (setq parent (js2-node-parent parent))))
+  (when parent
+    (js2--is-param var-node (js2-function-node-params parent))))
+
 (defun js2--classify-variable (parent node vars)
-  "Classify the single variable NODE, a js2-name-node."
-  (let ((function-param (and (js2-function-node-p parent)
-                             (memq node (js2-function-node-params parent)))))
+  "Classify the single variable NODE, a js2-name-node, updating the VARS collection."
+  (let ((function-param (js2--is-function-param parent node)))
     (if (js2-prop-get-node-p parent)
         ;; If we are within a prop-get, e.g. the "bar" in "foo.bar",
         ;; just mark "foo" as used
