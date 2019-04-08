@@ -11750,6 +11750,11 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (when js2-include-jslint-declaration-externs
     (add-hook 'js2-post-parse-callbacks 'js2-apply-jslint-declaration-externs nil t))
 
+  ;; In Emacs >=27, in order to see enabled syntaxes (like “[JSX]”) in the
+  ;; modeline, we need to first call this function.
+  (when (fboundp 'js-use-syntactic-mode-name)
+    (js-use-syntactic-mode-name))
+
   (run-hooks 'js2-init-hook)
 
   (let ((js2-idle-timer-delay 0))
@@ -11768,7 +11773,12 @@ variables (`sgml-basic-offset' et al) locally, like so:
   (defun set-jsx-indentation ()
     (setq-local sgml-basic-offset js2-basic-offset))
   (add-hook \\='js2-jsx-mode-hook #\\='set-jsx-indentation)"
-  (set (make-local-variable 'indent-line-function) #'js2-jsx-indent-line))
+  (if (version< emacs-version "27.0")
+      (set (make-local-variable 'indent-line-function) #'js2-jsx-indent-line)
+    (js-jsx-enable)
+    ;; Use the standard name because a syntactic part will be appended.
+    (setq mode-name "JavaScript-IDE")
+    (js-use-syntactic-mode-name)))
 
 (defun js2-mode-exit ()
   "Exit `js2-mode' and clean up."
