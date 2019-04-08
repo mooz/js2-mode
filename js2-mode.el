@@ -11704,7 +11704,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (message msg))))))
 
 ;;;###autoload
-(define-derived-mode js2-mode js-mode "Javascript-IDE"
+(define-derived-mode js2-mode js-mode "JavaScript-IDE"
   "Major mode for editing JavaScript code."
   (set (make-local-variable 'max-lisp-eval-depth)
        (max max-lisp-eval-depth 3000))
