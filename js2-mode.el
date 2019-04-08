@@ -11705,6 +11705,31 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (goto-char pos)
         (message msg))))))
 
+(eval-and-compile
+  (when (version< emacs-version "27.0")
+    ;; Prevent compilation errors:
+    (defvar js-jsx-syntax nil)
+    (defconst js-jsx--font-lock-keywords nil)
+    (defvar js-jsx--text-properties nil)
+    (defun js-jsx-enable ())
+    (defun js-jsx--syntax-propertize-tag (_end))
+    (defun js-use-syntactic-mode-name ())))
+
+;; In Emacs >=27, this is needed for JSX indentation.
+(defun js2-syntax-propertize (start end)
+  "Apply syntax properties from START to END."
+  (goto-char start)
+  (if js-jsx-syntax (remove-text-properties start end js-jsx--text-properties))
+  (funcall
+   (syntax-propertize-rules
+    ("<" (0 (ignore (if js-jsx-syntax (js-jsx--syntax-propertize-tag end))))))
+   (point) end))
+
+;; In Emacs >=27, this is needed for JSX font-locking.
+(defconst js2--font-lock-keywords
+  `(,@js-jsx--font-lock-keywords)
+  "Font lock keywords for `js2-mode'; see `font-lock-keywords'.")
+
 ;;;###autoload
 (define-derived-mode js2-mode js-mode "JavaScript-IDE"
   "Major mode for editing JavaScript code."
@@ -11712,7 +11737,8 @@ Selecting an error will jump it to the corresponding source-buffer error.
        (max max-lisp-eval-depth 3000))
   (set (make-local-variable 'indent-line-function) #'js2-indent-line)
   (set (make-local-variable 'indent-region-function) #'js2-indent-region)
-  (set (make-local-variable 'syntax-propertize-function) nil)
+  (set (make-local-variable 'syntax-propertize-function)
+       (if (version< emacs-version "27.0") nil #'js2-syntax-propertize))
   (set (make-local-variable 'comment-line-break-function) #'js2-line-break)
   (set (make-local-variable 'beginning-of-defun-function) #'js2-beginning-of-defun)
   (set (make-local-variable 'end-of-defun-function) #'js2-end-of-defun)
@@ -11724,7 +11750,8 @@ Selecting an error will jump it to the corresponding source-buffer error.
   ;; needed for M-x rgrep, among other things
   (put 'js2-mode 'find-tag-default-function #'js2-mode-find-tag)
 
-  (setq font-lock-defaults '(nil t))
+  (setq font-lock-defaults
+        (list (if (version< emacs-version "27.0") nil js2--font-lock-keywords) t))
 
   ;; Experiment:  make reparse-delay longer for longer files.
   (when (cl-plusp js2-dynamic-idle-timer-adjust)
