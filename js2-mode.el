@@ -49,7 +49,7 @@
 ;;
 ;; To install it as your major mode for JavaScript editing:
 
-;;   (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
+;;   (add-to-list 'auto-mode-alist '("\\.jsx?\\'" . js2-mode))
 
 ;; Alternatively, to install it as a minor mode just for JavaScript linting,
 ;; you must add it to the appropriate major-mode hook.  Normally this would be:
@@ -60,8 +60,10 @@
 
 ;;   (add-to-list 'interpreter-mode-alist '("node" . js2-mode))
 
-;; Support for JSX is available via the derived mode `js2-jsx-mode'.  If you
-;; also want JSX support, use that mode instead:
+;; Support for JSX is also available.  In Emacs 27, support for the syntax will
+;; be automatically enabled in buffers using it and in ".jsx" files.  For Emacs
+;; versions prior to 27, support is only available via the derived mode
+;; `js2-jsx-mode'; if you want JSX support in Emacs <27, use that mode instead:
 
 ;;   (add-to-list 'auto-mode-alist '("\\.jsx?\\'" . js2-jsx-mode))
 ;;   (add-to-list 'interpreter-mode-alist '("node" . js2-jsx-mode))
@@ -11761,14 +11763,14 @@ Selecting an error will jump it to the corresponding source-buffer error.
     ;; Schedule parsing for after when the mode hooks run.
     (js2-mode-reset-timer)))
 
-;; We may eventually want js2-jsx-mode to derive from js-jsx-mode, but that'd be
-;; a bit more complicated and it doesn't net us much yet.
 ;;;###autoload
 (define-derived-mode js2-jsx-mode js2-mode "JSX-IDE"
-  "Major mode for editing JSX code.
+  "Major mode for editing JavaScript+JSX code.
 
-To customize the indentation for this mode, set the SGML offset
-variables (`sgml-basic-offset' et al) locally, like so:
+This is like `js-jsx-mode', which see.
+
+In Emacs versions prior to 27, customize indentation by setting
+`sgml-basic-offset' locally, like so:
 
   (defun set-jsx-indentation ()
     (setq-local sgml-basic-offset js2-basic-offset))
