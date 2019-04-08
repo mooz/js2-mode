@@ -11730,6 +11730,15 @@ Selecting an error will jump it to the corresponding source-buffer error.
   `(,@js-jsx--font-lock-keywords)
   "Font lock keywords for `js2-mode'; see `font-lock-keywords'.")
 
+(defun js2-font-lock-syntactic-face-function (state)
+  "Return syntactic face given STATE."
+  ;; This mode parses and colors JS strings using its AST, but it does neither
+  ;; of those things for JSX strings.  Until it does, fontify such strings in
+  ;; the typical `font-lock-syntactic-face-function' manner.
+  (when (and (nth 3 state)
+             (get-text-property (nth 8 state) 'js-jsx-string))
+    font-lock-string-face))
+
 ;;;###autoload
 (define-derived-mode js2-mode js-mode "JavaScript-IDE"
   "Major mode for editing JavaScript code."
@@ -11750,8 +11759,18 @@ Selecting an error will jump it to the corresponding source-buffer error.
   ;; needed for M-x rgrep, among other things
   (put 'js2-mode 'find-tag-default-function #'js2-mode-find-tag)
 
-  (setq font-lock-defaults
-        (list (if (version< emacs-version "27.0") nil js2--font-lock-keywords) t))
+  (if (version< emacs-version "27.0")
+      ;; In the past, we didn’t want to fontify syntactically at all; strings
+      ;; and comments were only ever fontified using the AST.
+      (setq font-lock-defaults (list nil t))
+    ;; JSX fontification in Emacs 27 is provided by syntactic font-locking, so
+    ;; we want to turn that on.  We still only want to fontify JS strings and
+    ;; comments using the AST, but since JSX strings aren’t fontified by the AST
+    ;; yet, we fontify (only) those in `js2-font-lock-syntactic-face-function'.
+    (setq font-lock-defaults
+          (list js2--font-lock-keywords nil nil nil nil
+                '(font-lock-syntactic-face-function
+                  . js2-font-lock-syntactic-face-function))))
 
   ;; Experiment:  make reparse-delay longer for longer files.
   (when (cl-plusp js2-dynamic-idle-timer-adjust)
