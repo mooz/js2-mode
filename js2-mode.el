@@ -11705,15 +11705,14 @@ Selecting an error will jump it to the corresponding source-buffer error.
         (goto-char pos)
         (message msg))))))
 
-(eval-and-compile
-  (when (version< emacs-version "27.0")
-    ;; Prevent compilation errors:
-    (defvar js-jsx-syntax nil)
-    (defconst js-jsx--font-lock-keywords nil)
-    (defvar js-jsx--text-properties nil)
-    (defun js-jsx-enable ())
-    (defun js-jsx--syntax-propertize-tag (_end))
-    (defun js-use-syntactic-mode-name ())))
+;; These are not yet defined in Emacs versions prior to 27;
+;; prevent compiler warnings when using them:
+(defvar js-jsx-syntax)
+(defvar js-jsx--font-lock-keywords)
+(defvar js-jsx--text-properties)
+(declare-function js-jsx-enable "js" ())
+(declare-function js-jsx--syntax-propertize-tag "js" (end))
+(declare-function js-use-syntactic-mode-name "js" ())
 
 ;; In Emacs >=27, this is needed for JSX indentation and highlighting.
 (defun js2-syntax-propertize (start end)
