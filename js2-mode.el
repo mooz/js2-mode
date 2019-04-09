@@ -11718,15 +11718,21 @@ Selecting an error will jump it to the corresponding source-buffer error.
 (defun js2-syntax-propertize (start end)
   "Apply syntax properties from START to END."
   (goto-char start)
-  (if js-jsx-syntax (remove-text-properties start end js-jsx--text-properties))
+  (when (and
+         (boundp 'js-jsx--text-properties)
+         (bound-and-true-p js-jsx-syntax))
+    (remove-text-properties start end js-jsx--text-properties))
   (funcall
    (syntax-propertize-rules
-    ("<" (0 (ignore (if js-jsx-syntax (js-jsx--syntax-propertize-tag end))))))
+    ("<" (0 (ignore (when (and
+                           (fboundp 'js-jsx--syntax-propertize-tag)
+                           (bound-and-true-p js-jsx-syntax))
+                      (js-jsx--syntax-propertize-tag end))))))
    (point) end))
 
 ;; In Emacs >=27, this is needed for JSX highlighting.
 (defconst js2--font-lock-keywords
-  `(,@js-jsx--font-lock-keywords)
+  `(,@(bound-and-true-p js-jsx--font-lock-keywords))
   "Font lock keywords for `js2-mode'; see `font-lock-keywords'.")
 
 (defun js2-font-lock-syntactic-face-function (state)
@@ -11746,7 +11752,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (set (make-local-variable 'indent-line-function) #'js2-indent-line)
   (set (make-local-variable 'indent-region-function) #'js2-indent-region)
   (set (make-local-variable 'syntax-propertize-function)
-       (if (version< emacs-version "27.0") nil #'js2-syntax-propertize))
+       (if (boundp 'js-jsx-syntax) #'js2-syntax-propertize nil))
   (set (make-local-variable 'comment-line-break-function) #'js2-line-break)
   (set (make-local-variable 'beginning-of-defun-function) #'js2-beginning-of-defun)
   (set (make-local-variable 'end-of-defun-function) #'js2-end-of-defun)
@@ -11758,18 +11764,20 @@ Selecting an error will jump it to the corresponding source-buffer error.
   ;; needed for M-x rgrep, among other things
   (put 'js2-mode 'find-tag-default-function #'js2-mode-find-tag)
 
-  (if (version< emacs-version "27.0")
-      ;; In the past, we didn’t want to fontify syntactically at all; strings
-      ;; and comments were only ever fontified using the AST.
-      (setq font-lock-defaults (list nil t))
-    ;; JSX fontification in Emacs 27 is provided by syntactic font-locking, so
-    ;; we want to turn that on.  We still only want to fontify JS strings and
-    ;; comments using the AST, but since JSX strings aren’t fontified by the AST
-    ;; yet, we fontify (only) those in `js2-font-lock-syntactic-face-function'.
-    (setq font-lock-defaults
-          (list js2--font-lock-keywords nil nil nil nil
-                '(font-lock-syntactic-face-function
-                  . js2-font-lock-syntactic-face-function))))
+  (setq font-lock-defaults
+        (if (boundp 'js-jsx-syntax)
+            ;; JSX fontification in Emacs 27 is provided by syntactic
+            ;; font-locking, so we want to turn that on.  We still only want to
+            ;; fontify JS strings and comments using the AST, but since JSX
+            ;; strings aren’t fontified by the AST yet, we fontify (only) those
+            ;; in `js2-font-lock-syntactic-face-function'.
+            (list js2--font-lock-keywords nil nil nil nil
+                  '(font-lock-syntactic-face-function
+                    . js2-font-lock-syntactic-face-function))
+          ;; Unless new Emacs >=27 JSX support is available, we don’t want to
+          ;; fontify syntactically at all; strings and comments are only ever
+          ;; fontified using the AST.
+          (list nil t)))
 
   ;; Experiment:  make reparse-delay longer for longer files.
   (when (cl-plusp js2-dynamic-idle-timer-adjust)
@@ -11820,12 +11828,16 @@ In Emacs versions prior to 27, customize indentation by setting
   (defun set-jsx-indentation ()
     (setq-local sgml-basic-offset js2-basic-offset))
   (add-hook \\='js2-jsx-mode-hook #\\='set-jsx-indentation)"
-  (if (version< emacs-version "27.0")
-      (set (make-local-variable 'indent-line-function) #'js2-jsx-indent-line)
-    (js-jsx-enable)
-    ;; Use the standard name because a syntactic part will be appended.
-    (setq mode-name "JavaScript-IDE")
-    (js-use-syntactic-mode-name)))
+  (if (and (fboundp 'js-jsx-enable)
+           (fboundp 'js-use-syntactic-mode-name))
+      (progn
+        (js-jsx-enable)
+        ;; Use the standard name because a syntactic part will be appended.
+        (setq mode-name "JavaScript-IDE")
+        (js-use-syntactic-mode-name))
+    ;; Unless new Emacs >=27 JSX support is available, the old way to provide
+    ;; JSX support (indentation only) is thus:
+    (set (make-local-variable 'indent-line-function) #'js2-jsx-indent-line)))
 
 (defun js2-mode-exit ()
   "Exit `js2-mode' and clean up."
