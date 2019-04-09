@@ -11715,7 +11715,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
     (defun js-jsx--syntax-propertize-tag (_end))
     (defun js-use-syntactic-mode-name ())))
 
-;; In Emacs >=27, this is needed for JSX indentation.
+;; In Emacs >=27, this is needed for JSX indentation and highlighting.
 (defun js2-syntax-propertize (start end)
   "Apply syntax properties from START to END."
   (goto-char start)
@@ -11725,7 +11725,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
     ("<" (0 (ignore (if js-jsx-syntax (js-jsx--syntax-propertize-tag end))))))
    (point) end))
 
-;; In Emacs >=27, this is needed for JSX font-locking.
+;; In Emacs >=27, this is needed for JSX highlighting.
 (defconst js2--font-lock-keywords
   `(,@js-jsx--font-lock-keywords)
   "Font lock keywords for `js2-mode'; see `font-lock-keywords'.")
