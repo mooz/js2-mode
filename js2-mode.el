@@ -11889,6 +11889,23 @@ Buffer edit spans from BEG to END and is of length LEN."
   (js2-mode-hide-overlay)
   (js2-mode-reset-timer))
 
+(defun js2--restore-jsx-syntax-table ()
+  "Restore important JSX syntax-table text properties.
+Should syntax-table text properties be removed from the buffer en
+masse, ensure that some disambiguations are restored, like the
+non-string nature of quote characters in JSXText."
+  (save-excursion
+    (goto-char (point-min))
+    (let (val)
+      (while
+          (progn
+            (if (setq val (get-text-property (point) 'js-jsx-syntax-table))
+                (put-text-property (point) (1+ (point)) 'syntax-table val)
+              (goto-char (next-single-property-change (point) 'js-jsx-syntax-table nil (point-max)))
+              (when (setq val (get-text-property (point) 'js-jsx-syntax-table))
+                (put-text-property (point) (1+ (point)) 'syntax-table val)))
+            (if (eobp) nil (forward-char) t))))))
+
 (defun js2-reparse (&optional force)
   "Re-parse current buffer after user finishes some data entry.
 If we get any user input while parsing, including cursor motion,
@@ -11917,6 +11934,7 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
                              ;; literals stay ignored by `parse-partial-sexp'
                              (remove-text-properties (point-min) (point-max)
                                                      '(syntax-table))
+                             (js2--restore-jsx-syntax-table)
                              (js2-mode-apply-deferred-properties)
                              (js2-mode-remove-suppressed-warnings)
                              (js2-mode-show-warnings)
