@@ -11801,6 +11801,12 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (when (fboundp 'js-use-syntactic-mode-name)
     (js-use-syntactic-mode-name))
 
+  ;; We remove syntax-table text properties in js2-reparse, but since we
+  ;; actually still do care about the JSX ones, refer to an alternative text
+  ;; property for syntax-table provided by js-mode (which it provides for
+  ;; precisely this purpose).
+  (push '(syntax-table js-jsx-syntax-table) char-property-alias-alist)
+
   (run-hooks 'js2-init-hook)
 
   (let ((js2-idle-timer-delay 0))
@@ -11889,23 +11895,6 @@ Buffer edit spans from BEG to END and is of length LEN."
   (js2-mode-hide-overlay)
   (js2-mode-reset-timer))
 
-(defun js2--restore-jsx-syntax-table ()
-  "Restore important JSX syntax-table text properties.
-Should syntax-table text properties be removed from the buffer en
-masse, ensure that some disambiguations are restored, like the
-non-string nature of quote characters in JSXText."
-  (save-excursion
-    (goto-char (point-min))
-    (let (val)
-      (while
-          (progn
-            (if (setq val (get-text-property (point) 'js-jsx-syntax-table))
-                (put-text-property (point) (1+ (point)) 'syntax-table val)
-              (goto-char (next-single-property-change (point) 'js-jsx-syntax-table nil (point-max)))
-              (when (setq val (get-text-property (point) 'js-jsx-syntax-table))
-                (put-text-property (point) (1+ (point)) 'syntax-table val)))
-            (if (eobp) nil (forward-char) t))))))
-
 (defun js2-reparse (&optional force)
   "Re-parse current buffer after user finishes some data entry.
 If we get any user input while parsing, including cursor motion,
@@ -11934,7 +11923,6 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
                              ;; literals stay ignored by `parse-partial-sexp'
                              (remove-text-properties (point-min) (point-max)
                                                      '(syntax-table))
-                             (js2--restore-jsx-syntax-table)
                              (js2-mode-apply-deferred-properties)
                              (js2-mode-remove-suppressed-warnings)
                              (js2-mode-show-warnings)
