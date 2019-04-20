@@ -1249,6 +1249,9 @@ First match-group is the leading whitespace.")
 (defvar js2-mode-verbose-parse-p js2-mode-dev-mode-p
   "Non-nil to emit status messages during parsing.")
 
+(defvar js2-mode-change-syntax-p t
+  "Non-nil to set the syntax-table text property on certain literals.")
+
 (defvar js2-mode-functions-hidden nil "Private variable.")
 (defvar js2-mode-comments-hidden nil "Private variable.")
 
@@ -6345,8 +6348,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
         flags
         (continue t)
         (token (js2-new-token 0)))
-    (js2-record-text-property start-pos (1+ start-pos)
-                              'syntax-table (string-to-syntax "\"/"))
+    (when js2-mode-change-syntax-p
+      (js2-record-text-property start-pos (1+ start-pos)
+                                'syntax-table (string-to-syntax "\"/")))
     (setq js2-ts-string-buffer nil)
     (if (eq start-tt js2-ASSIGN_DIV)
         ;; mis-scanned /=
@@ -6373,8 +6377,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
             (setq in-class nil)))
           (js2-add-to-string c))))
     (unless err
-      (js2-record-text-property (1- js2-ts-cursor) js2-ts-cursor
-                                'syntax-table (string-to-syntax "\"/"))
+      (when js2-mode-change-syntax-p
+        (js2-record-text-property (1- js2-ts-cursor) js2-ts-cursor
+                                  'syntax-table (string-to-syntax "\"/")))
       (while continue
         (cond
          ((js2-match-char ?g)
@@ -11572,6 +11577,7 @@ highlighting features of `js2-mode'."
   (setq js2-mode-buffer-dirty-p t
         js2-mode-parsing nil)
   (set (make-local-variable 'js2-highlight-level) 0) ; no syntax highlighting
+  (set (make-local-variable 'js2-mode-change-syntax-p) nil)
   (add-hook 'after-change-functions #'js2-minor-mode-edit nil t)
   (add-hook 'change-major-mode-hook #'js2-minor-mode-exit nil t)
   (when js2-include-jslint-globals
@@ -11855,8 +11861,9 @@ buffer will only rebuild its `js2-mode-ast' if the buffer is dirty."
                            (with-silent-modifications
                              ;; if parsing is interrupted, comments and regex
                              ;; literals stay ignored by `parse-partial-sexp'
-                             (remove-text-properties (point-min) (point-max)
-                                                     '(syntax-table))
+                             (when js2-mode-change-syntax-p
+                               (remove-text-properties (point-min) (point-max)
+                                                       '(syntax-table)))
                              (js2-mode-apply-deferred-properties)
                              (js2-mode-remove-suppressed-warnings)
                              (js2-mode-show-warnings)
