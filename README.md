@@ -14,6 +14,26 @@ The stable versions are hosted at [GNU ELPA](http://elpa.gnu.org/)
 You can also install the latest development version from
 [MELPA](https://melpa.org/#/getting-started).
 
+JSX
+===
+
+Full support for highlighting and indenting of JSX is available in Emacs 27.
+Eventually it can be downloaded [here](https://www.gnu.org/software/emacs/);
+until it’s available there, you can install a snapshot of the Emacs master
+branch:
+
+```
+git clone https://git.savannah.gnu.org/git/emacs.git
+cd emacs
+./autogen.sh
+./configure
+make
+make install
+```
+
+Otherwise, in Emacs 26 and earlier, you can use `js2-jsx-mode` for rudimentary
+JSX indentation support (only).
+
 Emacs 22 and 23
 ===============
 
