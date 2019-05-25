@@ -14,6 +14,23 @@ The stable versions are hosted at [GNU ELPA](http://elpa.gnu.org/)
 You can also install the latest development version from
 [MELPA](https://melpa.org/#/getting-started).
 
+React and JSX
+======
+
+The currently recommended solution is to install Emacs 27 (still in
+development, you can build from source or e.g. install a snapshot from
+a [PPA](https://launchpad.net/~ubuntu-elisp/+archive/ubuntu/ppa)) and
+use `js-mode` as the major mode. To make use of the JS2 AST and the
+packages that integrate with it, we recommend `js2-minor-mode`. See
+the corresponding [instructions in the
+Commentary](https://github.com/mooz/js2-mode/blob/ae9fea81cf9ed80f403c161fde4d8aff1ceb3769/js2-mode.el#L57).
+
+`js-mode` in Emacs 27 includes full support for syntax highlighting
+and indenting of JSX syntax.
+
+[rjsx-mode](https://github.com/felipeochoa/rjsx-mode/) is an
+alternative option which comes with certain tradeoffs.
+
 Emacs 22 and 23
 ===============
 
