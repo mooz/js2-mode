@@ -14,6 +14,11 @@ The stable versions are hosted at [GNU ELPA](http://elpa.gnu.org/)
 You can also install the latest development version from
 [MELPA](https://melpa.org/#/getting-started).
 
+Requirements
+======
+
+Emacs 24.1+ and `cl-lib` (either built-in or installed from GNU ELPA).
+
 React and JSX
 ======
 
@@ -30,13 +35,6 @@ and indenting of JSX syntax.
 
 [rjsx-mode](https://github.com/felipeochoa/rjsx-mode/) is an
 alternative option which comes with certain tradeoffs.
-
-Emacs 22 and 23
-===============
-
-This version requires Emacs 24 and `cl-lib` (either built-in or from GNU ELPA above).
-For a backward compatible version, check out the branch
-[emacs23](https://github.com/mooz/js2-mode/tree/emacs23).
 
 Bugs
 ====
