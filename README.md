@@ -23,8 +23,10 @@ React and JSX
 ======
 
 The currently recommended solution is to install Emacs 27 (still in
-development, you can build from source or e.g. install a snapshot from
-a [PPA](https://launchpad.net/~ubuntu-elisp/+archive/ubuntu/ppa)) and
+development, you can [build from
+source](http://git.savannah.gnu.org/cgit/emacs.git/tree/INSTALL.REPO)
+or e.g. install a snapshot from a
+[PPA](https://launchpad.net/~ubuntu-elisp/+archive/ubuntu/ppa)) and
 use `js-mode` as the major mode. To make use of the JS2 AST and the
 packages that integrate with it, we recommend `js2-minor-mode`. See
 the corresponding [instructions in the
