@@ -33,10 +33,23 @@ the corresponding [instructions in the
 Commentary](https://github.com/mooz/js2-mode/blob/ae9fea81cf9ed80f403c161fde4d8aff1ceb3769/js2-mode.el#L57).
 
 `js-mode` in Emacs 27 includes full support for syntax highlighting
-and indenting of JSX syntax.
+and indenting of JSX syntax. Try it out!
 
-[rjsx-mode](https://github.com/felipeochoa/rjsx-mode/) is an
-alternative option which comes with certain tradeoffs.
+Until [#527](https://github.com/mooz/js2-mode/issues/527) is
+addressed, linting is likely to fail after JSX code. If that bothers
+you, you may elect to disable linting:
+
+```lisp
+(setq js2-mode-show-parse-errors nil)
+(setq js2-mode-show-strict-warnings nil)
+```
+
+In lieu of linting,
+[Flycheck](https://www.flycheck.org/)+[ESLint](https://eslint.org/) is
+an alternative.
+
+Emacs 27 aside, [rjsx-mode](https://github.com/felipeochoa/rjsx-mode/)
+is an alternative option which comes with certain tradeoffs.
 
 Bugs
 ====
