@@ -36,8 +36,8 @@ Commentary](https://github.com/mooz/js2-mode/blob/d9bba5b51097e4915a36f652742588
 and indenting of JSX syntax. Try it out!
 
 Until [#527](https://github.com/mooz/js2-mode/issues/527) is
-addressed, linting is likely to fail after JSX code. If that bothers
-you, you may elect to disable linting:
+addressed, linting of JSX code is likely to fail. If that bothers you,
+you may elect to disable linting:
 
 ```lisp
 (setq js2-mode-show-parse-errors nil)
