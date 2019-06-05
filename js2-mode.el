@@ -51,13 +51,13 @@
 
 ;;   (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
 
-;; Alternatively, to install it as a minor mode just for JavaScript linting,
-;; you must add it to the appropriate major-mode hook.  Normally this would be:
+;; Alternatively, you can install it as a minor mode just for JavaScript linting
+;; and/or to use packages that integrate with it.  (Also, in Emacs 27, the new
+;; JSX features added in that release are only accessible within this minor
+;; mode.  Linting of JSX code is also likely to fail.)  To install it as a minor
+;; mode:
 
 ;;   (add-hook 'js-mode-hook 'js2-minor-mode)
-
-;; If you use Emacs 27 and desire JSX support added in that release,
-;; use `js-mode' as your major mode with `js2-minor-mode' enabled.
 
 ;; You may also want to hook it in for shell scripts running via node.js:
 
