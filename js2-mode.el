@@ -60,11 +60,13 @@
 
 ;;   (add-to-list 'interpreter-mode-alist '("node" . js2-mode))
 
-;; Support for JSX is available via the derived mode `js2-jsx-mode'.  If you
-;; also want JSX support, use that mode instead:
+;; Use Emacs 27 and want to write JSX?  Then use `js2-minor-mode' as described
+;; above.  Use Emacs 26 or earlier?  Then use `js2-jsx-mode':
 
 ;;   (add-to-list 'auto-mode-alist '("\\.jsx?\\'" . js2-jsx-mode))
 ;;   (add-to-list 'interpreter-mode-alist '("node" . js2-jsx-mode))
+
+;; Note that linting of JSX code may fail in both modes.
 
 ;; To customize how it works:
 ;;   M-x customize-group RET js2-mode RET
@@ -11762,11 +11764,12 @@ Selecting an error will jump it to the corresponding source-buffer error.
     ;; Schedule parsing for after when the mode hooks run.
     (js2-mode-reset-timer)))
 
-;; We may eventually want js2-jsx-mode to derive from js-jsx-mode, but that'd be
-;; a bit more complicated and it doesn't net us much yet.
 ;;;###autoload
 (define-derived-mode js2-jsx-mode js2-mode "JSX-IDE"
-  "Major mode for editing JSX code.
+  "Major mode for editing JSX code in Emacs 26 and earlier.
+
+To edit JSX code in Emacs 27, use `js-mode' as your major mode
+with `js2-minor-mode' enabled.
 
 To customize the indentation for this mode, set the SGML offset
 variables (`sgml-basic-offset' et al) locally, like so:
@@ -11774,6 +11777,15 @@ variables (`sgml-basic-offset' et al) locally, like so:
   (defun set-jsx-indentation ()
     (setq-local sgml-basic-offset js2-basic-offset))
   (add-hook \\='js2-jsx-mode-hook #\\='set-jsx-indentation)"
+  (unless (version< emacs-version "27.0")
+    ;; Emacs 27 causes a regression in this mode since JSX indentation
+    ;; begins to rely on js-mode’s `syntax-propertize-function', which
+    ;; JS2 is not currently using.
+    ;; https://github.com/mooz/js2-mode/issues/529 should address
+    ;; this.  https://github.com/mooz/js2-mode/issues/530 also has a
+    ;; piece related to the design of `js2-jsx-mode'.  Until these
+    ;; issues are addressed, ward Emacs 27 users away from this mode.
+    (display-warning 'js2-mode "For JSX support, use js-mode with js2-minor-mode"))
   (set (make-local-variable 'indent-line-function) #'js2-jsx-indent-line))
 
 (defun js2-mode-exit ()

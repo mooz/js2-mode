@@ -30,7 +30,7 @@ or e.g. install a snapshot from a
 use `js-mode` as the major mode. To make use of the JS2 AST and the
 packages that integrate with it, we recommend `js2-minor-mode`. See
 the corresponding [instructions in the
-Commentary](https://github.com/mooz/js2-mode/blob/ae9fea81cf9ed80f403c161fde4d8aff1ceb3769/js2-mode.el#L57).
+Commentary](https://github.com/mooz/js2-mode/blob/bb73461c2c7048d811b38e6b533a30fb5fdcea93/js2-mode.el#L57).
 
 `js-mode` in Emacs 27 includes full support for syntax highlighting
 and indenting of JSX syntax.

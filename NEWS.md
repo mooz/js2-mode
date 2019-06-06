@@ -1,5 +1,13 @@
 # History of user-visible changes
 
+## Next
+
+* Emacs 27 now provides improved JSX indentation support, along with
+  new JSX highlighting and detection support. Install Emacs 27 and use
+  `js-mode` with `js2-minor-mode` (see README), rather than
+  `js2-jsx-mode`.
+* Using `js2-jsx-mode` will now trigger a warning in Emacs 27.
+
 ## 2019-02-19
 
 * Changed the default of `js2-strict-trailing-comma-warning` to nil.
