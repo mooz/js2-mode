@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## 2019-06-03
+## Next
 
 * Emacs 27 now provides improved JSX indentation support, along with
   new JSX highlighting and detection support. Install Emacs 27 and use
