@@ -635,7 +635,8 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-AWAIT 169)  ; await (pseudo keyword)
 
 (defvar js2-HOOK 170)          ; conditional (?:)
-(defvar js2-EXPON 171)
+(defvar js2-OPTIONAL-CHAINING 171) ; optional chaining (?.prop obj?.[expr] func?.())
+(defvar js2-EXPON 172)
 
 (defconst js2-num-tokens (1+ js2-EXPON))
 
@@ -1655,6 +1656,9 @@ the correct number of ARGS must be provided."
 
 (js2-msg "msg.no.colon.cond"
          "missing : in conditional expression")
+
+(js2-msg "msg.bad.optional.chaining"
+         "missing property name or [ or ( after optional chaining operator")
 
 (js2-msg "msg.no.paren.arg"
          "missing ) after argument list")
@@ -6074,7 +6078,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
                           (?,
                            (throw 'return js2-COMMA))
                           (??
-                           (throw 'return js2-HOOK))
+                           (if (js2-match-char ?.)
+                               (throw 'return js2-OPTIONAL-CHAINING)
+                             (throw 'return js2-HOOK)))
                           (?:
                            (if (js2-match-char ?:)
                                js2-COLONCOLON
@@ -10276,6 +10282,24 @@ Returns the list in reverse order.  Consumes the right-paren token."
         (setf (js2-node-len pn) (- end beg)))  ; end outer if
     (js2-parse-member-expr-tail allow-call-syntax pn)))
 
+(defun js2-parse-optional-chaining-operator (allow-call-syntax pn)
+  (let ((tt (js2-peek-token)))
+    (cond
+     ((eq tt js2-NAME)
+      (setq pn (js2-parse-property-access js2-DOT pn)))
+     ((eq tt js2-LB)
+      ;; skip left bracket token
+      (js2-get-token)
+      (setq pn (js2-parse-element-get pn)))
+     ((and (eq tt js2-LP) allow-call-syntax)
+      ;; unget optional chaining operator
+      ;; so current token is function name and could be highlighted
+      (js2-unget-token)
+      (setq pn (js2-parse-function-call pn t)))
+     (t
+      (js2-report-error "msg.bad.optional.chaining")))
+    pn))
+
 (defun js2-parse-member-expr-tail (allow-call-syntax pn)
   "Parse a chain of property/array accesses or function calls.
 Includes parsing for E4X operators like `..' and `.@'.
@@ -10288,6 +10312,9 @@ Returns an expression tree that includes PN, the parent node."
       (cond
        ((or (= tt js2-DOT) (= tt js2-DOTDOT))
         (setq pn (js2-parse-property-access tt pn)))
+       ((= tt js2-OPTIONAL-CHAINING)
+        (setq pn (js2-parse-optional-chaining-operator allow-call-syntax pn))
+        (unless pn (setq continue nil)))
        ((= tt js2-DOTQUERY)
         (setq pn (js2-parse-dot-query pn)))
        ((= tt js2-LB)
@@ -10365,11 +10392,14 @@ Last token parsed must be `js2-RB'."
   (when (eq (js2-token-type token) js2-NAME)
     (js2-record-face 'js2-function-call token)))
 
-(defun js2-parse-function-call (pn)
+(defun js2-parse-function-call (pn &optional use-optional-chaining-p)
   (js2-highlight-function-call (js2-current-token))
   (js2-get-token)
   (let (args
         (pos (js2-node-pos pn)))
+    (when use-optional-chaining-p
+      ;; skip optional chaining operator
+      (js2-get-token))
     (setq pn (make-js2-call-node :pos pos
                                  :target pn
                                  :lp (- (js2-current-token-beg) pos)))
