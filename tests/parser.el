@@ -990,6 +990,27 @@ the test."
 (js2-deftest-parse exponentiation-prohibits-unary-op
   "var a = -b ** c" :syntax-error "-b")
 
+(js2-deftest optional-chaining-operator-on-property-access
+  "var a = {}; a?.b;"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-name-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "b"))))
+
+(js2-deftest optional-chaining-operator-on-get-element
+  "var a = []; a?.[99];"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-number-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "99"))))
+
+(js2-deftest optional-chaining-operator-on-functioncall
+  "var a = function(b){}; a?.(99);"
+  (js2-mode--and-parse)
+  (let ((node (js2-find-node js2-mode-ast 'js2-number-node-p)))
+    (should node)
+    (should (string= (js2-node-text node) "99"))))
+
 (js2-deftest unary-void-node-start
   "var c = void 0"
   (js2-mode--and-parse)
