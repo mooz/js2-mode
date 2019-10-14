@@ -216,7 +216,7 @@ are enabled, these will also be included.")
 
 (defvar js2-harmony-externs
   (mapcar 'symbol-name
-          '(Map Promise Proxy Reflect Set Symbol WeakMap WeakSet))
+          '(BigInt Map Promise Proxy Reflect Set Symbol WeakMap WeakSet))
   "ES6 externs.  If `js2-include-browser-externs' is enabled and
 `js2-language-version' is sufficiently high, these will be included.")
 
@@ -6047,6 +6047,10 @@ its relevant fields and puts it into `js2-ti-tokens'."
                         (js2-add-to-string c)
                         (setq c (js2-get-char))
                         while (js2-digit-p c))))
+           ;; BigInt constant (1234n or 1234N)
+           (when (and (memq c '(?n ?N))
+                      (>= js2-language-version 200))
+             (setq c (js2-get-char)))
            (js2-unget-char)
            (let ((str (js2-set-string-from-buffer token)))
              (setf (js2-token-number token) (js2-string-to-number str base)

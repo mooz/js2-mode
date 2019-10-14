@@ -1,5 +1,8 @@
 # History of user-visible changes
 
+## 2019-10-14
+* Added support for BigInt and 1234n or 1234N constants.
+
 ## Next
 
 * Emacs 27 now provides improved JSX indentation support, along with
