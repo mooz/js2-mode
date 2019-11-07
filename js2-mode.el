@@ -229,6 +229,13 @@ Possible values are the keys of `js2-message-table'."
   :group 'js2-mode
   :type '(repeat string))
 
+(defcustom js2-ignored-errors nil
+  "A list of error message types that will not be reported.
+
+Possible values are the keys of `js2-message-table'."
+  :group 'js2-mode
+  :type '(repeat string))
+
 (defcustom js2-highlight-level 2
   "Amount of syntax highlighting to perform.
 0 or a negative value means none.
@@ -8194,14 +8201,15 @@ Scanner should be initialized."
     (setq js2-mode-ast root)  ; Make sure this is available for callbacks.
     ;; Give extensions a chance to muck with things before highlighting starts.
     (let ((js2-additional-externs js2-additional-externs))
-      (js2-filter-parsed-warnings)
+      (js2-filter-parsed-warnings-and-errors)
       (save-excursion
         (run-hooks 'js2-post-parse-callbacks))
       (js2-highlight-undeclared-vars))
     root))
 
-(defun js2-filter-parsed-warnings ()
-  "Remove `js2-parsed-warnings' elements that match `js2-ignored-warnings'."
+(defun js2-filter-parsed-warnings-and-errors ()
+  "Remove `js2-parsed-warnings'  elements that match `js2-ignored-warnings'
+and `js2-parsed-errors' elements that match `js2-ignored-errors'."
   (when js2-ignored-warnings
     (setq js2-parsed-warnings
           (cl-remove-if
@@ -8209,7 +8217,13 @@ Scanner should be initialized."
              (let ((msg (caar warning)))
                (member msg js2-ignored-warnings)))
            js2-parsed-warnings)))
-  js2-parsed-warnings)
+  (when js2-ignored-errors
+    (setq js2-parsed-errors
+          (cl-remove-if
+           (lambda (err)
+             (let ((msg (caar err)))
+               (member msg js2-ignored-errors)))
+           js2-parsed-errors))))
 
 (defun js2-parse-function-closure-body (fn-node)
   "Parse a JavaScript 1.8 function closure body."
