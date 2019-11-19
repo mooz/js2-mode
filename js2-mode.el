@@ -5587,7 +5587,7 @@ Returns nil and consumes nothing if TEST is not the next character."
   "Is C a valid start to an ES5 Identifier?
 See http://es5.github.io/#x7.6"
   (or
-   (memq c '(?$ ?_))
+   (memq c '(?$ ?_ ?#))
    (memq (get-char-code-property c 'general-category)
          ;; Letters
          '(Lu Ll Lt Lm Lo Nl))))

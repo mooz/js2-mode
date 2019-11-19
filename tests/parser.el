@@ -161,6 +161,9 @@ the test."
 (js2-deftest-parse parse-property-access-when-not-keyword
   "A.foo = 3;")
 
+(js2-deftest-parse parse-property-access-when-not-keyword
+  "A.#foo = 3;")
+
 (js2-deftest-parse parse-property-access-when-keyword
   "A.in = 3;"
   :bind ((js2-allow-keywords-as-property-names t)))
@@ -975,6 +978,10 @@ the test."
 (js2-deftest-parse parse-class-public-field-with-init
   "class C {\n  x = 42;\n  y = 24;\n  \"z\" = 1\n  456 = 789\n}"
   :reference "class C {\n  x = 42\n  y = 24\n  \"z\" = 1\n  456 = 789\n}")
+
+(js2-deftest-parse parse-class-private-field-with-init
+  "class C {\n  #x = 42;\n  #y = 24;\n}"
+  :reference "class C {\n  #x = 42\n  #y = 24\n}")
 
 (js2-deftest-parse parse-class-public-field-no-init
   "class C {\n  x\n  y\n  \"z\"\n  456\n}")
