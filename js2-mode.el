@@ -10887,7 +10887,7 @@ If ONLY-OF-P is non-nil, only the 'for (foo of bar)' form is allowed."
         (_ (js2-must-match-name "msg.unnamed.class.stmt"))
         (name (js2-create-name-node t)))
     (js2-set-face (js2-node-pos name) (js2-node-end name)
-                  'font-lock-function-name-face 'record)
+                  'font-lock-type-face 'record)
     (let ((node (js2-parse-class pos 'CLASS_STATEMENT name)))
       (js2-record-imenu-functions node name)
       (js2-define-symbol js2-FUNCTION
