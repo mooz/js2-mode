@@ -10960,6 +10960,14 @@ expression)."
         elem-key-string previous-elem-key-string
         after-comma previous-token)
     (while continue
+      ;; Clear out any lookahead tokens (possibly wrong modifier).
+      ;; FIXME: Deal with this problem in a more systematic fashion.
+      ;; Perhaps by making this modifier affect not how the token
+      ;; struct is constructed, but when js2-get-token returns based
+      ;; on it.
+      (when (> js2-ti-lookahead 0)
+        (setq js2-ti-lookahead 0)
+        (setq js2-ts-cursor (js2-current-token-end)))
       (setq tt (js2-get-prop-name-token)
             static nil
             elem nil

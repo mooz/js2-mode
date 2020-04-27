@@ -982,6 +982,9 @@ the test."
 (js2-deftest-parse parse-class-public-field-computed
   "class C {\n  [a + b] = c\n}")
 
+(js2-deftest-parse parse-class-static-fields-no-semi
+  "class C {\n  static a\n  static b = 42\n}")
+
 ;;; Operators
 
 (js2-deftest-parse exponentiation
