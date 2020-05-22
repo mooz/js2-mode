@@ -39,11 +39,14 @@
 
 (cl-defmacro js2-deftest-indent (name content &key bind keep-indent)
   `(ert-deftest ,(intern (format "js2-%s" name)) ()
-     (let ,(append '(indent-tabs-mode
-                     (js2-basic-offset 2)
-                     (js2-pretty-multiline-declarations t)
-                     (inhibit-point-motion-hooks t))
-                   bind)
+     ;; We use ‘let*’ instead of ‘let’ in case a binding in BIND overwrites one
+     ;; of the outer bindings.  See the note about duplicate bindings in the
+     ;; Info node ‘(elisp) Local Variables’.
+     (let* ,(append '(indent-tabs-mode
+                      (js2-basic-offset 2)
+                      (js2-pretty-multiline-declarations t)
+                      (inhibit-point-motion-hooks t))
+                    bind)
        (js2-test-indent ,content ,keep-indent))))
 
 (put 'js2-deftest-indent 'lisp-indent-function 'defun)
