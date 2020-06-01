@@ -1,4 +1,4 @@
-;;; js2-old-indent.el --- Indentation code kept for compatibility
+;;; js2-old-indent.el --- Indentation code kept for compatibility  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  Free Software Foundation, Inc.
 

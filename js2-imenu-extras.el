@@ -1,4 +1,4 @@
-;;; js2-imenu-extras.el --- Imenu support for additional constructs
+;;; js2-imenu-extras.el --- Imenu support for additional constructs  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2012-2014  Free Software Foundation, Inc.
 

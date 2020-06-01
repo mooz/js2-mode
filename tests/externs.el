@@ -1,4 +1,4 @@
-;;; tests/externs.el --- Some tests for js2-mode.
+;;; tests/externs.el --- Some tests for js2-mode.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2009, 2011-2014, 2016  Free Software Foundation, Inc.
 
