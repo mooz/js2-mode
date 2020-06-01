@@ -1,4 +1,4 @@
-;;; tests/consume.el --- Some tests for js2-mode.
+;;; tests/consume.el --- Some tests for js2-mode.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2016  Free Software Foundation, Inc.
 
