@@ -169,10 +169,12 @@
             atob btoa clearInterval clearTimeout
             createImageBitmap fetch queueMicrotask setInterval
             setTimeout
-            
+
             ;; from jslint "browser"
-            Audio document event history Image location name
-            navigator Option screen XMLHttpRequest
+            history location
+
+            ;; HTML element constructors
+            Audio Image Option
 
             ;; W3C CSS
             CSSCharsetRule CSSFontFace CSSFontFaceRule
