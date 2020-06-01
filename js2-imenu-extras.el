@@ -297,7 +297,6 @@ NODE must be `js2-object-prop-node'."
       (unless (and js2-imenu-function-map
                    (gethash fn-node js2-imenu-function-map))
         (let ((key-node (js2-object-prop-node-left node))
-              (parent-prop-node (js2-imenu-parent-prop-node node))
               chain)
           (setq chain (nconc (js2-imenu-parent-key-names node)
                              (list (js2-prop-node-name key-node))))
