@@ -480,7 +480,7 @@ indentation is aligned to that column."
         (+ 1 (current-column))
       0)))
 
-(defun js2-indent-line (&optional bounce-backwards)
+(defun js2-indent-line (&optional _bounce-backwards)
   "Indent the current line as JavaScript source text."
   (interactive)
   (let (parse-status offset
