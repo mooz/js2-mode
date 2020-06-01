@@ -161,6 +161,15 @@
             window alert confirm document java navigator prompt screen
             self top requestAnimationFrame cancelAnimationFrame
 
+            ;; Window or WorkerGlobalScope with support in Chromium and Firefox:
+            ;; https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope
+            ;; properties
+            caches indexedDB isSecureContext origin
+            ;; methods
+            atob btoa clearInterval clearTimeout
+            createImageBitmap fetch queueMicrotask setInterval
+            setTimeout
+
             ;; W3C CSS
             CSSCharsetRule CSSFontFace CSSFontFaceRule
             CSSImportRule CSSMediaRule CSSPageRule
