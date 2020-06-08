@@ -162,20 +162,17 @@ the test."
   "A.foo = 3;")
 
 (js2-deftest-parse parse-property-access-when-keyword
-  "A.in = 3;"
-  :bind ((js2-allow-keywords-as-property-names t)))
+  "A.in = 3;")
 
 (js2-deftest-parse parse-property-access-when-keyword-no-xml
   "A.in = 3;"
-  :bind ((js2-allow-keywords-as-property-names t)
-         (js2-compiler-xml-available nil)))
+  :bind ((js2-compiler-xml-available nil)))
 
 (js2-deftest-parse parse-object-literal-when-not-keyword
   "a = {b: 1};")
 
 (js2-deftest-parse parse-object-literal-when-keyword
-  "a = {in: 1};"
-  :bind ((js2-allow-keywords-as-property-names t)))
+  "a = {in: 1};")
 
 ;;; 'of' contextual keyword
 
@@ -1112,7 +1109,7 @@ the test."
 
 (defun js2-test-scope-of-nth-variable-satisifies-predicate (variable nth predicate)
   (goto-char (point-min))
-  (dotimes (n (1+ nth)) (search-forward variable))
+  (dotimes (_ (1+ nth)) (search-forward variable))
   (forward-char -1)
   (let ((scope (js2-node-get-enclosing-scope (js2-node-at-point))))
     (should (funcall predicate (js2-get-defining-scope scope variable)))))
