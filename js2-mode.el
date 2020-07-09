@@ -652,6 +652,7 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-HOOK 170)          ; conditional (?:)
 (defvar js2-OPTIONAL-CHAINING 171) ; optional chaining (?.prop obj?.[expr] func?.())
 (defvar js2-EXPON 172)
+(defvar js2-NULLISH-COALESCING 173) ; nullish coalescing (obj.value ?? obj.defaultValue ?? 0))
 
 (defconst js2-num-tokens (1+ js2-EXPON))
 
@@ -3482,6 +3483,7 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-COLON ":")
                (cons js2-OR "||")
                (cons js2-AND "&&")
+               (cons js2-NULLISH-COALESCING "??")
                (cons js2-INC "++")
                (cons js2-DEC "--")
                (cons js2-BITOR "|")
@@ -5134,7 +5136,8 @@ You should use `js2-print-tree' instead of this function."
        ((= tt js2-COMMA)
         (js2-node-has-side-effects (js2-infix-node-right node)))
        ((or (= tt js2-AND)
-            (= tt js2-OR))
+            (= tt js2-OR)
+            (= tt js2-NULLISH-COALESCING)
         (or (js2-node-has-side-effects (js2-infix-node-right node))
             (js2-node-has-side-effects (js2-infix-node-left node))))
        ((= tt js2-HOOK)
@@ -6095,7 +6098,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
                           (??
                            (if (js2-match-char ?.)
                                (throw 'return js2-OPTIONAL-CHAINING)
-                             (throw 'return js2-HOOK)))
+                             (if (js2-match-char ??)
+                                 (throw 'return js2-NULLISH-COALESCING)
+                               (throw 'return js2-HOOK))))
                           (?:
                            (if (js2-match-char ?:)
                                js2-COLONCOLON
