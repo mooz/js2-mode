@@ -995,6 +995,22 @@ the test."
 (js2-deftest-parse exponentiation-prohibits-unary-op
   "var a = -b ** c" :syntax-error "-b")
 
+;; nullish coalescing, via https://github.com/tc39/proposal-nullish-coalescing
+(js2-deftest-parse nullish-coalescing-operator-null-variable
+  "var a = null; a ?? 1;")
+
+(js2-deftest-parse nullish-coalescing-operator-inexisting-field
+  "var a = {}; a.nonexistant ?? 1;")
+
+(js2-deftest-parse nullish-coalescing-operator-null-value
+  "var b = 1; null ?? b;")
+
+(js2-deftest-parse nullish-coalescing-operator-in-if
+  "if (null ?? b) {
+    return null;
+}")
+
+
 (js2-deftest optional-chaining-operator-on-property-access
   "var a = {}; a?.b;"
   (js2-mode--and-parse)
@@ -1015,21 +1031,6 @@ the test."
   (let ((node (js2-find-node js2-mode-ast 'js2-number-node-p)))
     (should node)
     (should (string= (js2-node-text node) "99"))))
-
-;; nullish coalescing, via https://github.com/tc39/proposal-nullish-coalescing
-(js2-deftest nullish-coalescing-operator-null-variable
-  "var a = null; a ?? b;"
-  (js2-mode--and-parse)
-  (let ((node (js2-find-node js2-mode-ast 'js2-name-node-p)))
-    (should node)
-    (should (string= (js2-node-text node) "b"))))
-
-(js2-deftest nullish-coalescing-operator-null-value
-  "null ?? b;"
-  (js2-mode--and-parse)
-  (let ((node (js2-find-node js2-mode-ast 'js2-name-node-p)))
-    (should node)
-    (should (string= (js2-node-text node) "b"))))
 
 (js2-deftest unary-void-node-start
   "var c = void 0"
