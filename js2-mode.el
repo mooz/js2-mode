@@ -654,7 +654,7 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-EXPON 172)
 (defvar js2-NULLISH-COALESCING 173) ; nullish coalescing (obj.value ?? obj.defaultValue ?? 0))
 
-(defconst js2-num-tokens (1+ js2-EXPON))
+(defconst js2-num-tokens (1+ js2-NULLISH-COALESCING))
 
 (defconst js2-debug-print-trees nil)
 
@@ -5137,7 +5137,7 @@ You should use `js2-print-tree' instead of this function."
         (js2-node-has-side-effects (js2-infix-node-right node)))
        ((or (= tt js2-AND)
             (= tt js2-OR)
-            (= tt js2-NULLISH-COALESCING)
+            (= tt js2-NULLISH-COALESCING))
         (or (js2-node-has-side-effects (js2-infix-node-right node))
             (js2-node-has-side-effects (js2-infix-node-left node))))
        ((= tt js2-HOOK)
