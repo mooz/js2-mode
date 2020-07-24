@@ -997,18 +997,19 @@ the test."
 
 ;; nullish coalescing, via https://github.com/tc39/proposal-nullish-coalescing
 (js2-deftest-parse nullish-coalescing-operator-null-variable
-  "var a = null; a ?? 1;")
+  "var a = null;\na ?? 1;")
 
 (js2-deftest-parse nullish-coalescing-operator-inexisting-field
-  "var a = {}; a.nonexistant ?? 1;")
+  "var a = {};\na.nonexistant ?? 1;")
 
 (js2-deftest-parse nullish-coalescing-operator-null-value
-  "var b = 1; null ?? b;")
+  "var b = 1;\nnull ?? b;")
 
 (js2-deftest-parse nullish-coalescing-operator-in-if
-  "if (null ?? b) {
-    return null;
-}")
+  "if (null ?? true) {\n  a = 2;\n}")
+
+(js2-deftest-parse nullish-coalescing-operator-in-ternary
+  "var c = null ?? true ? 1 : 2;")
 
 
 (js2-deftest optional-chaining-operator-on-property-access
