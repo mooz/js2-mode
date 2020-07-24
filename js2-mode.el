@@ -10029,8 +10029,8 @@ FIXME: The latter option is unused?"
     (when (js2-match-token js2-NULLISH-COALESCING)
       (setq pn (js2-make-binary js2-NULLISH-COALESCING
                                 pn
-                                'js2-parse-nullish-coalescing-expr))
-      pn)))
+                                'js2-parse-nullish-coalescing-expr)))
+    pn))
 
 (defconst js2-parse-eq-ops
   (list js2-EQ js2-NE js2-SHEQ js2-SHNE))
