@@ -2,6 +2,7 @@
 
 ## Next
 
+* Support for the nullish coalescing operator ([#561](https://github.com/mooz/js2-mode/pull/561)).
 * Emacs 27 now provides improved JSX indentation support, along with
   new JSX highlighting and detection support. Install Emacs 27 and use
   `js-mode` with `js2-minor-mode` (see README), rather than
