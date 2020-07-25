@@ -9938,7 +9938,7 @@ If NODE is non-nil, it is the AST node associated with the symbol."
 
 (defun js2-parse-cond-expr ()
   (let ((pos (js2-current-token-beg))
-        (pn (js2-parse-or-expr))
+        (pn (js2-parse-nullish-coalescing-expr))
         test-expr
         if-true
         if-false
@@ -10016,7 +10016,7 @@ FIXME: The latter option is unused?"
     pn))
 
 (defun js2-parse-bit-and-expr ()
-  (let ((pn (js2-parse-nullish-coalescing-expr)))
+  (let ((pn (js2-parse-eq-expr)))
     (while (js2-match-token js2-BITAND)
       (setq pn (js2-make-binary js2-BITAND
                                 pn
@@ -10025,7 +10025,7 @@ FIXME: The latter option is unused?"
 
 
 (defun js2-parse-nullish-coalescing-expr ()
-  (let ((pn (js2-parse-eq-expr)))
+  (let ((pn (js2-parse-or-expr)))
     (when (js2-match-token js2-NULLISH-COALESCING)
       (setq pn (js2-make-binary js2-NULLISH-COALESCING
                                 pn
