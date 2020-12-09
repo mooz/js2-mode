@@ -564,95 +564,98 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-ASSIGN_MUL 98)     ; *=
 (defvar js2-ASSIGN_DIV 99)     ; /=
 (defvar js2-ASSIGN_MOD 100)    ; %=
-(defvar js2-ASSIGN_EXPON 101)
+(defvar js2-ASSIGN_EXPON 101)  ; **=
+(defvar js2-ASSIGN_AND 102)    ; &&=
+(defvar js2-ASSIGN_OR 103)     ; ||=
+(defvar js2-ASSIGN_NULLISH 104) ; ??=
 
 (defvar js2-first-assign js2-ASSIGN)
-(defvar js2-last-assign js2-ASSIGN_EXPON)
+(defvar js2-last-assign js2-ASSIGN_NULLISH)
 
-(defvar js2-COLON 102)
-(defvar js2-OR 103)            ; logical or (||)
-(defvar js2-AND 104)           ; logical and (&&)
-(defvar js2-INC 105)           ; increment/decrement (++ --)
-(defvar js2-DEC 106)
-(defvar js2-DOT 107)           ; member operator (.)
-(defvar js2-FUNCTION 108)      ; function keyword
-(defvar js2-EXPORT 109)        ; export keyword
-(defvar js2-IMPORT 110)        ; import keyword
-(defvar js2-IF 111)            ; if keyword
-(defvar js2-ELSE 112)          ; else keyword
-(defvar js2-SWITCH 113)        ; switch keyword
-(defvar js2-CASE 114)          ; case keyword
-(defvar js2-DEFAULT 115)       ; default keyword
-(defvar js2-WHILE 116)         ; while keyword
-(defvar js2-DO 117)            ; do keyword
-(defvar js2-FOR 118)           ; for keyword
-(defvar js2-BREAK 119)         ; break keyword
-(defvar js2-CONTINUE 120)      ; continue keyword
-(defvar js2-VAR 121)           ; var keyword
-(defvar js2-WITH 122)          ; with keyword
-(defvar js2-CATCH 123)         ; catch keyword
-(defvar js2-FINALLY 124)       ; finally keyword
-(defvar js2-VOID 125)          ; void keyword
-(defvar js2-RESERVED 126)      ; reserved keywords
+(defvar js2-COLON 105)
+(defvar js2-OR 106)            ; logical or (||)
+(defvar js2-AND 107)           ; logical and (&&)
+(defvar js2-INC 108)           ; increment/decrement (++ --)
+(defvar js2-DEC 109)
+(defvar js2-DOT 110)           ; member operator (.)
+(defvar js2-FUNCTION 111)      ; function keyword
+(defvar js2-EXPORT 112)        ; export keyword
+(defvar js2-IMPORT 113)        ; import keyword
+(defvar js2-IF 114)            ; if keyword
+(defvar js2-ELSE 115)          ; else keyword
+(defvar js2-SWITCH 116)        ; switch keyword
+(defvar js2-CASE 117)          ; case keyword
+(defvar js2-DEFAULT 118)       ; default keyword
+(defvar js2-WHILE 119)         ; while keyword
+(defvar js2-DO 120)            ; do keyword
+(defvar js2-FOR 121)           ; for keyword
+(defvar js2-BREAK 122)         ; break keyword
+(defvar js2-CONTINUE 123)      ; continue keyword
+(defvar js2-VAR 124)           ; var keyword
+(defvar js2-WITH 125)          ; with keyword
+(defvar js2-CATCH 126)         ; catch keyword
+(defvar js2-FINALLY 127)       ; finally keyword
+(defvar js2-VOID 128)          ; void keyword
+(defvar js2-RESERVED 129)      ; reserved keywords
 
-(defvar js2-EMPTY 127)
+(defvar js2-EMPTY 130)
 
 ;; Types used for the parse tree - never returned by scanner.
 
-(defvar js2-BLOCK 128)         ; statement block
-(defvar js2-LABEL 129)         ; label
-(defvar js2-TARGET 130)
-(defvar js2-LOOP 131)
-(defvar js2-EXPR_VOID 132)     ; expression statement in functions
-(defvar js2-EXPR_RESULT 133)   ; expression statement in scripts
-(defvar js2-JSR 134)
-(defvar js2-SCRIPT 135)        ; top-level node for entire script
-(defvar js2-TYPEOFNAME 136)    ; for typeof(simple-name)
-(defvar js2-USE_STACK 137)
-(defvar js2-SETPROP_OP 138)    ; x.y op= something
-(defvar js2-SETELEM_OP 139)    ; x[y] op= something
-(defvar js2-LOCAL_BLOCK 140)
-(defvar js2-SET_REF_OP 141)    ; *reference op= something
+(defvar js2-BLOCK 131)         ; statement block
+(defvar js2-LABEL 132)         ; label
+(defvar js2-TARGET 133)
+(defvar js2-LOOP 134)
+(defvar js2-EXPR_VOID 135)     ; expression statement in functions
+(defvar js2-EXPR_RESULT 136)   ; expression statement in scripts
+(defvar js2-JSR 137)
+(defvar js2-SCRIPT 138)        ; top-level node for entire script
+(defvar js2-TYPEOFNAME 139)    ; for typeof(simple-name)
+(defvar js2-USE_STACK 140)
+(defvar js2-SETPROP_OP 141)    ; x.y op= something
+(defvar js2-SETELEM_OP 142)    ; x[y] op= something
+(defvar js2-LOCAL_BLOCK 143)
+(defvar js2-SET_REF_OP 144)    ; *reference op= something
 
 ;; For XML support:
-(defvar js2-DOTDOT 142)        ; member operator (..)
-(defvar js2-COLONCOLON 143)    ; namespace::name
-(defvar js2-XML 144)           ; XML type
-(defvar js2-DOTQUERY 145)      ; .() -- e.g., x.emps.emp.(name == "terry")
-(defvar js2-XMLATTR 146)       ; @
-(defvar js2-XMLEND 147)
+(defvar js2-DOTDOT 145)        ; member operator (..)
+(defvar js2-COLONCOLON 146)    ; namespace::name
+(defvar js2-XML 147)           ; XML type
+(defvar js2-DOTQUERY 148)      ; .() -- e.g., x.emps.emp.(name == "terry")
+(defvar js2-XMLATTR 149)       ; @
+(defvar js2-XMLEND 150)
 
 ;; Optimizer-only tokens
-(defvar js2-TO_OBJECT 148)
-(defvar js2-TO_DOUBLE 149)
+(defvar js2-TO_OBJECT 151)
+(defvar js2-TO_DOUBLE 152)
 
-(defvar js2-GET 150)           ; JS 1.5 get pseudo keyword
-(defvar js2-SET 151)           ; JS 1.5 set pseudo keyword
-(defvar js2-LET 152)           ; JS 1.7 let pseudo keyword
-(defvar js2-CONST 153)
-(defvar js2-SETCONST 154)
-(defvar js2-SETCONSTVAR 155)
-(defvar js2-ARRAYCOMP 156)
-(defvar js2-LETEXPR 157)
-(defvar js2-WITHEXPR 158)
-(defvar js2-DEBUGGER 159)
+(defvar js2-GET 153)           ; JS 1.5 get pseudo keyword
+(defvar js2-SET 154)           ; JS 1.5 set pseudo keyword
+(defvar js2-LET 155)           ; JS 1.7 let pseudo keyword
+(defvar js2-CONST 156)
+(defvar js2-SETCONST 157)
+(defvar js2-SETCONSTVAR 158)
+(defvar js2-ARRAYCOMP 159)
+(defvar js2-LETEXPR 160)
+(defvar js2-WITHEXPR 161)
+(defvar js2-DEBUGGER 162)
 
-(defvar js2-COMMENT 160)
-(defvar js2-TRIPLEDOT 161)     ; for rest parameter
-(defvar js2-ARROW 162)         ; function arrow (=>)
-(defvar js2-CLASS 163)
-(defvar js2-EXTENDS 164)
-(defvar js2-SUPER 165)
-(defvar js2-TEMPLATE_HEAD 166)    ; part of template literal before substitution
-(defvar js2-NO_SUBS_TEMPLATE 167) ; template literal without substitutions
-(defvar js2-TAGGED_TEMPLATE 168)  ; tagged template literal
+(defvar js2-COMMENT 163)
+(defvar js2-TRIPLEDOT 164)     ; for rest parameter
+(defvar js2-ARROW 165)         ; function arrow (=>)
+(defvar js2-CLASS 166)
+(defvar js2-EXTENDS 167)
+(defvar js2-SUPER 168)
+(defvar js2-TEMPLATE_HEAD 169)    ; part of template literal before substitution
+(defvar js2-NO_SUBS_TEMPLATE 170) ; template literal without substitutions
+(defvar js2-TAGGED_TEMPLATE 171)  ; tagged template literal
 
-(defvar js2-AWAIT 169)  ; await (pseudo keyword)
+(defvar js2-AWAIT 172)  ; await (pseudo keyword)
 
-(defvar js2-HOOK 170)          ; conditional (?:)
-(defvar js2-OPTIONAL-CHAINING 171) ; optional chaining (?.prop obj?.[expr] func?.())
-(defvar js2-EXPON 172)
-(defvar js2-NULLISH-COALESCING 173) ; nullish coalescing (obj.value ?? obj.defaultValue ?? 0))
+(defvar js2-HOOK 173)          ; conditional (?:)
+(defvar js2-OPTIONAL-CHAINING 174) ; optional chaining (?.prop obj?.[expr] func?.())
+(defvar js2-EXPON 175)
+(defvar js2-NULLISH-COALESCING 176) ; nullish coalescing (obj.value ?? obj.defaultValue ?? 0))
 
 (defconst js2-num-tokens (1+ js2-NULLISH-COALESCING))
 
@@ -3523,7 +3526,10 @@ The type field inherited from `js2-node' holds the operator."
                (cons js2-ASSIGN_MUL "*=")
                (cons js2-ASSIGN_EXPON "**=")
                (cons js2-ASSIGN_DIV "/=")
-               (cons js2-ASSIGN_MOD "%="))))
+               (cons js2-ASSIGN_MOD "%=")
+               (cons js2-ASSIGN_AND "&&=")
+               (cons js2-ASSIGN_OR "||=")
+               (cons js2-ASSIGN_NULLISH "??="))))
     (cl-loop for (k . v) in tokens do
              (puthash k v table))
     table))
@@ -5058,6 +5064,9 @@ You should use `js2-print-tree' instead of this function."
                       js2-ASSIGN_SUB
                       js2-ASSIGN_URSH
                       js2-ASSIGN_EXPON
+                      js2-ASSIGN_AND
+                      js2-ASSIGN_OR
+                      js2-ASSIGN_NULLISH
                       js2-BLOCK
                       js2-BREAK
                       js2-CALL
@@ -6097,7 +6106,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
                            (throw 'return js2-COMMA))
                           (??
                            (if (js2-match-char ??)
-                               (throw 'return js2-NULLISH-COALESCING)
+                               (if (js2-match-char ?=)
+                                   js2-ASSIGN_NULLISH
+                                 (throw 'return js2-NULLISH-COALESCING))
                              (if (js2-match-char ?.)
                                  (throw 'return js2-OPTIONAL-CHAINING)
                                (throw 'return js2-HOOK))))
@@ -6114,7 +6125,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
                                (throw 'return js2-DOT))))
                           (?|
                            (if (js2-match-char ?|)
-                               (throw 'return js2-OR)
+                               (if (js2-match-char ?=)
+                                   js2-ASSIGN_OR
+                                 (throw 'return js2-OR))
                              (if (js2-match-char ?=)
                                  js2-ASSIGN_BITOR
                                (throw 'return js2-BITOR))))
@@ -6124,7 +6137,9 @@ its relevant fields and puts it into `js2-ti-tokens'."
                              (throw 'return js2-BITXOR)))
                           (?&
                            (if (js2-match-char ?&)
-                               (throw 'return js2-AND)
+                               (if (js2-match-char ?=)
+                                   js2-ASSIGN_AND
+                                 (throw 'return js2-AND))
                              (if (js2-match-char ?=)
                                  js2-ASSIGN_BITAND
                                (throw 'return js2-BITAND))))
