@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## Next
+## 2020-12-20
 
 * Support for logical assignment operators ([#564](https://github.com/mooz/js2-mode/issues/564)).
 * Support for the nullish coalescing operator ([#561](https://github.com/mooz/js2-mode/pull/561)).
