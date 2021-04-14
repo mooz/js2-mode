@@ -1,5 +1,9 @@
 # History of user-visible changes
 
+## Next
+
+* Support for `for await of` syntax ([#543](https://github.com/mooz/js2-mode/pull/543)).
+
 ## 2020-12-20
 
 * Support for logical assignment operators ([#564](https://github.com/mooz/js2-mode/issues/564)).
