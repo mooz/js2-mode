@@ -192,6 +192,12 @@ the test."
 (js2-deftest-parse parse-for-of
   "for (var a of []) {\n}")
 
+(js2-deftest-parse parse-for-each
+  "for each (var a of []) {\n}")
+
+(js2-deftest-parse parse-for-await
+  "for await (var a of []) {\n}")
+
 (js2-deftest-parse of-can-be-name
   "void of;")
 

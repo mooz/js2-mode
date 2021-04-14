@@ -2651,14 +2651,17 @@ so many of its properties will be nil.
                                                         object
                                                         in-pos
                                                         each-pos
-                                                        foreach-p forof-p
+                                                        await-pos
+                                                        foreach-p forof-p forawait-p
                                                         lp rp)))
   "AST node for a for..in loop."
   iterator  ; [var] foo in ...
   object    ; object over which we're iterating
   in-pos    ; buffer position of 'in' keyword
   each-pos  ; buffer position of 'each' keyword, if foreach-p
+  await-pos  ; buffer position of 'await' keyword, if forawait-p
   foreach-p ; t if it's a for-each loop
+  forawait-p ; t if it's a for-await loop
   forof-p)  ; t if it's a for-of loop
 
 (js2--struct-put 'js2-for-in-node 'js2-visitor 'js2-visit-for-in-node)
@@ -2672,10 +2675,13 @@ so many of its properties will be nil.
 (defun js2-print-for-in-node (n i)
   (let ((pad (js2-make-pad i))
         (foreach (js2-for-in-node-foreach-p n))
+        (forawait (js2-for-in-node-forawait-p n))
         (forof (js2-for-in-node-forof-p n)))
     (insert pad "for ")
     (if foreach
         (insert "each "))
+    (if forawait
+        (insert "await "))
     (insert "(")
     (js2-print-ast (js2-for-in-node-iterator n) 0)
     (insert (if forof " of " " in "))
@@ -9133,24 +9139,31 @@ invalid export statements."
       node)))
 
 (defun js2-parse-for ()
-  "Parse a for, for-in or for each-in statement.
+  "Parse a for, for-in, for each-in or for await-in statement.
 Last matched token must be js2-FOR."
   (let ((for-pos (js2-current-token-beg))
         (tmp-scope (make-js2-scope))
-        pn is-for-each is-for-in-or-of is-for-of
-        in-pos each-pos tmp-pos
+        pn is-for-each is-for-in-or-of is-for-of is-for-await
+        in-pos each-pos tmp-pos await-pos
         init  ; Node init is also foo in 'foo in object'.
         cond  ; Node cond is also object in 'foo in object'.
         incr  ; 3rd section of for-loop initializer.
         body tt lp rp)
-    ;; See if this is a for each () instead of just a for ()
     (when (js2-match-token js2-NAME)
-      (if (string= "each" (js2-current-token-string))
-          (progn
-            (setq is-for-each t
-                  each-pos (- (js2-current-token-beg) for-pos)) ; relative
-            (js2-record-face 'font-lock-keyword-face))
-        (js2-report-error "msg.no.paren.for")))
+      (cond
+       ;; See if this is a for each () instead of just a for ()
+       ((string= "each" (js2-current-token-string))
+        (progn
+          (setq is-for-each t
+                each-pos (- (js2-current-token-beg) for-pos)) ; relative
+          (js2-record-face 'font-lock-keyword-face)))
+       ;; See if this is a for await () instead of just a for ()
+       ((string= "await" (js2-current-token-string))
+        (progn
+          (setq is-for-await t
+                await-pos (- (js2-current-token-beg) for-pos)) ; relative
+          (js2-record-face 'font-lock-keyword-face)))
+       (t (js2-report-error "msg.no.paren.for"))))
     (if (js2-must-match js2-LP "msg.no.paren.for")
         (setq lp (- (js2-current-token-beg) for-pos)))
     (setq tt (js2-get-token))
@@ -9212,6 +9225,8 @@ Last matched token must be js2-FOR."
                                      :in-pos in-pos
                                      :foreach-p is-for-each
                                      :each-pos each-pos
+                                     :forawait-p is-for-await
+                                     :await-pos await-pos
                                      :forof-p is-for-of
                                      :lp lp
                                      :rp rp)))
