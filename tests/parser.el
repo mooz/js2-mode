@@ -449,6 +449,10 @@ the test."
 (js2-deftest-parse arrow-function-recovers-from-error
   "[(,foo) => 1];" :syntax-error "," :errors-count 6)
 
+(js2-deftest-parse arrow-function-with-trailing-comma-in-arguments
+  "(a, b = 1,) => {  c;\n};"
+  :reference "(a, b = 1) => {  c;\n};")
+
 ;;; Automatic semicolon insertion
 
 (js2-deftest-parse no-auto-semi-insertion-after-if
