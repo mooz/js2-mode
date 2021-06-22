@@ -2,6 +2,8 @@
 
 ## Next
 
+* Support for trailing comma in arrow function parameters
+  ([#480](https://github.com/mooz/js2-mode/issues/480)).
 * Support for `for await of` syntax ([#543](https://github.com/mooz/js2-mode/pull/543)).
 
 ## 2020-12-20
