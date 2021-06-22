@@ -8612,7 +8612,7 @@ node are given relative start positions and correct lengths."
     (aset parsers js2-FOR       #'js2-parse-for)
     (aset parsers js2-FUNCTION  #'js2-parse-function-stmt)
     (aset parsers js2-IF        #'js2-parse-if)
-    (aset parsers js2-IMPORT    #'js2-parse-import)
+    (aset parsers js2-IMPORT    #'js2-parse-import-declaration-or-expr)
     (aset parsers js2-LC        #'js2-parse-block)
     (aset parsers js2-LET       #'js2-parse-let-stmt)
     (aset parsers js2-NAME      #'js2-parse-name-or-label)
@@ -8741,6 +8741,11 @@ Return value is a list (EXPR LP RP), with absolute paren positions."
                                :rp (js2-relpos (cl-third cond) pos)))
     (js2-node-add-children pn (car cond) if-true if-false)
     pn))
+
+(defun js2-parse-import-declaration-or-expr ()
+  (if (memq (js2-peek-token) `(,js2-LP ,js2-DOT))
+      (js2-parse-expr-stmt)
+    (js2-parse-import)))
 
 (defun js2-parse-import ()
   "Parse import statement. The current token must be js2-IMPORT."
@@ -10651,6 +10656,8 @@ array-literals, array comprehensions and regular expressions."
       (js2-parse-attribute-access))
      ((= tt js2-NAME)
       (js2-parse-name tt))
+     ((= tt js2-IMPORT)
+      (js2-create-name-node nil nil "import"))
      ((= tt js2-NUMBER)
       (setq node (make-js2-number-node))
       (when (and js2-in-use-strict-directive

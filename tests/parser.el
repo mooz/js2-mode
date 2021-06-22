@@ -802,6 +802,15 @@ the test."
 (js2-deftest-parse import-default-and-namespace "import robert as bob, * as lib from 'src/lib';")
 (js2-deftest-parse import-from-this-module "import {url} from this module;")
 
+(js2-deftest-parse import-meta
+  "console.log(import.meta);")
+
+(js2-deftest-parse import-dynamic-stmt
+  "import('/modules/my-module.js').then((module) => {});")
+
+(js2-deftest-parse import-dynamic-expr
+  "let v = import('/modules/my-module.js').then((module) => {  module.getV();\n});")
+
 ;; Module Exports
 
 (js2-deftest export-rexport "export * from 'other/lib'"
