@@ -1009,6 +1009,18 @@ the test."
 (js2-deftest-parse parse-class-static-fields-no-semi
   "class C {\n  static a\n  static b = 42\n}")
 
+;;; Private names
+
+(js2-deftest-parse parse-class-private-field-with-init
+  "class C {\n  #x = 42;\n  static #y = 24;\n}"
+  :reference "class C {\n  #x = 42\n  static #y = 24\n}")
+
+(js2-deftest-parse parse-class-private-method
+  "class C {\n  #foo(y) {  this.#x = 5;\n  y.#x = 6;\n}\n}")
+
+(js2-deftest-parse parse-class-private-getter
+  "class C {\n  get #foo(y) {  this.#x;\n}\n}")
+
 ;;; Operators
 
 (js2-deftest-parse exponentiation

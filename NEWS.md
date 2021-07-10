@@ -2,6 +2,8 @@
 
 ## Next
 
+* Support for private class memebers
+  ([#537](https://github.com/mooz/js2-mode/issues/537)).
 * Support for dynamic imports and `import.meta`
   ([#547](https://github.com/mooz/js2-mode/issues/547)).
 * Support for trailing comma in arrow function parameters

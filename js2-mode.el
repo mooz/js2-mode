@@ -657,7 +657,9 @@ which doesn't seem particularly useful, but Rhino permits it."
 (defvar js2-EXPON 175)
 (defvar js2-NULLISH-COALESCING 176) ; nullish coalescing (obj.value ?? obj.defaultValue ?? 0))
 
-(defconst js2-num-tokens (1+ js2-NULLISH-COALESCING))
+(defvar js2-PRIVATE_NAME 177)      ; this.#bar();
+
+(defconst js2-num-tokens (1+ js2-PRIVATE_NAME))
 
 (defconst js2-debug-print-trees nil)
 
@@ -5898,6 +5900,7 @@ the token is flagged as such."
 During operation, creates an instance of `js2-token' struct, sets
 its relevant fields and puts it into `js2-ti-tokens'."
   (let (identifier-start
+        identifier-private
         is-unicode-escape-start c
         contains-escape escape-val str result base
         look-for-slash continue tt legacy-octal
@@ -5943,7 +5946,10 @@ its relevant fields and puts it into `js2-ti-tokens'."
              (js2-unget-char)
              (setq c ?\\)))
           (t
-           (when (setq identifier-start (js2-identifier-start-p c))
+           (when (setq identifier-start (or (js2-identifier-start-p c)
+                                            (and
+                                             (eq c ?#)
+                                             (setq identifier-private t))))
              (setq js2-ts-string-buffer nil)
              (js2-add-to-string c))))
          (when identifier-start
@@ -6003,7 +6009,11 @@ its relevant fields and puts it into `js2-ti-tokens'."
                (throw 'return (js2-tt-code result))))
            ;; If we want to intern these as Rhino does, just use (intern str)
            (setf (js2-token-string token) str)
-           (throw 'return js2-NAME))    ; end identifier/kwd check
+           (throw 'return
+                  (if identifier-private
+                      js2-PRIVATE_NAME
+                    js2-NAME)
+                  ))    ; end identifier/kwd check
          ;; is it a number?
          (when (or (js2-digit-p c)
                    (and (eq c ?.) (js2-digit-p (js2-peek-char))))
@@ -8021,7 +8031,7 @@ string is NAME.  Returns nil and keeps current token otherwise."
   "Consume token and return t if next token is a valid property name.
 If `js2-language-version' is >= 180, a keyword or reserved word
 is considered valid name as well."
-  (if (eq js2-NAME (js2-get-prop-name-token))
+  (if (memq (js2-get-prop-name-token) `(,js2-NAME ,js2-PRIVATE_NAME))
       t
     (js2-unget-token)
     nil))
@@ -10514,7 +10524,7 @@ Last token parsed must be `js2-RB'."
             tt (js2-get-prop-name-token))
       (cond
        ;; handles: name, ns::name, ns::*, ns::[expr]
-       ((= tt js2-NAME)
+       ((or (= tt js2-NAME) (= tt js2-PRIVATE_NAME))
         (setq ref (js2-parse-property-name -1 nil member-type-flags)))
        ;; handles: *, *::name, *::*, *::[expr]
        ((= tt js2-MUL)
@@ -11062,7 +11072,7 @@ expression)."
                    (= js2-NAME tt)
                    (member prop '("get" "set" "async"))
                    (member (js2-peek-token 'KEYWORD_IS_NAME)
-                           (list js2-NAME js2-STRING js2-NUMBER js2-LB)))
+                           (list js2-NAME js2-PRIVATE_NAME js2-STRING js2-NUMBER js2-LB)))
           (setq previous-token (js2-current-token)
                 tt (js2-get-prop-name-token))))
       (cond
@@ -11073,7 +11083,7 @@ expression)."
         (setq after-comma nil
               elem (js2-make-unary nil js2-TRIPLEDOT 'js2-parse-assign-expr)))
        ;; Found a key/value property (of any sort)
-       ((member tt (list js2-NAME js2-STRING js2-NUMBER js2-LB))
+       ((member tt (list js2-NAME js2-PRIVATE_NAME js2-STRING js2-NUMBER js2-LB))
         (setq after-comma nil
               elem (js2-parse-named-prop tt previous-token class-p))
         (if (and (null elem)
@@ -11137,7 +11147,7 @@ expression)."
 (defun js2-parse-named-prop (tt previous-token &optional class-p)
   "Parse a name, string, or getter/setter object property.
 When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
-  (let ((key (js2-parse-prop-name tt))
+  (let ((key (js2-parse-prop-name tt class-p))
         (prop (and previous-token (js2-token-string previous-token)))
         (property-type (when previous-token
                              (if (= (js2-token-type previous-token) js2-MUL)
@@ -11189,7 +11199,7 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
   (when (js2-match-token js2-ASSIGN)
     (js2-make-binary js2-ASSIGN name 'js2-parse-assign-expr t)))
 
-(defun js2-parse-prop-name (tt)
+(defun js2-parse-prop-name (tt allow-private)
   (cond
    ;; Literal string keys: {'foo': 'bar'}
    ((= tt js2-STRING)
@@ -11206,6 +11216,9 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
     (make-js2-number-node))
    ;; Unquoted names: {foo: 12}
    ((= tt js2-NAME)
+    (js2-create-name-node))
+   ((and allow-private
+         (= tt js2-PRIVATE_NAME))
     (js2-create-name-node))
    ;; Anything else is an error
    (t (js2-report-error "msg.bad.prop"))))
@@ -11296,7 +11309,7 @@ And, if CHECK-ACTIVATION-P is non-nil, use the value of TOKEN."
   (let* ((beg (js2-current-token-beg))
          (tt (js2-current-token-type))
          (s (or string
-                (if (= js2-NAME tt)
+                (if (or (= js2-NAME tt) (= js2-PRIVATE_NAME tt))
                     (js2-current-token-string)
                   (js2-tt-name tt))))
          name)
