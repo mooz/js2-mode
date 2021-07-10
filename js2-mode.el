@@ -11071,8 +11071,8 @@ expression)."
         (when (and (>= js2-language-version 200)
                    (= js2-NAME tt)
                    (member prop '("get" "set" "async"))
-                   (member (js2-peek-token 'KEYWORD_IS_NAME)
-                           (list js2-NAME js2-PRIVATE_NAME js2-STRING js2-NUMBER js2-LB)))
+                   (memq (js2-peek-token 'KEYWORD_IS_NAME)
+                         `(,js2-NAME ,js2-PRIVATE_NAME ,js2-STRING ,js2-NUMBER ,js2-LB)))
           (setq previous-token (js2-current-token)
                 tt (js2-get-prop-name-token))))
       (cond
@@ -11083,7 +11083,7 @@ expression)."
         (setq after-comma nil
               elem (js2-make-unary nil js2-TRIPLEDOT 'js2-parse-assign-expr)))
        ;; Found a key/value property (of any sort)
-       ((member tt (list js2-NAME js2-PRIVATE_NAME js2-STRING js2-NUMBER js2-LB))
+       ((memq tt `(,js2-NAME ,js2-PRIVATE_NAME ,js2-STRING ,js2-NUMBER ,js2-LB))
         (setq after-comma nil
               elem (js2-parse-named-prop tt previous-token class-p))
         (if (and (null elem)
@@ -11235,9 +11235,9 @@ string or expression."
      ((and (>= js2-language-version 200)
            (if class-p
                (and (setq tt (js2-peek-token-or-eol))
-                    (member tt (list js2-EOL js2-RC js2-SEMI)))
+                    (memq tt `(,js2-EOL ,js2-RC ,js2-SEMI)))
              (and (setq tt (js2-peek-token))
-                  (member tt (list js2-COMMA js2-RC))
+                  (memq tt `(,js2-COMMA ,js2-RC))
                   (js2-name-node-p prop))))
       (setq result (make-js2-object-prop-node
                     :pos pos
