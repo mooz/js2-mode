@@ -2,6 +2,8 @@
 
 ## Next
 
+* Minor improvements in `js2-jump-to-definition`
+  ([#423](https://github.com/mooz/js2-mode/issues/423)).
 * Support for private class memebers
   ([#537](https://github.com/mooz/js2-mode/issues/537)).
 * Support for dynamic imports and `import.meta`

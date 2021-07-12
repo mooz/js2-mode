@@ -12950,7 +12950,7 @@ it marks the next defun after the ones already marked."
   (cl-assert (js2-object-node-p node))
   ;; Only support name-node and nodes for the time being
   (cl-loop for elem in (js2-object-node-elems node)
-           for left = (js2-object-prop-node-left elem)
+           for left = (js2-infix-node-left elem)
            if (or (and (js2-name-node-p left)
                        (equal (js2-name-node-name name-node)
                               (js2-name-node-name left)))
@@ -12970,31 +12970,43 @@ i.e. (\\='name\\=' \\='value\\=') = {name : { value: 3}}"
     (while (and temp names (js2-object-node-p temp-object))
       (setq temp (js2-search-object temp-object (pop names)))
       (and (setq node temp)
-         (setq temp-object (js2-object-prop-node-right temp))))
+         (setq temp-object (js2-infix-node-right temp))))
     (unless names node)))
 
 (defun js2-search-scope (node names)
   "Searches NODE scope for jump location matching NAMES.
 NAMES is a list of property values to search for. For functions
 and variables NAMES will contain one element."
-  (let (node-init
-        (val (and
-              ;; TODO: Consider 'this' specially, to limit search scope.
-              (js2-name-node-p (car names))
-              (js2-name-node-name (car names)))))
-    (setq node-init (js2-get-symbol-declaration node val))
+  (let (node-init val)
+    (cond
+     ((js2-name-node-p (car names))
+      (setq val (js2-name-node-name (car names)))
+      (setq node-init (js2-get-symbol-declaration node val)))
+     ((and (js2-keyword-node-p (car names))
+           (equal (js2-keyword-node-type (car names))
+                  js2-THIS))
+      (let* ((scope (js2-node-get-enclosing-scope node))
+             (parent (js2-node-parent scope)))
+        (when (or (js2-method-node-p parent)
+                  (js2-object-prop-node-p parent))
+          ;; class or object
+          (setq node-init (js2-node-parent parent))))))
 
     (when (> (length names) 1)
-
-      ;; Check var declarations
-      (when (and node-init (string= val (js2-name-node-name node-init)))
-        (let ((parent (js2-node-parent node-init))
-              (temp-names names))
-          (pop temp-names) ;; First element is var name
-          (setq node-init (when (js2-var-init-node-p parent)
-                            (js2-search-object-for-prop
-                             (js2-var-init-node-initializer parent)
-                             temp-names)))))
+      (when node-init
+        (cond
+         ((js2-name-node-p (car names))
+          ;; Check var declarations
+          (when (string= val (js2-name-node-name node-init))
+            (let ((parent (js2-node-parent node-init)))
+              (setq node-init (when (js2-var-init-node-p parent)
+                                (js2-search-object-for-prop
+                                 (js2-var-init-node-initializer parent)
+                                 (cdr names)))))))
+         ((js2-object-node-p node-init)
+          (setq node-init (js2-search-object-for-prop
+                           node-init
+                           (cdr names))))))
 
       ;; Check all assign nodes
       (js2-visit-ast

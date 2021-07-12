@@ -77,6 +77,10 @@
 (ert-deftest js2-jump-to-function-inside-property-value-syntax ()
   (js2-navigation-helper "function aFunction(p1, p2) {return p1+p2}; module.exports = {aFunction};" 1 6))
 
+(ert-deftest js2-jump-to-this-inside-same-class ()
+  (js2-navigation-helper "class App { something() { return \"s\" } render() { this.something"
+                         13))
+
 
 ;; forward-sexp
 
