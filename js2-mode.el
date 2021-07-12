@@ -12978,7 +12978,10 @@ i.e. (\\='name\\=' \\='value\\=') = {name : { value: 3}}"
 NAMES is a list of property values to search for. For functions
 and variables NAMES will contain one element."
   (let (node-init
-        (val (js2-name-node-name (car names))))
+        (val (and
+              ;; TODO: Consider 'this' specially, to limit search scope.
+              (js2-name-node-p (car names))
+              (js2-name-node-name (car names)))))
     (setq node-init (js2-get-symbol-declaration node val))
 
     (when (> (length names) 1)
@@ -13004,11 +13007,17 @@ and variables NAMES will contain one element."
                      (temp-names names))
                  (when (js2-prop-get-node-p left)
                    (let* ((prop-list (js2-compute-nested-prop-get left))
-                          (found (cl-loop for prop in prop-list
-                                          until (not (string= (js2-name-node-name
-                                                               (pop temp-names))
-                                                              (js2-name-node-name prop)))
-                                          if (not temp-names) return prop))
+                          ;; 'this' or 'super'
+                          (target-is-keyword (js2-keyword-node-p (car temp-names)))
+                          (_ (when target-is-keyword
+                               (pop temp-names)))
+                          (found (unless target-is-keyword
+                                   (cl-loop for prop in prop-list
+                                            until (not (string= (js2-name-node-name
+                                                                 (pop temp-names))
+                                                                (and (js2-name-node-p prop)
+                                                                     (js2-name-node-name prop))))
+                                            if (not temp-names) return prop)))
                           (found-node (or found
                                           (when (js2-object-node-p right)
                                             (js2-search-object-for-prop right

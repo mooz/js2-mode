@@ -47,7 +47,7 @@
   (js2-navigation-helper "var p1 = 4; function aFunction(p1, p2) {p1};" 32 4))
 
 (ert-deftest js2-jump-to-object-property ()
-  (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; aObject.prop1" 16))
+  (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; this.prop1 = 4; aObject.prop1" 16))
 
 (ert-deftest js2-no-jump-to-object-property ()
   (js2-navigation-helper "var aObject = {prop1: 3, prop2: \"hello\"}; anotherObject.prop1"
