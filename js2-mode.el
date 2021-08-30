@@ -12609,7 +12609,7 @@ move backward across N balanced expressions."
                     (setq pos (js2-node-abs-pos child)))
                 ;; Before both parens.
                 (setq pos lp)))
-            (let ((state (parse-partial-sexp start pos)))
+            (let ((state (parse-partial-sexp pos start)))
               (goto-char (if (not (zerop (car state)))
                              ;; Stumble at the unbalanced paren if < 0, or
                              ;; jump a bit further if > 0.
