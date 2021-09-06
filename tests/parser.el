@@ -163,6 +163,10 @@ the test."
 (js2-deftest-parse void
   "void 0;")
 
+(js2-deftest-parse catch-without-identifier
+  "try {\n} catch {\n  4 + 4;\n}"
+  :warnings-count 0)
+
 ;;; Callers of `js2-valid-prop-name-token'
 
 (js2-deftest-parse parse-property-access-when-not-keyword

@@ -3017,12 +3017,15 @@ modules metadata itself."
   (let ((pad (js2-make-pad i))
         (guard-kwd (js2-catch-node-guard-kwd n))
         (guard-expr (js2-catch-node-guard-expr n)))
-    (insert " catch (")
-    (js2-print-ast (js2-catch-node-param n) 0)
-    (when guard-kwd
-      (insert " if ")
-      (js2-print-ast guard-expr 0))
-    (insert ") {\n")
+    (insert " catch ")
+    (when (js2-catch-node-lp n)
+      (insert "(")
+      (js2-print-ast (js2-catch-node-param n) 0)
+      (when guard-kwd
+        (insert " if ")
+        (js2-print-ast guard-expr 0))
+      (insert ") "))
+    (insert "{\n")
     (js2-print-body n (1+ i))
     (insert pad "}")))
 
@@ -9288,30 +9291,30 @@ Last matched token must be js2-FOR."
                lp rp)
           (if saw-default-catch
               (js2-report-error "msg.catch.unreachable"))
-          (if (js2-must-match js2-LP "msg.no.paren.catch")
-              (setq lp (- (js2-current-token-beg) catch-pos)))
           (js2-push-scope catch-node)
-          (let ((tt (js2-peek-token)))
-            (cond
-             ;; Destructuring pattern:
-             ;;     catch ({ message, file }) { ... }
-             ((or (= tt js2-LB) (= tt js2-LC))
-              (js2-get-token)
-              (setq param (js2-parse-destruct-primary-expr))
-              (js2-define-destruct-symbols param js2-LET nil))
-             ;; Simple name.
-             (t
-              (js2-must-match-name "msg.bad.catchcond")
-              (setq param (js2-create-name-node))
-              (js2-define-symbol js2-LET (js2-current-token-string) param)
-              (js2-check-strict-identifier param))))
-          ;; Catch condition.
-          (if (js2-match-token js2-IF)
-              (setq guard-kwd (- (js2-current-token-beg) catch-pos)
-                    catch-cond (js2-parse-expr))
-            (setq saw-default-catch t))
-          (if (js2-must-match js2-RP "msg.bad.catchcond")
-              (setq rp (- (js2-current-token-beg) catch-pos)))
+          (when (js2-match-token js2-LP)
+            (setq lp (- (js2-current-token-beg) catch-pos))
+            (let ((tt (js2-peek-token)))
+              (cond
+               ;; Destructuring pattern:
+               ;;     catch ({ message, file }) { ... }
+               ((or (= tt js2-LB) (= tt js2-LC))
+                (js2-get-token)
+                (setq param (js2-parse-destruct-primary-expr))
+                (js2-define-destruct-symbols param js2-LET nil))
+               ;; Simple name.
+               (t
+                (js2-must-match-name "msg.bad.catchcond")
+                (setq param (js2-create-name-node))
+                (js2-define-symbol js2-LET (js2-current-token-string) param)
+                (js2-check-strict-identifier param))))
+            ;; Catch condition.
+            (if (js2-match-token js2-IF)
+                (setq guard-kwd (- (js2-current-token-beg) catch-pos)
+                      catch-cond (js2-parse-expr))
+              (setq saw-default-catch t))
+            (if (js2-must-match js2-RP "msg.bad.catchcond")
+                (setq rp (- (js2-current-token-beg) catch-pos))))
           (js2-must-match js2-LC "msg.no.brace.catchblock")
           (js2-parse-statements catch-node)
           (if (js2-must-match js2-RC "msg.no.brace.after.body")
