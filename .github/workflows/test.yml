@@ -4,12 +4,12 @@ on:
   pull_request:
     paths:
       - '**.el'
-      - '**ci.yml'
+      - '**.yml'
       - 'Makefile'
   push:
     paths:
       - '**.el'
-      - '**ci.yml'
+      - '**.yml'
       - 'Makefile'
 
 jobs:
