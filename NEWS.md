@@ -2,6 +2,10 @@
 
 ## Next
 
+* Imenu support for mocha-like (includes Jasmine and Cypress) test
+  files: i.e., `M-x imenu` will now list test blocks defined with
+  `describe()` and `it()`
+  ([#576](https://github.com/mooz/js2-mode/pull/576)).
 * Minor improvements in `js2-jump-to-definition`
   ([#423](https://github.com/mooz/js2-mode/issues/423)).
 * Support for private class members
