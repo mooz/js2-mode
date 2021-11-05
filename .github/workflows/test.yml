@@ -20,6 +20,7 @@ jobs:
       matrix:
         emacs_version:
           - 25.1
+          - 26.3
           - 27.2
           - snapshot
     steps:
