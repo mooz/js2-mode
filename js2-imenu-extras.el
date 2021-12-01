@@ -124,6 +124,21 @@ Currently used for jQuery widgets, Dojo and Enyo declarations."
   :type 'boolean
   :group 'js2-imenu)
 
+(defcustom js2-imenu-mocha-describe-node-names '("describe" "describe.only" "fdescribe")
+  "List of strings starting a describe() node."
+  :type '(repeat string)
+  :group 'js2-imenu)
+
+(defcustom js2-imenu-mocha-it-node-names '("it" "it.only" "fit")
+  "List of strings starting a it() node."
+  :type '(repeat string)
+  :group 'js2-imenu)
+
+(defcustom js2-imenu-mocha-hook-node-names '("beforeEach" "afterEach" "beforeAll" "afterAll")
+  "List of strings starting a hook node (e.g., before and after hooks)."
+  :type '(repeat string)
+  :group 'js2-imenu)
+
 ;;;###autoload
 (defun js2-imenu-extras-setup ()
   (when js2-imenu-enabled-frameworks
@@ -300,17 +315,17 @@ describe() block."
 (defun js2-imenu-extras--mocha-describe-node-p (node)
   "Return non-nil if NODE is a mocha describe() block."
   (when-let ((name (js2-imenu-extras--call-target-name node)))
-    (member name '("describe" "describe.only" "fdescribe"))))
+    (member name js2-imenu-mocha-describe-node-names)))
 
 (defun js2-imenu-extras--mocha-it-node-p (node)
   "Return non-nil if NODE is a mocha it() block."
   (when-let ((name (js2-imenu-extras--call-target-name node)))
-    (member name '("it" "it.only" "fit"))))
+    (member name js2-imenu-mocha-it-node-names)))
 
 (defun js2-imenu-extras--mocha-before-after-node-p (node)
   "Return non-nil if NODE is a `{before,after}{Each,All}' block."
   (when-let ((name (js2-imenu-extras--call-target-name node)))
-    (member name '("beforeEach" "afterEach" "beforeAll" "afterAll"))))
+    (member name js2-imenu-mocha-hook-node-names)))
 
 (defun js2-imenu-extras--mocha-named-function-node-p (node)
   "Return non-nil if NODE is a function definition."

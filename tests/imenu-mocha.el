@@ -152,3 +152,39 @@
                     '(("top-level"
                        ("<definition-1>" . 1)
                        ("foo" . 33))))))))
+
+(ert-deftest js2-imenu-mocha-customize-describe-node-name ()
+  (js2-imenu-mocha-create-buffer
+   ("describe(\"top-level\", () => {"
+    "  fooBar(\"sub\", () => {})"
+    "});")
+   (let* ((js2-imenu-mocha-describe-node-names '("describe" "fooBar"))
+          (result (js2-mode-create-imenu-index)))
+     (should (equal result
+                    '(("top-level"
+                       ("<definition-1>" . 1)
+                       ("sub" . 33))))))))
+
+(ert-deftest js2-imenu-mocha-customize-it-node-name ()
+  (js2-imenu-mocha-create-buffer
+   ("describe(\"top-level\", () => {"
+    "  fooBar(\"sub\", () => {})"
+    "});")
+   (let* ((js2-imenu-mocha-it-node-names '("fooBar"))
+          (result (js2-mode-create-imenu-index)))
+     (should (equal result
+                    '(("top-level"
+                       ("<definition-1>" . 1)
+                       ("sub" . 33))))))))
+
+(ert-deftest js2-imenu-mocha-customize-hook-node-name ()
+  (js2-imenu-mocha-create-buffer
+   ("describe(\"top-level\", () => {"
+    "  fooBar(() => {})"
+    "});")
+   (let* ((js2-imenu-mocha-hook-node-names '("fooBar"))
+          (result (js2-mode-create-imenu-index)))
+     (should (equal result
+                    '(("top-level"
+                       ("<definition-1>" . 1)
+                       ("fooBar" . 33))))))))
