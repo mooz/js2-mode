@@ -1974,6 +1974,15 @@ the correct number of ARGS must be provided."
          "not a valid default namespace statement. "
          "Syntax is: default xml namespace = EXPRESSION;")
 
+(js2-msg "msg.no.trailing.numeric.literal"
+         "underscore cannot appear after last digit")
+
+(js2-msg "msg.no.consecutive.numeric.literal"
+         "underscores cannot be next to each other")
+
+(js2-msg "msg.no.numeric.separator.after.leading.zero"
+         "underscore cannot appear after leading zero")
+
 ;; TokensStream warnings
 (js2-msg "msg.bad.octal.literal"
          "illegal octal literal digit %s; "
@@ -5898,6 +5907,22 @@ the token is flagged as such."
       (string-to-number str base)
     (overflow-error -1)))
 
+(defun js2-handle-numeric-separator ()
+  "Detect and handle numeric separator ?_."
+  (let ((buffer (nreverse js2-ts-string-buffer))
+        (res nil))
+    (while (> (length buffer) 0)
+      (let ((current-c (car buffer))
+            (next-c (cadr buffer)))
+        (if (eq current-c ?_)
+            (if (or (= (length buffer) 1) (memq next-c '(?. ?e ?E)))
+                (js2-report-scan-error "msg.no.trailing.numeric.literal")
+              (when (= (cadr buffer) ?_)
+                (js2-report-scan-error "msg.no.consecutive.numeric.literal")))
+          (push (car buffer) res)))
+      (setq buffer (cdr buffer)))
+    (setq js2-ts-string-buffer res)))
+
 (defun js2-get-token-internal-1 (modifier)
   "Return next JavaScript token type, an int such as js2-RETURN.
 During operation, creates an instance of `js2-token' struct, sets
@@ -6025,6 +6050,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
            (when (eq c ?0)
              (setq c (js2-get-char))
              (cond
+              ((eq c ?_) (js2-report-scan-error "msg.no.numeric.separator.after.leading.zero"))
               ((or (eq c ?x) (eq c ?X))
                (setq base 16)
                (setq c (js2-get-char)))
@@ -6045,23 +6071,23 @@ its relevant fields and puts it into `js2-ti-tokens'."
             ((eq base 16)
              (if (> 0 (js2-x-digit-to-int c 0))
                  (js2-report-scan-error "msg.missing.hex.digits")
-               (while (<= 0 (js2-x-digit-to-int c 0))
+               (while (or (<= 0 (js2-x-digit-to-int c 0)) (= c ?_))
                  (js2-add-to-string c)
                  (setq c (js2-get-char)))))
             ((eq base 2)
              (if (not (memq c '(?0 ?1)))
                  (js2-report-scan-error "msg.missing.binary.digits")
-               (while (memq c '(?0 ?1))
+               (while (memq c '(?0 ?1 ?_))
                  (js2-add-to-string c)
                  (setq c (js2-get-char)))))
             ((eq base 8)
              (if (or (> ?0 c) (< ?7 c))
                  (js2-report-scan-error "msg.missing.octal.digits")
-               (while (and (<= ?0 c) (>= ?7 c))
+               (while (or (and (<= ?0 c) (>= ?7 c)) (= c ?_))
                  (js2-add-to-string c)
                  (setq c (js2-get-char)))))
             (t
-             (while (and (<= ?0 c) (<= c ?9))
+             (while (or (and (<= ?0 c) (<= c ?9)) (= c ?_))
                ;; We permit 08 and 09 as decimal numbers, which
                ;; makes our behavior a superset of the ECMA
                ;; numeric grammar.  We might not always be so
@@ -6080,7 +6106,7 @@ its relevant fields and puts it into `js2-ti-tokens'."
                (cl-loop do
                         (js2-add-to-string c)
                         (setq c (js2-get-char))
-                        while (js2-digit-p c)))
+                        while (or (js2-digit-p c) (= c ?_))))
              (when (memq c '(?e ?E))
                (js2-add-to-string c)
                (setq c (js2-get-char))
@@ -6092,8 +6118,15 @@ its relevant fields and puts it into `js2-ti-tokens'."
                (cl-loop do
                         (js2-add-to-string c)
                         (setq c (js2-get-char))
-                        while (js2-digit-p c))))
+                        while (or (js2-digit-p c) (= c ?_)))))
            (js2-unget-char)
+           (js2-handle-numeric-separator)
+           (let ((string js2-ts-string-buffer))
+             (while (> (length string) 0)
+               (when (and (eq (car string) ?_))
+                 (if (= (length string) 1)
+                     (js2-report-scan-error "msg.no.trailing.numeric.literal")))
+               (setq string (cdr string))))
            (let ((str (js2-set-string-from-buffer token)))
              (setf (js2-token-number token) (js2-string-to-number str base)
                    (js2-token-number-base token) base

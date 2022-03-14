@@ -1,5 +1,10 @@
 # History of user-visible changes
 
+## Next
+
+* Support for `_` separator in numbers (i.e., numeric separator)
+  ([#584](https://github.com/mooz/js2-mode/pull/584)).
+
 ## 2021-12-29
 
 * Imenu support for mocha-like (includes Jasmine and Cypress) test
