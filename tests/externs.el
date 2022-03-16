@@ -116,7 +116,7 @@
                    (member "getRow" found-externs)
                    (member "Proxy" found-externs))))))
 
-(ert-deftest js2-finds-jslint-globals-with-newline ()
+(ert-deftest js2-finds-jslint-declaration-externs-with-newline ()
   (with-temp-buffer
     (insert "/*jslint\nbrowser: true,\nnode:\ntrue\n, devel:\ntrue\n*/")
     (js2-mode)
