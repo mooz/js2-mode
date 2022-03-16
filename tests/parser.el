@@ -624,6 +624,39 @@ the test."
 (js2-deftest-parse octal-number-broken "0o812;"
   :syntax-error "0o8" :errors-count 2)
 
+;;; Numbers with numeric separator (examples from
+;;; https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#numeric_separators)
+
+(js2-deftest-parse decimal-with-numeric-separator "1_000_000_000_000;"
+  :reference "1000000000000;")
+
+(js2-deftest-parse decimal-with-dot-and-numeric-separator "1_050.95;"
+  :reference "1050.95;")
+
+(js2-deftest-parse binary-number-with-numeric-separator "0b1010_0001_1000_0101;" :reference "41349;")
+
+(js2-deftest-parse octal-with-numeric-separator "0o2_2_5_6;"
+  :reference "1198;")
+
+(js2-deftest-parse hex-number-with-numeric-separator "0xA0_B0_C0;"
+  :reference "10531008;")
+
+(js2-deftest-parse decimal-with-consecutive-numeric-separators-broken "100__000"
+  :syntax-error "100__000"
+  :errors-count 2)
+
+(js2-deftest-parse decimal-with-trailing-numeric-separator-broken "100_"
+  :syntax-error "100_"
+  :errors-count 2)
+
+(js2-deftest-parse decimal-with-numeric-separator-before-dot-broken "100_.12"
+  :syntax-error "100_.12"
+  :errors-count 2)
+
+(js2-deftest-parse decimal-with-numeric-separator-after-leading-0-broken "0_1"
+  :syntax-error "0_"
+  :errors-count 2)
+
 ;;; Modules
 
 (js2-deftest parse-export-bindings "{one, two as dos}"
