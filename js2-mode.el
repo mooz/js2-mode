@@ -5686,13 +5686,17 @@ A buffer can only have one scanner active at a time, which yields
 dramatically simpler code than using a defstruct.  If you need to
 have simultaneous scanners in a buffer, copy the regions to scan
 into temp buffers."
-  (with-current-buffer (or buf (current-buffer))
+  (save-excursion
+    (and buf (set-buffer buf))
+    (goto-char (point-min))
+    (when (looking-at "#!/")
+      (forward-line 1))
     (setq js2-ts-dirty-line nil
           js2-ts-hit-eof nil
           js2-ts-line-start 0
           js2-ts-lineno (or line 1)
           js2-ts-line-end-char -1
-          js2-ts-cursor (point-min)
+          js2-ts-cursor (point)
           js2-ti-tokens (make-vector js2-ti-ntokens nil)
           js2-ti-tokens-cursor 0
           js2-ti-lookahead 0
