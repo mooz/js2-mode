@@ -1,7 +1,7 @@
 # -*- Makefile -*-
 
-EMACS = emacs
-EASK = eask
+EMACS ?= emacs
+EASK ?= eask
 
 ci: build compile checkdoc lint test
 
@@ -20,8 +20,8 @@ test:
 	$(EASK) ert ./tests/*.el
 
 checkdoc:
-    $(EASK) checkdoc
+	$(EASK) checkdoc
 
 # package-lint
 lint:
-    $(EASK) lint
+	$(EASK) lint
