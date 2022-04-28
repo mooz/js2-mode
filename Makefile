@@ -1,25 +1,27 @@
 # -*- Makefile -*-
 
 EMACS = emacs
+EASK = eask
 
-# Compile with noninteractive and relatively clean environment.
-BATCHFLAGS = -batch -Q
+ci: build compile checkdoc lint test
 
-SRCS = js2-mode.el js2-imenu-extras.el
+build:
+	$(EASK) package
+	$(EASK) install
 
-TESTS = $(wildcard tests/*.el)
-
-OBJS = $(SRCS:.el=.elc) $(TESTS:.el=.elc)
-
-%.elc: %.el
-	${EMACS} $(BATCHFLAGS) -L . -f batch-byte-compile $^
-
-all: $(OBJS)
+compile: 
+	$(EASK) compile
 
 clean:
-	-rm -f $(OBJS)
+    $(EASK) clean-all
 
-test:	all
-	${EMACS} $(BATCHFLAGS) -L . \
-	  $(addprefix -l ,$(OBJS)) \
-	  -f ert-run-tests-batch-and-exit
+test:
+	$(EASK) install-deps --dev
+	$(EASK) ert ./tests/*.el
+
+checkdoc:
+    $(EASK) checkdoc
+
+# package-lint
+lint:
+    $(EASK) lint
