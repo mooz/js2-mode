@@ -7,3 +7,4 @@
 (source "gnu")
 
 (depends-on "emacs" "24.1")
+(depends-on "cl-lib")

@@ -3,7 +3,8 @@
 EMACS ?= emacs
 EASK ?= eask
 
-ci: build compile checkdoc lint test
+# TODO: add lint?
+ci: build compile checkdoc test
 
 build:
 	$(EASK) package
