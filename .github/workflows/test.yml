@@ -45,4 +45,4 @@ jobs:
     - name: Test the project
       run: |
         emacs --version
-        make test
+        make ci
