@@ -13,7 +13,7 @@ compile:
 	$(EASK) compile
 
 clean:
-    $(EASK) clean-all
+	$(EASK) clean-all
 
 test:
 	$(EASK) install-deps --dev
