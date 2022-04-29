@@ -4,6 +4,8 @@
 
 (package-file "js2-mode.el")
 
+(files "*.el")
+
 (source "gnu")
 
 (depends-on "emacs" "24.1")
