@@ -11756,7 +11756,7 @@ highlighting features of `js2-mode'."
 (defun js2-minor-mode-exit ()
   "Turn off `js2-minor-mode'."
   (setq next-error-function nil)
-  (remove-hook 'after-change-functions #'js2-mode-edit t)
+  (remove-hook 'after-change-functions #'js2-minor-mode-edit t)
   (remove-hook 'change-major-mode-hook #'js2-minor-mode-exit t)
   (when js2-mode-node-overlay
     (delete-overlay js2-mode-node-overlay)
