@@ -6481,12 +6481,16 @@ its relevant fields and puts it into `js2-ti-tokens'."
                                   'syntax-table (string-to-syntax "\"/")))
       (while continue
         (cond
+         ((js2-match-char ?d)
+          (push ?d flags))
          ((js2-match-char ?g)
           (push ?g flags))
          ((js2-match-char ?i)
           (push ?i flags))
          ((js2-match-char ?m)
           (push ?m flags))
+         ((js2-match-char ?s)
+          (push ?s flags))
          ((and (js2-match-char ?u)
                (>= js2-language-version 200))
           (push ?u flags))
