@@ -2,6 +2,8 @@
 
 ## Next
 
+* Support the d (hasIndices) and s (dotAll) regexp flags
+  ([#590](https://github.com/mooz/js2-mode/pull/590)).
 * Support for `_` separator in numbers (i.e., numeric separator)
   ([#584](https://github.com/mooz/js2-mode/pull/584)).
 

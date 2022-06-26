@@ -122,6 +122,12 @@ the test."
 (js2-deftest-parse comma-after-regexp
   "d = /eee/, 42;")
 
+(js2-deftest-parse regexp-with-s-flag
+  "d = /eee/s;")
+
+(js2-deftest-parse regexp-with-d-flag
+  "d = /eee/d;")
+
 (js2-deftest-parse return-statement
   "function foo() {\n  return 2;\n}")
 
