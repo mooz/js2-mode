@@ -10377,11 +10377,11 @@ Returns the list in reverse order.  Consumes the right-paren token."
         pn pos target args beg end init)
     (if (/= tt js2-NEW)
         (setq pn (js2-parse-primary-expr))
+      (setq pos (js2-current-token-beg)
+            beg pos)
       ;; parse a 'new' expression
       (js2-get-token)
-      (setq pos (js2-current-token-beg)
-            beg pos
-            target (js2-parse-member-expr)
+      (setq target (js2-parse-member-expr)
             end (js2-node-end target)
             pn (make-js2-new-node :pos pos
                                   :target target
