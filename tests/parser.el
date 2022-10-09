@@ -995,6 +995,9 @@ the test."
 (js2-deftest-parse tagged-template
   "foo.args`${++x, \"o\"}k`;")
 
+(js2-deftest-parse template-with-escapes
+  "const valid = `\\${${a}}`;")
+
 ;;; Classes
 
 (js2-deftest-parse parse-harmony-class-statement

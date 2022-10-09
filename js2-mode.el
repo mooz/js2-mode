@@ -6341,15 +6341,16 @@ its relevant fields and puts it into `js2-ti-tokens'."
     (catch 'break
       (while (/= c quote-char)
         (catch 'continue
-          (when (eq c js2-EOF_CHAR)
+          (cond
+           ((eq c js2-EOF_CHAR)
             (js2-unget-char)
             (js2-report-error "msg.unterminated.string.lit")
             (throw 'break nil))
-          (when (and (eq c ?\n) (not (eq quote-char ?`)))
+           ((and (eq c ?\n) (not (eq quote-char ?`)))
             (js2-unget-char)
             (js2-report-error "msg.unterminated.string.lit")
             (throw 'break nil))
-          (when (eq c ?\\)
+           ((eq c ?\\)
             ;; We've hit an escaped character
             (setq c (js2-get-char))
             (cl-case c
@@ -6427,10 +6428,10 @@ its relevant fields and puts it into `js2-ti-tokens'."
                            c (js2-get-char))))
                  (js2-unget-char)
                  (setq c val)))))
-          (when (and (eq quote-char ?`) (eq c ?$))
+           ((and (eq quote-char ?`) (eq c ?$))
             (when (eq (setq nc (js2-get-char)) ?\{)
               (throw 'break nil))
-            (js2-unget-char))
+            (js2-unget-char)))
           (js2-add-to-string c)
           (setq c (js2-get-char)))))
     (js2-set-string-from-buffer token)

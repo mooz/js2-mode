@@ -1,5 +1,10 @@
 # History of user-visible changes
 
+## Next
+
+* Fix for escaping inside template literal
+  ([#592](https://github.com/mooz/js2-mode/issues/592)).
+
 ## 2022-07-10
 
 * Fix for node position of `js2-new-node`
