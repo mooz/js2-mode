@@ -8064,7 +8064,7 @@ string is NAME.  Returns nil and keeps current token otherwise."
                nil)
            ;; The parse was successful, so process and return the "await".
            (js2-record-face 'font-lock-keyword-face current-token)
-           (unless (js2-inside-async-function)
+           (unless (or (js2-inside-async-function) (equal js2-nesting-of-function 0))
              (js2-report-error "msg.bad.await" nil
                                beg (- end beg)))
            pn))))

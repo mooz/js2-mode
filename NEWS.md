@@ -2,6 +2,8 @@
 
 ## Next
 
+* Support top-level await
+  ([#593](https://github.com/mooz/js2-mode/issues/593)).
 * Fix for escaping inside template literal
   ([#592](https://github.com/mooz/js2-mode/issues/592)).
 
