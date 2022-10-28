@@ -572,6 +572,9 @@ the test."
 (js2-deftest-parse await-inside-array-is-ok
                    "async function foo() {\n  var results = [await bar(), await baz()];\n}")
 
+(js2-deftest-parse await-top-level-is-ok
+                   "await bar();")
+
 (js2-deftest-parse await-inside-non-async-function-is-not-ok
                    "function foo() {\n  await bar();\n}"
                    :syntax-error "await")
