@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## Next
+## 2023-04-08
 
 * Support top-level await
   ([#593](https://github.com/mooz/js2-mode/issues/593)).
