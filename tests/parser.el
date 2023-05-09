@@ -1058,6 +1058,9 @@ the test."
 (js2-deftest-parse parse-class-static-fields-no-semi
   "class C {\n  static a\n  static b = 42\n}")
 
+(js2-deftest-parse parse-class-static-block
+  "class Foo {\n  static {\n  a = 4;\n}\n}")
+
 ;;; Private names
 
 (js2-deftest-parse parse-class-private-field-with-init

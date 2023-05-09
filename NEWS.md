@@ -1,5 +1,10 @@
 # History of user-visible changes
 
+## Next
+
+* Support for static initialization blocks
+  ([#594](https://github.com/mooz/js2-mode/issues/594)).
+
 ## 2023-04-08
 
 * Support top-level await

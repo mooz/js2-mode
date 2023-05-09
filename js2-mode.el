@@ -2339,7 +2339,7 @@ If any given node in NODES is nil, doesn't record that link."
   top)          ; top-level `js2-scope' (script/function)
 
 (js2--struct-put 'js2-scope 'js2-visitor 'js2-visit-block)
-(js2--struct-put 'js2-scope 'js2-printer 'js2-print-none)
+(js2--struct-put 'js2-scope 'js2-printer 'js2-print-block)
 
 (defun js2-node-get-enclosing-scope (node)
   "Return the innermost `js2-scope' node surrounding NODE.
@@ -11146,6 +11146,10 @@ expression)."
        ((and class-p
              (= tt js2-SEMI))
         nil)
+       ((and class-p
+             (eq tt js2-LC))
+        (setq after-comma nil
+              elem (js2-parse-block)))
        (t
         (js2-report-error "msg.bad.prop")
         (unless js2-recover-from-parse-errors
