@@ -11126,18 +11126,14 @@ expression)."
                    (memq (js2-peek-token 'KEYWORD_IS_NAME)
                          `( ,js2-NAME ,js2-PRIVATE_NAME ,js2-STRING ,js2-NUMBER
                             ,js2-LB ,js2-MUL)))
-          (js2-set-face (js2-current-token-beg)
-                        (js2-current-token-end)
-                        'font-lock-keyword-face 'record)
+          (js2-record-face 'font-lock-keyword-face)
           (setq type-string prop
                 prev-pos (js2-current-token-beg)
                 tt (js2-get-prop-name-token))))
       ;; Handle generator * before the property name for in-line functions
       (when (and (>= js2-language-version 200)
                  (= js2-MUL tt))
-        (js2-set-face (js2-current-token-beg)
-                      (js2-current-token-end)
-                      'font-lock-keyword-face 'record)
+        (js2-record-face 'font-lock-keyword-face)
         (setq star-p t
               prev-pos (or prev-pos (js2-current-token-beg))
               tt (js2-get-prop-name-token)))
