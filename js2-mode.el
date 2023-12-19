@@ -11095,7 +11095,8 @@ expression)."
         (continue t)
         tt elems elem
         elem-key-string previous-elem-key-string
-        after-comma previous-token)
+        after-comma
+        prev-pos star-p type-string)
     (while continue
       ;; Clear out any lookahead tokens (possibly wrong modifier).
       ;; FIXME: Deal with this problem in a more systematic fashion.
@@ -11108,17 +11109,14 @@ expression)."
       (setq tt (js2-get-prop-name-token)
             static nil
             elem nil
-            previous-token nil)
+            prev-pos nil
+            star-p nil
+            type-string nil)
       ;; Handle 'static' keyword only if we're in a class
       (when (and class-p (= js2-NAME tt)
                  (string= "static" (js2-current-token-string)))
         (js2-record-face 'font-lock-keyword-face)
         (setq static t
-              tt (js2-get-prop-name-token)))
-      ;; Handle generator * before the property name for in-line functions
-      (when (and (>= js2-language-version 200)
-                 (= js2-MUL tt))
-        (setq previous-token (js2-current-token)
               tt (js2-get-prop-name-token)))
       ;; Handle getter, setter and async methods
       (let ((prop (js2-current-token-string)))
@@ -11126,20 +11124,34 @@ expression)."
                    (= js2-NAME tt)
                    (member prop '("get" "set" "async"))
                    (memq (js2-peek-token 'KEYWORD_IS_NAME)
-                         `(,js2-NAME ,js2-PRIVATE_NAME ,js2-STRING ,js2-NUMBER ,js2-LB)))
-          (setq previous-token (js2-current-token)
+                         `( ,js2-NAME ,js2-PRIVATE_NAME ,js2-STRING ,js2-NUMBER
+                            ,js2-LB ,js2-MUL)))
+          (js2-set-face (js2-current-token-beg)
+                        (js2-current-token-end)
+                        'font-lock-keyword-face 'record)
+          (setq type-string prop
+                prev-pos (js2-current-token-beg)
                 tt (js2-get-prop-name-token))))
+      ;; Handle generator * before the property name for in-line functions
+      (when (and (>= js2-language-version 200)
+                 (= js2-MUL tt))
+        (js2-set-face (js2-current-token-beg)
+                      (js2-current-token-end)
+                      'font-lock-keyword-face 'record)
+        (setq star-p t
+              prev-pos (or prev-pos (js2-current-token-beg))
+              tt (js2-get-prop-name-token)))
       (cond
        ;; Rest/spread (...expr)
        ((and (>= js2-language-version 200)
-             (not class-p) (not static) (not previous-token)
+             (not class-p) (not static) (not type-string)
              (= js2-TRIPLEDOT tt))
         (setq after-comma nil
               elem (js2-make-unary nil js2-TRIPLEDOT 'js2-parse-assign-expr)))
        ;; Found a key/value property (of any sort)
        ((memq tt `(,js2-NAME ,js2-PRIVATE_NAME ,js2-STRING ,js2-NUMBER ,js2-LB))
         (setq after-comma nil
-              elem (js2-parse-named-prop tt previous-token class-p))
+              elem (js2-parse-named-prop tt prev-pos type-string star-p class-p))
         (if (and (null elem)
                  (not js2-recover-from-parse-errors))
             (setq continue nil)))
@@ -11202,21 +11214,10 @@ expression)."
     (js2-must-match js2-RC "msg.no.brace.prop")
     (nreverse elems)))
 
-(defun js2-parse-named-prop (tt previous-token &optional class-p)
+(defun js2-parse-named-prop (tt pos type-string star-p &optional class-p)
   "Parse a name, string, or getter/setter object property.
 When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
-  (let ((key (js2-parse-prop-name tt class-p))
-        (prop (and previous-token (js2-token-string previous-token)))
-        (property-type (when previous-token
-                             (if (= (js2-token-type previous-token) js2-MUL)
-                                 "*"
-                               (js2-token-string previous-token))))
-        pos)
-    (when (member prop '("get" "set" "async"))
-      (setq pos (js2-token-beg previous-token))
-      (js2-set-face (js2-token-beg previous-token)
-                    (js2-token-end previous-token)
-                    'font-lock-keyword-face 'record))  ; get/set/async
+  (let ((key (js2-parse-prop-name tt class-p)))
     (cond
      ;; method definition: {f() {...}}
      ((and (= (js2-peek-token) js2-LP)
@@ -11224,7 +11225,7 @@ When `js2-is-in-destructuring' is t, forms like {a, b, c} will be permitted."
       (when (or (js2-name-node-p key) (js2-string-node-p key))
         ;; highlight function name properties
         (js2-record-face 'font-lock-function-name-face))
-      (js2-parse-method-prop pos key property-type))
+      (js2-parse-method-prop pos key type-string star-p))
      ;; class field or binding element with initializer
      ((and (= (js2-peek-token) js2-ASSIGN)
            (>= js2-language-version 200))
@@ -11326,7 +11327,7 @@ string or expression."
       (js2-node-add-children result prop expr)
       result))))
 
-(defun js2-parse-method-prop (pos prop type-string)
+(defun js2-parse-method-prop (pos prop type-string star-p)
   "Parse method property in an object literal or a class body.
 JavaScript syntax is:
 
@@ -11339,7 +11340,8 @@ and expression closure style is also supported
 
 POS is the start position of the `get' or `set' keyword, if any.
 PROP is the `js2-name-node' representing the property name.
-TYPE-STRING is a string `get', `set', `*', or nil, indicating a found keyword."
+TYPE-STRING is a string `get', `set', `async', or nil.
+START-P is non-nil when name is preceded by the star character."
   (let* ((type (or (cdr (assoc type-string '(("get" . GET)
                                              ("set" . SET)
                                              ("async" . ASYNC))))
@@ -11348,7 +11350,7 @@ TYPE-STRING is a string `get', `set', `*', or nil, indicating a found keyword."
          (pos (or pos (js2-current-token-beg)))
          (_ (js2-must-match js2-LP "msg.no.paren.parms"))
          (fn (js2-parse-function 'FUNCTION_EXPRESSION pos
-                                 (string= type-string "*")
+                                 star-p
                                  (eq type 'ASYNC)
                                  nil)))
     (js2-node-set-prop fn 'METHOD_TYPE type)  ; for codegen

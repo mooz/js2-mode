@@ -2,6 +2,8 @@
 
 ## Next
 
+* Support for async generators in method notation
+  ([#598](https://github.com/mooz/js2-mode/issues/598)).
 * Support for static initialization blocks
   ([#594](https://github.com/mooz/js2-mode/issues/594)).
 

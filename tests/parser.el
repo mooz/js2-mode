@@ -1,6 +1,6 @@
 ;;; tests/parser.el --- Some tests for js2-mode.  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2009, 2011-2017  Free Software Foundation, Inc.
+;; Copyright (C) 2009, 2011-2023  Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -304,6 +304,9 @@ the test."
 (js2-deftest-parse object-literal-computed-generator-key
   "var x = {*[foo + bar]() {  yield 42;\n}};")
 
+(js2-deftest-parse object-literal-async-generator
+  "var x = {async *foo() {  yield 42;\n}};")
+
 ;;; Function definition
 
 (js2-deftest function-redeclaring-var "var gen = 3; function gen() {};"
@@ -561,6 +564,9 @@ the test."
 
 (js2-deftest-parse async-method-allow-await
   "({async f() {  await x;\n}});")
+
+(js2-deftest-parse async-method-generator
+  "class C {\n  async *foo() {}\n}")
 
 ;;; Await
 
