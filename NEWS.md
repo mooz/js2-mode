@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## Next
+## 2023-12-24
 
 * Support for async generators in method notation
   ([#598](https://github.com/mooz/js2-mode/issues/598)).
