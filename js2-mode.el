@@ -4,7 +4,7 @@
 
 ;; Author: Steve Yegge <steve.yegge@gmail.com>
 ;;         mooz <stillpedant@gmail.com>
-;;         Dmitry Gutov <dgutov@yandex.ru>
+;;         Dmitry Gutov <dmitry@gutov.dev>
 ;; URL:  https://github.com/mooz/js2-mode/
 ;;       http://code.google.com/p/js2-mode/
 ;; Version: 20231224
