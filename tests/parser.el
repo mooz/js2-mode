@@ -414,6 +414,9 @@ the test."
 (js2-deftest-parse function-strict-no-getter-setter-duplicate
   "'use strict';\nvar a = {get x() {}, set x() {}};")
 
+(js2-deftest-parse function-strict-with-static-block
+  "'use strict';\nclass C {\n  static {\n}\n}")
+
 ;;; Spread operator
 
 (js2-deftest-parse spread-in-array-literal
