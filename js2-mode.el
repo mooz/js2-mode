@@ -11076,6 +11076,7 @@ represented as a string (e.g., the key is computed by an
 expression)."
   (cond
    ((js2-unary-node-p property-node) nil) ;; {...foo}
+   ((js2-scope-p property-node) nil) ;; static {...}
    (t
     (let ((key (js2-infix-node-left property-node)))
       (when (js2-computed-prop-name-node-p key)
