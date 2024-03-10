@@ -778,7 +778,7 @@ parser as a frontend to an interpreter or byte compiler.")
 
 ;;; Parser instance variables (buffer-local vars for js2-parse)
 
-(defconst js2-ti-after-eol (lsh 1 16)
+(defconst js2-ti-after-eol (ash 1 16)
   "Flag:  first token of the source line.")
 
 ;; Inline Rhino's CompilerEnvirons vars as buffer-locals.
@@ -2129,8 +2129,8 @@ Returns nil if element is not found in the list."
 
 (defsubst js2-same-line (pos)
   "Return t if POS is on the same line as current point."
-  (and (>= pos (point-at-bol))
-       (<= pos (point-at-eol))))
+  (and (>= pos (line-beginning-position))
+       (<= pos (line-end-position))))
 
 (defun js2-code-bug ()
   "Signal an error when we encounter an unexpected code path."
@@ -5855,7 +5855,7 @@ corresponding number.  Otherwise return -1."
           (cl-decf c (- ?a 10))
           (throw 'check nil))))
       (throw 'return -1))
-    (logior c (lsh accumulator 4))))
+    (logior c (ash accumulator 4))))
 
 (defun js2-get-token (&optional modifier)
   "If `js2-ti-lookahead' is zero, call scanner to get new token.
@@ -8497,7 +8497,7 @@ Last token scanned is the close-curly for the function body."
     (let ((pos (save-excursion
                  (goto-char (js2-current-token-end))
                  (max (js2-node-abs-pos (js2-function-node-body fn-node))
-                      (point-at-bol))))
+                      (line-beginning-position))))
           (end (js2-current-token-end)))
       (if (cl-plusp (js2-name-node-length name))
           (js2-add-strict-warning "msg.no.return.value"
@@ -8655,7 +8655,7 @@ node are given relative start positions and correct lengths."
       (setq end (js2-node-end pn))
       (save-excursion
         (goto-char end)
-        (setq beg (max (js2-node-pos pn) (point-at-bol))))
+        (setq beg (max (js2-node-pos pn) (line-beginning-position))))
       (js2-add-strict-warning "msg.no.side.effects" nil beg end))
     pn))
 
@@ -8698,7 +8698,7 @@ node are given relative start positions and correct lengths."
         ;; back up to beginning of statement or line
         (max beg (save-excursion
                    (goto-char end)
-                   (point-at-bol)))
+                   (line-beginning-position)))
         end)))
 
 (defconst js2-no-semi-insertion
@@ -10767,7 +10767,7 @@ array-literals, array comprehensions and regular expressions."
       ;; the scanner or one of its subroutines reported the error.
       (make-js2-error-node))
      ((= tt js2-EOF)
-      (let* ((px-pos (point-at-bol))
+      (let* ((px-pos (line-beginning-position))
              (len (- js2-ts-cursor px-pos)))
         (js2-report-error "msg.unexpected.eof" nil px-pos len))
       (make-js2-error-node :pos (1- js2-ts-cursor)))
@@ -11472,12 +11472,12 @@ If HARDCODED-ARRAY-INDEX provided, array index in JSON path is replaced with it.
 (defun js2-arglist-close ()
   "Return non-nil if we're on a line beginning with a close-paren/brace."
   (save-excursion
-    (goto-char (point-at-bol))
+    (goto-char (line-beginning-position))
     (js2-forward-sws)
     (looking-at "[])}]")))
 
 (defun js2-indent-looks-like-label-p ()
-  (goto-char (point-at-bol))
+  (goto-char (line-beginning-position))
   (js2-forward-sws)
   (looking-at (concat js2-mode-identifier-re ":")))
 
@@ -11512,7 +11512,7 @@ If HARDCODED-ARRAY-INDEX provided, array index in JSON path is replaced with it.
   (save-excursion
     (back-to-indentation)
     (js2-backward-sws)
-    (goto-char (point-at-bol))
+    (goto-char (line-beginning-position))
     (skip-chars-forward " \t")
     (looking-at "case\\s-.+:")))
 
@@ -11562,9 +11562,9 @@ in reverse."
           ;; line containing actual code.
           (setq pos (save-excursion
                       (forward-line -1)
-                      (goto-char (point-at-bol))
+                      (goto-char (line-beginning-position))
                       (when (re-search-forward "\\s-+\\(=\\)\\s-+"
-                                               (point-at-eol) t)
+                                               (line-end-position) t)
                         (goto-char (match-end 1))
                         (skip-chars-forward " \t\r\n")
                         (current-column))))
@@ -11578,14 +11578,14 @@ in reverse."
           ;; both this line and prev line look like object-literal
           ;; elements.
           (setq pos (save-excursion
-                      (goto-char (point-at-bol))
+                      (goto-char (line-beginning-position))
                       (js2-backward-sws)
                       (back-to-indentation)
                       (prog1
                           (current-column)
                         ;; while we're here, look for trailing comma
                         (if (save-excursion
-                              (goto-char (point-at-eol))
+                              (goto-char (line-end-position))
                               (js2-backward-sws)
                               (eq (char-before) ?,))
                             (setq arglist-cont (1- (point)))))))
@@ -11694,7 +11694,7 @@ If so, we don't ever want to use bounce-indent."
         ;; This has to be set before calling parse-partial-sexp below.
         (inhibit-point-motion-hooks t))
     (setq parse-status (save-excursion
-                         (syntax-ppss (point-at-bol)))
+                         (syntax-ppss (line-beginning-position)))
           offset (- (point) (save-excursion
                               (back-to-indentation)
                               (point))))
@@ -12327,14 +12327,14 @@ Also moves past comment delimiters when inside comments."
              (bolp)))
       (skip-chars-forward "\* \t"))
      (t
-      (goto-char (point-at-bol))))))
+      (goto-char (line-beginning-position))))))
 
 (defun js2-end-of-line ()
   "Toggle point between eol and last non-whitespace char in line."
   (interactive)
   (if (eolp)
       (skip-chars-backward " \t")
-    (goto-char (point-at-eol))))
+    (goto-char (line-end-position))))
 
 (defun js2-mode-wait-for-parse (callback)
   "Invoke CALLBACK when parsing is finished.
@@ -12548,13 +12548,13 @@ INDENT is the indentation level to match.
 Returns the end-of-line position of the furthest adjacent
 //-comment line with the same indentation as the current line.
 If there is no such matching line, returns current end of line."
-  (let ((pos (point-at-eol))
+  (let ((pos (line-end-position))
         (indent (current-indentation)))
     (save-excursion
       (while (and (zerop (forward-line direction))
                   (looking-at js2-mode-//-comment-re)
                   (eq indent (length (match-string 1))))
-        (setq pos (point-at-eol)))
+        (setq pos (line-end-position)))
       pos)))
 
 (defun js2-mode-hide-//-comments ()
@@ -12574,7 +12574,7 @@ If there is no such matching line, returns current end of line."
 (defun js2-mode-toggle-//-comment ()
   "Fold or un-fold any multi-line //-comment at point.
 Caller should have determined that this line starts with a //-comment."
-  (let* ((beg (point-at-eol))
+  (let* ((beg (line-end-position))
          (end beg))
     (save-excursion
       (goto-char end)
