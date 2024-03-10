@@ -778,7 +778,7 @@ parser as a frontend to an interpreter or byte compiler.")
 
 ;;; Parser instance variables (buffer-local vars for js2-parse)
 
-(defconst js2-ti-after-eol (lsh 1 16)
+(defconst js2-ti-after-eol (ash 1 16)
   "Flag:  first token of the source line.")
 
 ;; Inline Rhino's CompilerEnvirons vars as buffer-locals.
@@ -5855,7 +5855,7 @@ corresponding number.  Otherwise return -1."
           (cl-decf c (- ?a 10))
           (throw 'check nil))))
       (throw 'return -1))
-    (logior c (lsh accumulator 4))))
+    (logior c (ash accumulator 4))))
 
 (defun js2-get-token (&optional modifier)
   "If `js2-ti-lookahead' is zero, call scanner to get new token.
