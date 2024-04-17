@@ -7017,6 +7017,7 @@ of a simple name.  Called before EXPR has a parent node."
           (regexp-opt
            '("abstract"
              "addon"
+             "async"
              "author"
              "class"
              "const"
