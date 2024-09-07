@@ -8984,7 +8984,8 @@ consumes no tokens."
             (let ((name
                    (or
                     (and (js2-match-token js2-DEFAULT) "default")
-                    (and (js2-match-token js2-NAME) (js2-current-token-string)))))
+                    (and (js2-match-token js2-NAME) (js2-current-token-string))
+                    (and (js2-match-token js2-STRING) (js2-current-token-string)))))
               (if name
                   (let ((node (make-js2-export-binding-node
                                :pos beg
