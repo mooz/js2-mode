@@ -226,8 +226,8 @@ Set `js2-include-node-externs' to t to include them.")
             Int8Array Uint8Array Int16Array Uint16Array Int32Array Uint32Array
             Float32Array Float64Array))
   "Khronos typed array externs. Available in most modern browsers and
-in node.js >= 0.6. If `js2-include-node-externs' or `js2-include-browser-externs'
-are enabled, these will also be included.")
+in node.js >= 0.6. If `js2-include-node-externs' or
+`js2-include-browser-externs' are enabled, these will also be included.")
 
 (defvar js2-harmony-externs
   (mapcar 'symbol-name
@@ -1138,7 +1138,7 @@ another file, or you've got a potential bug."
 
 (defcustom js2-warn-about-unused-function-arguments nil
   "Non-nil to treat function arguments like declared-but-unused variables."
-  :type 'booleanp
+  :type 'boolean
   :group 'js2-mode)
 
 (defcustom js2-include-jslint-globals t
@@ -2585,23 +2585,24 @@ so many of its properties will be nil.
         (default (js2-export-node-default n)))
     (insert pad "export ")
     (cond
-     (default
+      (default
        (insert "default ")
        (js2-print-ast default i))
-     (declaration
+      (declaration
        (js2-print-ast declaration i))
-     ((and exports-list from)
-      (js2-print-named-imports exports-list)
-      (insert " ")
-      (js2-print-from-clause from))
-     (from
-      (insert "* ")
-      (js2-print-from-clause from))
-     (exports-list
-      (js2-print-named-imports exports-list)))
-    (unless (or (and default (not (js2-assign-node-p default)))
-                (and declaration (or (js2-function-node-p declaration)
-                                     (js2-class-node-p declaration))))
+      ((and exports-list from)
+       (js2-print-named-imports exports-list i)
+       (insert " ")
+       (js2-print-from-clause from i))
+      (from
+       (insert "* ")
+       (js2-print-from-clause from i))
+      (exports-list
+       (js2-print-named-imports exports-list i)))
+    (unless (or (and declaration (or (js2-function-node-p declaration)
+                                     (js2-class-node-p declaration)))
+                (and default (or (js2-function-node-p default)
+                                 (js2-class-node-p default))))
       (insert ";\n"))))
 
 (cl-defstruct (js2-while-node
@@ -2801,21 +2802,34 @@ containing `foo' and a local-name node containing `bar'."
 different, visit the extern-name."
   (let ((local-name (js2-export-binding-node-local-name n))
         (extern-name (js2-export-binding-node-extern-name n)))
-    (when local-name
-      (js2-visit-ast local-name v))
-    (when (not (equal local-name extern-name))
-      (js2-visit-ast extern-name v))))
+    (cond
+      ((js2-export-node-p (js2-node-parent n))
+       (when local-name
+         (js2-visit-ast local-name v))
+       (when (not (eq local-name extern-name))
+         (js2-visit-ast extern-name v)))
+      (t
+       (when (not (eq local-name extern-name))
+         (js2-visit-ast extern-name v))
+       (when local-name
+         (js2-visit-ast local-name v))))))
 
-(defun js2-print-extern-binding (n _i)
+(defun js2-print-extern-binding (n indent)
   "Print a representation of a single extern binding. E.g. `foo' or
 `foo as bar'."
   (let ((local-name (js2-export-binding-node-local-name n))
         (extern-name (js2-export-binding-node-extern-name n)))
-    (insert (js2-name-node-name extern-name))
-    (when (not (equal local-name extern-name))
-      (insert " as ")
-      (insert (js2-name-node-name local-name)))))
-
+    (cond
+      ((js2-export-node-p (js2-node-parent n))
+       (when (not (eq local-name extern-name))
+         (js2-print-ast local-name indent)
+         (insert " as "))
+       (js2-print-ast extern-name indent))
+      (t
+       (js2-print-ast extern-name indent)
+       (when (not (eq local-name extern-name))
+         (insert " as ")
+         (js2-print-ast local-name indent))))))
 
 (cl-defstruct (js2-import-node
                (:include js2-node)
@@ -2853,12 +2867,10 @@ import ImportClause FromClause;"
     (insert pad "import ")
     (if import-clause
         (progn
-          (js2-print-import-clause import-clause)
+          (js2-print-import-clause import-clause i)
           (insert " ")
-          (js2-print-from-clause from-clause))
-      (insert "'")
-      (insert module-id)
-      (insert "'"))
+          (js2-print-from-clause from-clause i))
+        (insert "'" module-id "'"))
     (insert ";\n")))
 
 (cl-defstruct (js2-import-clause-node
@@ -2891,39 +2903,35 @@ local context."
       (dolist (import named-imports)
         (js2-visit-ast import v)))))
 
-(defun js2-print-import-clause (n)
+(defun js2-print-import-clause (n i)
   (let ((ns-import (js2-import-clause-node-namespace-import n))
         (named-imports (js2-import-clause-node-named-imports n))
         (default (js2-import-clause-node-default-binding n)))
     (cond
-     ((and default ns-import)
-      (js2-print-ast default)
-      (insert ", ")
-      (js2-print-namespace-import ns-import))
-     ((and default named-imports)
-      (js2-print-ast default)
-      (insert ", ")
-      (js2-print-named-imports named-imports))
-     (default
-      (js2-print-ast default))
-     (ns-import
-      (js2-print-namespace-import ns-import))
-     (named-imports
-      (js2-print-named-imports named-imports)))))
+      ((and default ns-import)
+       (js2-print-ast default i)
+       (insert ", ")
+       (js2-print-namespace-import ns-import i))
+      ((and default named-imports)
+       (js2-print-ast default i)
+       (insert ", ")
+       (js2-print-named-imports named-imports i))
+      (default
+       (js2-print-ast default i))
+      (ns-import
+       (js2-print-namespace-import ns-import i))
+      (named-imports
+       (js2-print-named-imports named-imports i)))))
 
-(defun js2-print-namespace-import (node)
+(defun js2-print-namespace-import (node _i)
   (insert "* as ")
   (insert (js2-name-node-name (js2-namespace-import-node-name node))))
 
-(defun js2-print-named-imports (imports)
+(defun js2-print-named-imports (imports indent)
   (insert "{")
-  (let ((len (length imports))
-        (n 0))
-    (while (< n len)
-      (js2-print-extern-binding (nth n imports) 0)
-      (unless (= n (- len 1))
-        (insert ", "))
-      (setq n (+ n 1))))
+  (cl-loop for i on imports
+     do (js2-print-extern-binding (car i) indent)
+     when (cdr i) do (insert ", "))
   (insert "}"))
 
 (cl-defstruct (js2-namespace-import-node
@@ -2962,7 +2970,7 @@ modules metadata itself."
 (js2--struct-put 'js2-from-clause-node 'js2-visitor 'js2-visit-none)
 (js2--struct-put 'js2-from-clause-node 'js2-printer 'js2-print-from-clause)
 
-(defun js2-print-from-clause (n)
+(defun js2-print-from-clause (n _i)
   (insert "from ")
   (if (js2-from-clause-node-metadata-p n)
       (insert "this module")
@@ -7341,7 +7349,8 @@ key of a literal object."
     (js2--is-param var-node (js2-function-node-params parent))))
 
 (defun js2--classify-variable (parent node vars)
-  "Classify the single variable NODE, a js2-name-node, updating the VARS collection."
+  "Classify the single variable NODE, a js2-name-node, updating the VARS
+collection."
   (let ((function-param (js2--is-function-param parent node)))
     (if (js2-prop-get-node-p parent)
         ;; If we are within a prop-get, e.g. the "bar" in "foo.bar",
@@ -8748,7 +8757,6 @@ node are given relative start positions and correct lengths."
          (pos (js2-node-pos pn)))
       (cond
        ((= tt js2-SEMI)
-        ;; extend the node bounds to include the semicolon.
         (setf (js2-node-len pn) (- (js2-current-token-end) pos)))
        ((memq tt js2-autoinsert-semi-and-warn)
         (js2-unget-token) ; Not ';', do not consume.
@@ -8974,57 +8982,59 @@ This can take the form of either as single js2-NAME token as in `foo' or as in a
 rebinding expression `bar as foo'. If it matches, it will return an instance of
 js2-export-binding-node and consume all the tokens. If it does not match, it
 consumes no tokens."
-  (let ((extern-name (when (js2-match-prop-name) (js2-current-token-string)))
+  (let ((first-name (when (js2-match-prop-name) (js2-current-token-string)))
         (beg (js2-current-token-beg))
-        (extern-name-len (js2-current-token-len))
+        (first-name-len (js2-current-token-len))
         (is-reserved-name (or (= (js2-current-token-type) js2-RESERVED)
                               (aref js2-kwd-tokens (js2-current-token-type)))))
-    (if extern-name
+    (if first-name
         (if (js2-match-contextual-kwd "as")
             (let ((name
-                   (or
-                    (and (js2-match-token js2-DEFAULT) "default")
-                    (and (js2-match-token js2-NAME) (js2-current-token-string))
-                    (and (js2-match-token js2-STRING) (js2-current-token-string)))))
+                    (or
+                     (and (js2-match-token js2-DEFAULT) "default")
+                     (and (js2-match-token js2-NAME) (js2-current-token-string))
+                     (and (js2-match-token js2-STRING) (js2-current-token-string)))))
               (if name
-                  (let ((node (make-js2-export-binding-node
-                               :pos beg
-                               :len (- (js2-current-token-end) beg)
-                               :local-name (make-js2-name-node
-                                            :name name
-                                            :pos (js2-current-token-beg)
-                                            :len (js2-current-token-len))
-                               :extern-name (make-js2-name-node
-                                             :name extern-name
-                                             :pos beg
-                                             :len extern-name-len))))
-                    (js2-node-add-children
-                     node
-                     (js2-export-binding-node-local-name node)
-                     (js2-export-binding-node-extern-name node))
-                    (if import-p
-                        (js2-set-face (js2-current-token-beg) (js2-current-token-end)
-                                      'font-lock-variable-name-face 'record))
-                    node)
-                (js2-unget-token)
+                  (let ((second-name (make-js2-name-node
+                                      :name name
+                                      :pos (js2-current-token-beg)
+                                      :len (js2-current-token-len)))
+                        (first-name (make-js2-name-node
+                                     :name first-name
+                                     :pos beg
+                                     :len first-name-len)))
+                    (let ((node (make-js2-export-binding-node
+                                 :pos beg
+                                 :len (- (js2-current-token-end) beg)
+                                 :local-name (if import-p second-name first-name)
+                                 :extern-name (if import-p first-name second-name))))
+                      (js2-node-add-children
+                       node
+                       (js2-export-binding-node-local-name node)
+                       (js2-export-binding-node-extern-name node))
+                      (if import-p
+                          (js2-set-face (js2-current-token-beg) (js2-current-token-end)
+                                        'font-lock-variable-name-face 'record))
+                      node))
+                  (js2-unget-token)
                 nil))
-          (let* ((name-node (make-js2-name-node
-                             :name (js2-current-token-string)
-                             :pos (js2-current-token-beg)
-                             :len (js2-current-token-len)))
-                 (node (make-js2-export-binding-node
-                        :pos (js2-current-token-beg)
-                        :len (js2-current-token-len)
-                        :local-name name-node
-                        :extern-name name-node)))
-            (when is-reserved-name
-              (js2-report-error "msg.mod.as.after.reserved.word" extern-name))
-            (js2-node-add-children node name-node)
-            (if import-p
-                (js2-set-face (js2-current-token-beg) (js2-current-token-end)
-                              'font-lock-variable-name-face 'record))
-            node))
-      nil)))
+            (let* ((name-node (make-js2-name-node
+                               :name (js2-current-token-string)
+                               :pos (js2-current-token-beg)
+                               :len (js2-current-token-len)))
+                   (node (make-js2-export-binding-node
+                          :pos (js2-current-token-beg)
+                          :len (js2-current-token-len)
+                          :local-name name-node
+                          :extern-name name-node)))
+              (when is-reserved-name
+                (js2-report-error "msg.mod.as.after.reserved.word" first-name))
+              (js2-node-add-children node name-node)
+              (if import-p
+                  (js2-set-face (js2-current-token-beg) (js2-current-token-end)
+                                'font-lock-variable-name-face 'record))
+              node))
+        nil)))
 
 (defun js2-parse-switch ()
   "Parser for switch-statement.  Last matched token must be js2-SWITCH."
@@ -9189,22 +9199,23 @@ invalid export statements."
     (when from-clause
       (push from-clause children))
     (when declaration
-      (push declaration children)
-      (when (not (or (js2-function-node-p declaration)
-                     (js2-class-node-p declaration)))
-        (js2-auto-insert-semicolon declaration)))
+      (push declaration children))
     (when default
-      (push default children)
-      (when (not (or (js2-function-node-p default)
-                     (js2-class-node-p default)))
-        (js2-auto-insert-semicolon default)))
+      (push default children))
     (let ((node (make-js2-export-node
-                  :pos beg
-                  :len (- (js2-current-token-end) beg)
-                  :exports-list exports-list
-                  :from-clause from-clause
-                  :declaration declaration
-                  :default default)))
+                 :pos beg
+                 :len (- (js2-current-token-end) beg)
+                 :exports-list exports-list
+                 :from-clause from-clause
+                 :declaration declaration
+                 :default default)))
+      (when (or (and declaration
+                     (not (or (js2-function-node-p declaration)
+                              (js2-class-node-p declaration))))
+                (and default
+                     (not (or (js2-function-node-p default)
+                              (js2-class-node-p default)))))
+        (js2-auto-insert-semicolon node))
       (apply #'js2-node-add-children node children)
       node)))
 
@@ -9773,7 +9784,8 @@ expression and return it wrapped in a `js2-expr-stmt-node'."
 
 (defun js2-parse-variables (decl-type pos)
   "Parse a comma-separated list of variable declarations.
-Could be a `var', `const' or `let' expression, possibly in a for-loop initializer.
+Could be a `var', `const' or `let' expression, possibly in a for-loop
+initializer.
 
 DECL-TYPE is a token value: either VAR, CONST, or LET depending on context.
 For `var' or `const', the keyword should be the token last scanned.
@@ -11864,7 +11876,7 @@ Selecting an error will jump it to the corresponding source-buffer error.
   (interactive)
   (kill-buffer))
 
-(defun js2-error-buffer-jump (&rest ignored)
+(defun js2-error-buffer-jump (&rest _ignored)
   "Jump cursor to current error in source buffer."
   (interactive)
   (when (js2-error-buffer-view)
